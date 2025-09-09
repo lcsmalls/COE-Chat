@@ -1,0 +1,2278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0">
+    <title>Chat (working title)</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121212;
+            --text-color: #eee;
+            --primary-color: #4a90e2;
+            --container-bg: #1e1e1e;
+            --sidebar-bg: #2b2b2b;
+            --border-color: #444;
+            --bubble-bg-sent: #4a90e2;
+            --bubble-bg-received: #444;
+            --hover-color: #3b3b3b;
+            --scrollbar-thumb-color: #555;
+            --scrollbar-track-color: #2b2b2b;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--container-bg);
+            display: flex;
+        }
+
+        /* Scrollbar styles */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--scrollbar-track-color);
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: var(--scrollbar-thumb-color);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: var(--primary-color);
+        }
+
+        .sidebar {
+            width: 300px;
+            padding: 1rem;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow-y: auto;
+            min-width: 250px;
+            max-width: 400px;
+            background-color: var(--sidebar-bg);
+        }
+
+        .sidebar-top {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .sidebar h2, .sidebar h3 {
+            margin: 0;
+            text-align: center;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chat-header {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            gap: 10px;
+        }
+
+        .chat-title {
+            flex: 1;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        #chat-header button {
+            background-color: transparent;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        #chat-messages {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .message-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message-info {
+            font-size: 0.8em;
+            color: #999;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding-left: 10px;
+        }
+
+        .message-info .username {
+            font-weight: bold;
+        }
+
+        .message-info .timestamp {
+            font-size: 0.9em;
+        }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.sent {
+            align-items: flex-end;
+        }
+
+        .message.sent .message-bubble {
+            color: #fff;
+            border-radius: 18px 18px 0 18px;
+            background-color: var(--bubble-bg-sent);
+        }
+
+        .message.received {
+            align-items: flex-start;
+        }
+
+        .message.received .message-bubble {
+            color: var(--text-color);
+            border-radius: 18px 18px 18px 0;
+            background-color: var(--bubble-bg-received);
+        }
+
+        .message-bubble {
+            padding: 6px 15px;
+            line-height: 1.3;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            max-width: 85%;
+            position: relative;
+            font-size: 16px;
+            white-space: normal;
+            display: inline-block;
+        }
+
+        .profile-pic {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .input-area {
+            display: flex;
+            padding: 1rem;
+            border-top: 1px solid var(--border-color);
+            gap: 10px;
+            align-items: center;
+        }
+
+        #message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            resize: none;
+            overflow-y: auto;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #3876c7;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .material-symbols-rounded {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 48;
+            cursor: pointer;
+        }
+
+        .auth-form {
+            background-color: var(--container-bg);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .auth-form input {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .auth-form button {
+            width: 100%;
+            padding: 0.75rem;
+        }
+
+        .user-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.2s ease;
+        }
+
+        .user-list-item:hover {
+            background-color: var(--hover-color);
+        }
+
+        .unread-dot {
+            height: 10px;
+            width: 10px;
+            background-color: red;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .user-list-item-actions {
+            margin-left: auto;
+        }
+
+        /* Modal specific styling */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: var(--container-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 90%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .modal-content .friend-list-for-group {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px;
+        }
+
+        .modal-content .friend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .token {
+            font-weight: 300;
+            color: #999;
+        }
+
+        /* NEW STYLES for image upload */
+        .upload-btn {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+        }
+
+        .upload-btn .material-symbols-rounded {
+            color: #fff;
+            font-size: 24px;
+        }
+
+        #image-preview {
+            display: none;
+            align-items: center;
+            padding: 5px;
+            background-color: var(--container-bg);
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            margin-right: 10px;
+        }
+
+        #image-preview.visible {
+            display: flex;
+        }
+
+        #image-thumbnail {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+
+        /* New style for inline images in messages */
+        .message-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin-top: 5px;
+        }
+
+        .message-actions {
+            display: none;
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 5px;
+            padding: 2px;
+        }
+
+        .message-bubble:hover .message-actions {
+            display: flex;
+        }
+
+        .message-bubble {
+            position: relative;
+        }
+
+        .send-icon-button {
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+            padding: 0;
+        }
+
+        .send-icon-button .material-symbols-rounded {
+            color: #fff;
+            font-size: 24px;
+        }
+
+        .sidebar h3 {
+            margin: 0 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 1.25rem;
+            text-align: center;
+        }
+
+        #user-info-bottom {
+            margin-top: auto;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* NEW STYLES for friend/user actions */
+        .user-list-item-actions {
+            display: none;
+            gap: 5px;
+            background: rgba(43, 43, 43, 0.8);
+            border-radius: 5px;
+            padding: 5px;
+        }
+
+        .user-list-item:hover .user-list-item-actions {
+            display: flex;
+        }
+
+        .action-icon {
+            font-size: 18px;
+            color: #999;
+            cursor: pointer;
+        }
+
+        .action-icon:hover {
+            color: #fff;
+        }
+
+        #settings-area {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        #settings-area label {
+            font-weight: bold;
+        }
+
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #bubble-color-picker {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-color: transparent;
+            width: 30px;
+            height: 30px;
+            border: none;
+            cursor: pointer;
+        }
+        #bubble-color-picker::-webkit-color-swatch {
+            border-radius: 50%;
+            border: 2px solid var(--text-color);
+        }
+        #bubble-color-picker::-moz-color-swatch {
+            border-radius: 50%;
+            border: 2px solid var(--text-color);
+        }
+
+        .sidebar-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .sidebar-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #add-friend-btn, #create-group-btn {
+            width: 100%;
+        }
+
+        #friends-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        /* New style for blocked users list */
+        #blocked-users-list {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .toggle-blocked-btn {
+            background-color: var(--container-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .blocked-user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #3b3b3b;
+        }
+
+        .blocked-user-item .unblock-btn {
+            background-color: #e57373;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* NEW STYLES for Friend Request System */
+        #friend-requests-btn {
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        #friend-requests-btn .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: red;
+            color: white;
+            border-radius: 50%;
+            padding: 3px 6px;
+            font-size: 0.7em;
+            font-weight: bold;
+        }
+
+        #friend-requests-list {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .request-item {
+            background-color: var(--container-bg);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .request-item button {
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8em;
+        }
+
+        .request-item .accept-btn {
+            background-color: #4CAF50;
+        }
+        .request-item .decline-btn {
+            background-color: #f44336;
+        }
+
+        /* NEW STYLES for Online/Offline Status */
+        .online-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: grey;
+            margin-right: 5px;
+        }
+
+        .online-status.online {
+            background-color: #4CAF50;
+        }
+
+        #online-users-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .online-user-item {
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            background-color: var(--container-bg);
+            border-radius: 8px;
+        }
+
+        /* NEW STYLES for Typing Indicator */
+        #typing-indicator {
+            padding: 10px;
+            font-style: italic;
+            color: #999;
+            display: none;
+        }
+
+        #group-settings-btn {
+            background-color: transparent;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        #user-settings-modal .modal-content {
+            background: #23272f;
+            color: #fff;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            padding: 32px 24px;
+            max-width: 350px;
+            width: 95%;
+            font-size: 1.1em;
+        }
+        #user-settings-modal input[type="color"] {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid #888;
+            background: none;
+        }
+        #user-settings-modal button {
+            margin-top: 10px;
+            font-size: 1em;
+        }
+        #user-info-bottom {
+            border-top: 1.5px solid var(--border-color);
+            padding-top: 1.2rem;
+            background: rgba(30,30,30,0.95);
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+        }
+        #user-info {
+            font-size: 1.1em;
+            font-weight: 500;
+            color: #fff;
+            padding: 8px 0;
+            border-radius: 8px;
+            transition: background 0.15s;
+        }
+        #user-info:hover {
+            background: #353a45;
+        }
+        .sidebar {
+            background: linear-gradient(135deg, #23272f 80%, #2b2b2b 100%);
+            box-shadow: 2px 0 16px rgba(0,0,0,0.12);
+            border-radius: 0 16px 16px 0;
+        }
+        .sidebar h3 {
+            font-size: 1.4rem;
+            letter-spacing: 0.02em;
+            color: #fff;
+            margin-bottom: 1.2rem;
+        }
+        #settings-area {
+            background: rgba(36,40,48,0.85);
+            border-radius: 10px;
+            padding: 1rem 0.7rem;
+            margin-bottom: 1.2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        #settings-area h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+            color: #b0c4e7;
+        }
+        .color-picker-container label {
+            color: #b0c4e7;
+        }
+        #bubble-color-picker {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid #888;
+            margin-left: 6px;
+        }
+
+        /* --- AUTH SCREEN REDESIGN --- */
+        #auth-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: var(--bg-color);
+            gap: 2rem;
+        }
+        #auth-screen h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 2rem;
+        }
+        .auth-btn-row {
+            display: flex;
+            gap: 1rem;
+        }
+        .auth-btn-row button {
+            font-size: 1.1rem;
+            padding: 1rem 2.5rem;
+            border-radius: 1.5rem;
+            background: var(--primary-color);
+            color: #fff;
+            border: none;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .auth-btn-row button:hover {
+            background: #3876c7;
+        }
+        .auth-form {
+            background: #23272f;
+            color: #fff;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            padding: 2.5rem 2rem;
+            max-width: 350px;
+            width: 95%;
+            font-size: 1.1em;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            align-items: center;
+        }
+        .auth-form input {
+            width: 100%;
+            padding: 0.9rem 1rem;
+            border-radius: 8px;
+            border: 1.5px solid #444;
+            background: #181a20;
+            color: #fff;
+            font-size: 1.1em;
+        }
+        .auth-form button {
+            width: 100%;
+            padding: 0.9rem;
+            border-radius: 1.5rem;
+            font-size: 1.1em;
+            background: var(--primary-color);
+            color: #fff;
+            border: none;
+            font-weight: 500;
+            margin-top: 0.5rem;
+        }
+        .auth-form button:hover {
+            background: #3876c7;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen">
+        <h2>Welcome to Chat (working title)</h2>
+        <div class="auth-btn-row">
+            <button id="show-create-account-btn">Create New Account</button>
+            <button id="show-login-btn">Log In</button>
+        </div>
+    </div>
+
+    <div id="create-account-form-container" style="display:none;" class="auth-form">
+        <h2>Create Account</h2>
+        <input type="email" id="new-email" placeholder="Email">
+        <input type="password" id="new-password" placeholder="Password">
+        <input type="text" id="new-username" placeholder="Username">
+        <button id="create-account-btn">Create</button>
+        <button id="back-to-auth-btn">Back</button>
+    </div>
+
+    <div id="login-form-container" style="display:none;" class="auth-form">
+        <h2>Log In</h2>
+        <input type="email" id="login-email" placeholder="Email">
+        <input type="password" id="login-password" placeholder="Password">
+        <button id="login-btn">Log In</button>
+        <button id="back-to-auth-login-btn">Back</button>
+    </div>
+
+    <div id="app-container" style="display:none;" class="container">
+        <div class="sidebar" id="main-sidebar">
+            <div class="sidebar-top">
+                <h3>Chat (working title)</h3>
+
+                <div id="settings-area">
+                    <h4>Settings</h4>
+                    <div class="color-picker-container">
+                        <label for="bubble-color-picker">My Chat Bubble Color:</label>
+                        <input type="color" id="bubble-color-picker" value="#4a90e2">
+                    </div>
+                    <button id="save-color-btn">Save Color</button>
+                </div>
+
+                <div class="sidebar-item">
+                    <div class="sidebar-item-header">
+                        <h4>Friends & Groups</h4>
+                    </div>
+
+                    <div style="position: relative;">
+                        <input type="text" id="add-friend-input" placeholder="Enter username#tag">
+                        <button id="add-friend-btn">Send Request</button>
+                    </div>
+
+                    <button id="friend-requests-btn">
+                        Friend Requests
+                        <span id="requests-badge" class="notification-badge" style="display:none;">0</span>
+                    </button>
+                    <div id="friend-requests-list"></div>
+
+                    <button id="create-group-btn">Create Group</button>
+                </div>
+
+                <div id="friends-list"></div>
+
+                <div class="sidebar-item">
+                    <button id="toggle-blocked-btn" class="toggle-blocked-btn">Show Blocked Users</button>
+                    <div id="blocked-users-list"></div>
+                </div>
+            </div>
+
+            <div id="user-info-bottom">
+                <div id="user-info" style="cursor:pointer;"></div>
+                <button id="logout-btn">Log Out</button>
+            </div>
+        </div>
+
+        <div class="chat-area" id="chat-page" style="display:none;">
+            <header id="chat-header">
+                <span id="back-to-sidebar-btn" class="material-symbols-rounded">arrow_back</span>
+                <div id="current-chat-info" class="chat-title"></div>
+                <button id="leave-group-btn" style="display: none;">Leave Group</button>
+                <button id="group-settings-btn" style="display: none;">
+                    <span class="material-symbols-rounded">settings</span>
+                </button>
+            </header>
+            <div id="chat-messages"></div>
+            <div id="typing-indicator" style="display: none;"></div>
+            <div class="input-area">
+                <label for="image-upload-btn" class="upload-btn">
+                    <span class="material-symbols-rounded">image</span>
+                </label>
+                <input type="file" id="image-upload-btn" accept="image/*" style="display: none;">
+
+                <div id="image-preview" style="display:none;">
+                    <img id="image-thumbnail" src="" alt="Image thumbnail">
+                    <span id="clear-image-btn" class="material-symbols-rounded" style="cursor: pointer; margin-left: 5px;">cancel</span>
+                </div>
+
+                <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
+                <button id="send-btn" class="send-icon-button">
+                    <span class="material-symbols-rounded">send</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="create-group-modal" class="modal">
+        <div class="modal-content">
+            <h3>Create a Group Chat</h3>
+            <input type="text" id="group-name-input" placeholder="Enter group name">
+            <h4>Select Friends:</h4>
+            <div class="friend-list-for-group" id="group-friends-list"></div>
+            <button id="confirm-create-group-btn">Create Group</button>
+            <button id="cancel-create-group-btn">Cancel</button>
+        </div>
+    </div>
+
+    <div id="group-settings-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="group-settings-title">Group Settings</h3>
+            <button id="add-member-btn">Add Member</button>
+            <button id="delete-group-btn">Delete Group</button>
+            <button id="transfer-owner-btn">Transfer Ownership</button>
+            <button id="close-settings-modal-btn">Close</button>
+        </div>
+    </div>
+
+    <div id="add-member-modal" class="modal">
+        <div class="modal-content">
+            <h3>Add Members</h3>
+            <div class="friend-list-for-group" id="add-member-friends-list"></div>
+            <button id="confirm-add-members-btn">Add Selected</button>
+            <button id="cancel-add-members-btn">Cancel</button>
+        </div>
+    </div>
+
+    <div id="transfer-ownership-modal" class="modal">
+        <div class="modal-content">
+            <h3>Transfer Ownership</h3>
+            <p>Select a new owner for the group:</p>
+            <div class="friend-list-for-group" id="transfer-owner-list"></div>
+            <button id="confirm-transfer-btn">Transfer</button>
+            <button id="cancel-transfer-btn">Cancel</button>
+        </div>
+    </div>
+
+    <div id="user-settings-modal" class="modal">
+        <div class="modal-content">
+            <h3>User Settings</h3>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-weight: bold;">Username:</span>
+                <span id="modal-username"></span>
+            </div>
+            <div class="color-picker-container">
+                <label for="modal-bubble-color-picker">Chat Bubble Color:</label>
+                <input type="color" id="modal-bubble-color-picker" value="#4a90e2">
+            </div>
+            <button id="modal-save-color-btn">Save Color</button>
+            <button id="close-user-settings-btn">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAEy_3vzbu0lvpB92zD3P6FcAgwmqQsfbU",
+            authDomain: "freechat-30fd6.firebaseapp.com",
+            projectId: "freechat-30fd6",
+            storageBucket: "freechat-30fd6.appspot.com",
+            messagingSenderId: "994973905020",
+            appId: "1:994973905020:web:6ce7370a069a3cd2dd99f9",
+            databaseURL: "https://freechat-30fd6-default-rtdb.firebaseio.com",
+            measurementId: "G-9V8QZ106H0"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const rtdb = firebase.database();
+
+        let currentUser = null;
+        let userData = null;
+        let currentChatId = null;
+        let currentChatType = null;
+        let currentGroupData = null; // Store current group data
+        let messagesUnsubscribe = null;
+        let friendsData = {};
+        let blockedData = {};
+
+        let chatListeners = {};
+        let userProfileListener = null;
+        let friendRequestListener = null;
+        let onlineStatusListener = null;
+        let typingIndicatorListener = null;
+
+        const authScreen = document.getElementById('auth-screen');
+        const createAccountFormContainer = document.getElementById('create-account-form-container');
+        const loginFormContainer = document.getElementById('login-form-container');
+        const appContainer = document.getElementById('app-container');
+        const mainSidebar = document.getElementById('main-sidebar');
+        const chatPage = document.getElementById('chat-page');
+
+        const showCreateAccountBtn = document.getElementById('show-create-account-btn');
+        const showLoginBtn = document.getElementById('show-login-btn');
+        const createAccountBtn = document.getElementById('create-account-btn');
+        const loginBtn = document.getElementById('login-btn');
+        const backToAuthBtn = document.getElementById('back-to-auth-btn');
+        const backToAuthLoginBtn = document.getElementById('back-to-auth-login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        const newEmailInput = document.getElementById('new-email');
+        const newPasswordInput = document.getElementById('new-password');
+        const newUsernameInput = document.getElementById('new-username');
+        const loginEmailInput = document.getElementById('login-email');
+        const loginPasswordInput = document.getElementById('login-password');
+
+        const userInfoDiv = document.getElementById('user-info');
+        const addFriendInput = document.getElementById('add-friend-input');
+        const addFriendBtn = document.getElementById('add-friend-btn');
+        const friendsList = document.getElementById('friends-list');
+        const chatMessages = document.getElementById('chat-messages');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        const chatHeader = document.getElementById('chat-header');
+        const backToSidebarBtn = document.getElementById('back-to-sidebar-btn');
+        const currentChatInfo = document.getElementById('current-chat-info');
+
+        const createGroupBtn = document.getElementById('create-group-btn');
+        const createGroupModal = document.getElementById('create-group-modal');
+        const groupNameInput = document.getElementById('group-name-input');
+        const groupFriendsList = document.getElementById('group-friends-list');
+        const confirmCreateGroupBtn = document.getElementById('confirm-create-group-btn');
+        const cancelCreateGroupBtn = document.getElementById('cancel-create-group-btn');
+        const leaveGroupBtn = document.getElementById('leave-group-btn');
+
+        const imageUploadBtn = document.getElementById('image-upload-btn');
+        const imagePreviewDiv = document.getElementById('image-preview');
+        const imageThumbnail = document.getElementById('image-thumbnail');
+        const clearImageBtn = document.getElementById('clear-image-btn');
+        let uploadedImageFile = null;
+
+        const bubbleColorPicker = document.getElementById('bubble-color-picker');
+        const saveColorBtn = document.getElementById('save-color-btn');
+
+        const toggleBlockedBtn = document.getElementById('toggle-blocked-btn');
+        const blockedUsersList = document.getElementById('blocked-users-list');
+
+        // NEW UI elements for Friend Request System
+        const friendRequestsBtn = document.getElementById('friend-requests-btn');
+        const requestsBadge = document.getElementById('requests-badge');
+        const friendRequestsList = document.getElementById('friend-requests-list');
+
+        // NEW UI elements for Typing Indicator
+        const typingIndicator = document.getElementById('typing-indicator');
+        let isTyping = false;
+        let typingTimeout = null;
+
+        // NEW UI elements for Group Settings
+        const groupSettingsBtn = document.getElementById('group-settings-btn');
+        const groupSettingsModal = document.getElementById('group-settings-modal');
+        const groupSettingsTitle = document.getElementById('group-settings-title');
+        const closeSettingsModalBtn = document.getElementById('close-settings-modal-btn');
+        const addMemberBtn = document.getElementById('add-member-btn');
+        const deleteGroupBtn = document.getElementById('delete-group-btn');
+        const transferOwnerBtn = document.getElementById('transfer-owner-btn');
+
+        const addMemberModal = document.getElementById('add-member-modal');
+        const addMemberFriendsList = document.getElementById('add-member-friends-list');
+        const confirmAddMembersBtn = document.getElementById('confirm-add-members-btn');
+        const cancelAddMembersBtn = document.getElementById('cancel-add-members-btn');
+
+        const transferOwnershipModal = document.getElementById('transfer-ownership-modal');
+        const transferOwnerList = document.getElementById('transfer-owner-list');
+        const confirmTransferBtn = document.getElementById('confirm-transfer-btn');
+        const cancelTransferBtn = document.getElementById('cancel-transfer-btn');
+
+        // --- AUTHENTICATION & UI LOGIC ---
+
+        // DEBUG: If you see permission errors, check your Firebase rules for Realtime Database and Firestore.
+        // See https://firebase.google.com/docs/database/security and https://firebase.google.com/docs/firestore/security/get-started
+        // Example for Realtime Database (development only!):
+        // {
+        //   "rules": {
+        //     ".read": true,
+        //     ".write": true
+        //   }
+        // }
+        // Example for Firestore (development only!):
+        // service cloud.firestore {
+        //   match /databases/{database}/documents {
+        //     match /{document=**} {
+        //       allow read, write: if true;
+        //     }
+        //   }
+        // }
+        // Remove these rules before going to production!
+        
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                setupOnlinePresence();
+
+                if (!userProfileListener) {
+                    userProfileListener = db.collection('profiles').doc(currentUser.uid).onSnapshot(async (doc) => {
+                        if (doc.exists) {
+                            userData = doc.data();
+                            showMainApp();
+                            listenForFriendsAndGroups();
+                            listenForFriendRequests();
+                        } else {
+                            console.error("User profile not found. This should not happen on a successful login.");
+                            await auth.signOut();
+                        }
+                    }, (error) => {
+                        console.error("Error listening to user profile:", error);
+                    });
+                }
+            } else {
+                // Do NOT manually set status to offline here; let onDisconnect handle it
+                if (userProfileListener) userProfileListener();
+                if (friendRequestListener) friendRequestListener();
+                userProfileListener = null;
+                friendRequestListener = null;
+                Object.values(chatListeners).forEach(unsubscribe => {
+                    if (Array.isArray(unsubscribe)) {
+                        unsubscribe.forEach(f => f());
+                    } else {
+                        unsubscribe();
+                    }
+                });
+                chatListeners = {};
+                if (messagesUnsubscribe) messagesUnsubscribe();
+                messagesUnsubscribe = null;
+                showAuthScreen();
+                currentUser = null;
+            }
+        });
+
+        function showAuthScreen() {
+            authScreen.style.display = 'flex';
+            createAccountFormContainer.style.display = 'none';
+            loginFormContainer.style.display = 'none';
+            appContainer.style.display = 'none';
+        }
+
+        function showMainApp() {
+            authScreen.style.display = 'none';
+            createAccountFormContainer.style.display = 'none';
+            loginFormContainer.style.display = 'none';
+            appContainer.style.display = 'flex';
+
+            chatPage.style.display = 'none';
+            mainSidebar.style.display = 'flex';
+
+            userInfoDiv.innerHTML = `<strong>${userData.username}#</strong><span class="token">${userData.tag}</span>`;
+            if (userData.bubbleColor) {
+                bubbleColorPicker.value = userData.bubbleColor;
+                document.getElementById('modal-bubble-color-picker').value = userData.bubbleColor;
+            }
+            document.getElementById('modal-username').textContent = `${userData.username}#${userData.tag}`;
+        }
+
+        // CORRECTED KEYBOARD LISTENER
+        document.addEventListener('keydown', (e) => {
+            const activeElementTag = document.activeElement.tagName.toLowerCase();
+            if (activeElementTag === 'input' || activeElementTag === 'textarea') {
+                return;
+            }
+
+            if (chatPage.style.display === 'flex' && e.key !== 'Enter') {
+                messageInput.focus();
+                setTypingStatus(true);
+            }
+        });
+
+        // CORRECTED MESSAGE INPUT LISTENER
+        messageInput.addEventListener('keydown', (e) => {
+            setTypingStatus(true);
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendBtn.click();
+                setTypingStatus(false);
+            }
+        });
+
+
+        messageInput.addEventListener('blur', () => {
+            setTypingStatus(false);
+        });
+
+        showCreateAccountBtn.addEventListener('click', () => {
+            authScreen.style.display = 'none';
+            createAccountFormContainer.style.display = 'flex';
+        });
+
+        showLoginBtn.addEventListener('click', () => {
+            authScreen.style.display = 'none';
+            loginFormContainer.style.display = 'flex';
+        });
+
+        backToAuthBtn.addEventListener('click', showAuthScreen);
+        backToAuthLoginBtn.addEventListener('click', showAuthScreen);
+        logoutBtn.addEventListener('click', async () => await auth.signOut());
+
+        createAccountBtn.addEventListener('click', async () => {
+            const email = newEmailInput.value.trim();
+            const password = newPasswordInput.value;
+            const username = newUsernameInput.value.trim();
+            if (!email || !password || !username) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const tag = Math.floor(1000 + Math.random() * 9000);
+                await db.collection('profiles').doc(userCredential.user.uid).set({
+                    username: username,
+                    tag: tag,
+                    friends: [],
+                    blocked: [],
+                    bubbleColor: '#4a90e2'
+                });
+            } catch (error) {
+                console.error("Error creating account:", error.message);
+                alert("Error: " + error.message);
+            }
+        });
+
+        loginBtn.addEventListener('click', async () => {
+            const email = loginEmailInput.value.trim();
+            const password = loginPasswordInput.value;
+            if (!email || !password) {
+                alert("Please enter your email and password.");
+                return;
+            }
+
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+            } catch (error) {
+                console.error("Login failed:", error.message);
+                alert("Login failed: " + error.message);
+            }
+        });
+
+        // --- FRIENDS & MESSAGING LOGIC ---
+
+        addFriendBtn.addEventListener('click', async () => {
+            const friendTag = addFriendInput.value.trim();
+            if (!friendTag.includes('#')) {
+                alert("Please enter a valid username#tag.");
+                return;
+            }
+            const [username, tagString] = friendTag.split('#');
+            const tag = parseInt(tagString, 10);
+
+            if (!username || isNaN(tag)) {
+                alert("Invalid format. Use username#tag.");
+                return;
+            }
+
+            try {
+                const querySnapshot = await db.collection('profiles')
+                    .where('username', '==', username)
+                    .where('tag', '==', tag)
+                    .limit(1)
+                    .get();
+
+                if (querySnapshot.empty) {
+                    alert("User not found.");
+                    return;
+                }
+
+                const friendDoc = querySnapshot.docs[0];
+                const friendId = friendDoc.id;
+
+                if (friendId === currentUser.uid) {
+                    alert("You cannot add yourself.");
+                    return;
+                }
+
+                if (userData.friends.includes(friendId)) {
+                    alert("This user is already your friend.");
+                    return;
+                }
+
+                const existingRequest = await db.collection('friend_requests')
+                    .where('from', '==', currentUser.uid)
+                    .where('to', '==', friendId)
+                    .get();
+
+                if (!existingRequest.empty) {
+                    alert("A friend request has already been sent to this user.");
+                    return;
+                }
+
+                const incomingRequest = await db.collection('friend_requests')
+                    .where('from', '==', friendId)
+                    .where('to', '==', currentUser.uid)
+                    .get();
+
+                if (!incomingRequest.empty) {
+                    alert("This user has already sent you a friend request. Please check your pending requests.");
+                    return;
+                }
+
+                await db.collection('friend_requests').add({
+                    from: currentUser.uid,
+                    to: friendId,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                alert("Friend request sent successfully!");
+                addFriendInput.value = '';
+
+            } catch (error) {
+                console.error("Error sending friend request:", error.message);
+                alert("Error sending friend request: " + error.message);
+            }
+        });
+
+        function listenForFriendRequests() {
+            if (friendRequestListener) friendRequestListener();
+
+            friendRequestListener = db.collection('friend_requests')
+                .where('to', '==', currentUser.uid)
+                .onSnapshot(async (snapshot) => {
+                    const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                    requestsBadge.textContent = requests.length;
+                    requestsBadge.style.display = requests.length > 0 ? 'block' : 'none';
+                    friendRequestsList.innerHTML = '';
+
+                    if (requests.length === 0) {
+                        friendRequestsList.textContent = "No pending requests.";
+                        return;
+                    }
+
+                    for (const req of requests) {
+                        const fromUserDoc = await db.collection('profiles').doc(req.from).get();
+                        if (!fromUserDoc.exists) continue;
+                        const fromUserData = fromUserDoc.data();
+
+                        const reqItem = document.createElement('div');
+                        reqItem.classList.add('request-item');
+                        reqItem.innerHTML = `
+                            <span>${fromUserData.username}#${fromUserData.tag}</span>
+                            <div>
+                                <button class="accept-btn">Accept</button>
+                                <button class="decline-btn">Decline</button>
+                            </div>
+                        `;
+
+                        reqItem.querySelector('.accept-btn').onclick = () => acceptFriendRequest(req.id, req.from);
+                        reqItem.querySelector('.decline-btn').onclick = () => declineFriendRequest(req.id);
+
+                        friendRequestsList.appendChild(reqItem);
+                    }
+                });
+        }
+
+async function removeFriend(userId) {
+    const confirmed = confirm("Are you sure you want to remove this friend?");
+    if (!confirmed) return;
+    try {
+        // Construct the private chat ID
+        const privateChatId = [currentUser.uid, userId].sort().join('_');
+
+        // Check for and stop the Realtime Database listener for this specific chat
+        if (chatListeners[privateChatId] && Array.isArray(chatListeners[privateChatId])) {
+            chatListeners[privateChatId].forEach(listener => {
+                if (listener.ref && listener.callback) {
+                    listener.ref.off('value', listener.callback);
+                }
+            });
+            delete chatListeners[privateChatId];
+        }
+
+        // Delete the chat associated with this friend
+        await deleteChat(userId);
+
+        // Remove friend from current user's profile
+        await db.collection('profiles').doc(currentUser.uid).update({
+            friends: firebase.firestore.FieldValue.arrayRemove(userId)
+        });
+
+        // Remove current user from friend's profile
+        await db.collection('profiles').doc(userId).update({
+            friends: firebase.firestore.FieldValue.arrayRemove(currentUser.uid)
+        });
+
+        alert('Friend and chat removed successfully.');
+
+        // Delay the sidebar refresh to allow the database to update
+        setTimeout(() => {
+            listenForFriendsAndGroups(); // Re-render the friends list
+            currentChatId = null;
+            chatPage.style.display = 'none';
+            mainSidebar.style.display = 'flex';
+        }, 500); // 500ms delay
+
+    } catch (error) {
+        console.error("Error removing friend:", error);
+        alert("Failed to remove friend.");
+    }
+}
+
+// CORRECTED FUNCTION:
+async function deleteChat(friendId) {
+    const chatIds = [currentUser.uid, friendId].sort();
+    const chatId = chatIds.join('_');
+    const chatRef = db.collection('chats').doc(chatId);
+    
+    // Use .get() to check if the document exists before trying to delete its subcollection
+    const chatDoc = await chatRef.get();
+
+    if (chatDoc.exists) {
+        // If it exists, proceed to delete the messages subcollection
+        const messagesRef = chatRef.collection('messages');
+        const snapshot = await messagesRef.get();
+
+        // Delete all messages in the subcollection
+        const batch = db.batch();
+        snapshot.docs.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+
+        // Delete the chat document itself
+        await chatRef.delete();
+    }
+}
+      
+async function acceptFriendRequest(requestId, fromUserId) {
+    try {
+        const myProfileRef = db.collection('profiles').doc(currentUser.uid);
+        const theirProfileRef = db.collection('profiles').doc(fromUserId);
+
+        await db.runTransaction(async (transaction) => {
+            const myProfileDoc = await transaction.get(myProfileRef);
+            const theirProfileDoc = await transaction.get(theirProfileRef);
+            if (!myProfileDoc.exists || !theirProfileDoc.exists) {
+                throw "User profiles do not exist!";
+            }
+            // Use arrayUnion to add the friend ID to both profiles
+            transaction.update(myProfileRef, { friends: firebase.firestore.FieldValue.arrayUnion(fromUserId) });
+            transaction.update(theirProfileRef, { friends: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
+            // Delete the friend request document
+            transaction.delete(db.collection('friend_requests').doc(requestId));
+        });
+
+        alert("Friend request accepted!");
+        // Re-render the sidebar after the transaction is complete
+        listenForFriendsAndGroups();
+    } catch (error) {
+        console.error("Error accepting request:", error);
+        alert("Failed to accept friend request. This may be due to a permissions issue.");
+    }
+}
+      
+        async function declineFriendRequest(requestId) {
+            try {
+                await db.collection('friend_requests').doc(requestId).delete();
+                alert("Friend request declined.");
+                listenForFriendsAndGroups();
+            } catch (error) {
+                console.error("Error declining request:", error);
+            }
+        }
+
+        friendRequestsBtn.addEventListener('click', () => {
+            if (friendRequestsList.style.display === 'none' || friendRequestsList.style.display === '') {
+                friendRequestsList.style.display = 'flex';
+            } else {
+                friendRequestsList.style.display = 'none';
+            }
+        });
+
+async function listenForFriendsAndGroups() {
+    // Correctly unsubscribe and null out all old chat listeners to prevent race conditions
+    if (messagesUnsubscribe) messagesUnsubscribe();
+    if (typingIndicatorListener) {
+        // This is the correct way to detach the listener
+        rtdb.ref(`/${currentChatId}/typing`).off('value', typingIndicatorListener);
+    }
+    messagesUnsubscribe = null;
+    typingIndicatorListener = null;
+
+    // Unsubscribe all old listeners stored in the chatListeners object
+    Object.values(chatListeners).forEach(unsubscribeArray => {
+        if (Array.isArray(unsubscribeArray)) {
+            unsubscribeArray.forEach(f => {
+                if (typeof f === 'function') {
+                    f(); // Call the unsubscribe function
+                }
+            });
+        }
+    });
+    chatListeners = {}; // Reset the object
+
+    friendsList.innerHTML = '';
+
+    const friends = userData.friends || [];
+    const blocked = userData.blocked || [];
+    const groups = await db.collection('groups').where('members', 'array-contains', currentUser.uid).get();
+
+    if (friends.length === 0 && groups.empty) {
+        friendsList.textContent = "You have no friends or groups yet. Add one above!";
+        return;
+    }
+
+    // Process friends first
+    for (const friendId of friends) {
+        const friendDoc = await db.collection('profiles').doc(friendId).get();
+        if (friendDoc.exists) {
+            const friendData = friendDoc.data();
+            friendsData[friendId] = friendData;
+            const isBlocked = blocked.includes(friendId);
+            const chatId = [currentUser.uid, friendId].sort().join('_');
+            const chatItem = document.createElement('div');
+            chatItem.classList.add('user-list-item');
+            chatItem.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="online-status"></div>
+                    <span class="unread-dot" style="display:none;"></span>
+                    <span>${friendData.username}#${friendData.tag}</span>
+                </div>
+                <div class="user-list-item-actions">
+                    ${isBlocked ?
+                        `<span class="material-symbols-rounded action-icon" title="Unblock" onclick="unblockUser('${friendId}')">check</span>` :
+                        `<span class="material-symbols-rounded action-icon" title="Block" onclick="blockUser('${friendId}')">block</span>`
+                    }
+                    <span class="material-symbols-rounded action-icon" title="Remove Friend" onclick="removeFriend('${friendId}')">person_remove</span>
+                </div>
+            `;
+            friendsList.appendChild(chatItem);
+
+            // Online status
+            const statusDot = chatItem.querySelector('.online-status');
+            const statusRef = rtdb.ref(`/status/${friendId}`);
+            const statusCallback = (snapshot) => {
+                const status = snapshot.val();
+                if (status && status.isOnline) {
+                    statusDot.classList.add('online');
+                    statusDot.title = 'Online';
+                } else {
+                    statusDot.classList.remove('online');
+                    statusDot.title = 'Offline';
+                }
+            };
+            statusRef.on('value', statusCallback);
+            if (!chatListeners[chatId]) chatListeners[chatId] = [];
+            chatListeners[chatId].push({ ref: statusRef, callback: statusCallback });
+
+            // Unread dot (realtime)
+            const unreadDot = chatItem.querySelector('.unread-dot');
+            const lastReadKey = `lastRead_${chatId}`;
+            db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp', 'desc').limit(1)
+                .onSnapshot(snap => {
+                    if (!snap.empty) {
+                        const msg = snap.docs[0].data();
+                        const lastRead = Number(localStorage.getItem(lastReadKey) || 0);
+                        if (msg.timestamp && msg.timestamp.toMillis() > lastRead) {
+                            unreadDot.style.display = 'inline-block';
+                        } else {
+                            unreadDot.style.display = 'none';
+                        }
+                    } else {
+                        unreadDot.style.display = 'none';
+                    }
+                });
+
+            chatItem.addEventListener('click', () => {
+                localStorage.setItem(lastReadKey, Date.now());
+                unreadDot.style.display = 'none';
+                openChat(chatId, 'private', friendId, friendData.username);
+            });
+        }
+    }
+
+    // Process groups
+    groups.forEach(groupDoc => {
+        const groupData = groupDoc.data();
+        const chatId = groupDoc.id;
+        const chatItem = document.createElement('div');
+        chatItem.classList.add('user-list-item');
+        chatItem.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="material-symbols-rounded">group</span>
+                <span class="unread-dot" style="display:none;"></span>
+                <span>${groupData.name}</span>
+            </div>
+        `;
+        friendsList.appendChild(chatItem);
+        const unreadDot = chatItem.querySelector('.unread-dot');
+        const lastReadKey = `lastRead_${chatId}`;
+        db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp', 'desc').limit(1)
+            .onSnapshot(snap => {
+                if (!snap.empty) {
+                    const msg = snap.docs[0].data();
+                    const lastRead = Number(localStorage.getItem(lastReadKey) || 0);
+                    if (msg.timestamp && msg.timestamp.toMillis() > lastRead) {
+                        unreadDot.style.display = 'inline-block';
+                    } else {
+                        unreadDot.style.display = 'none';
+                    }
+                } else {
+                    unreadDot.style.display = 'none';
+                }
+            });
+        chatItem.addEventListener('click', () => {
+            localStorage.setItem(lastReadKey, Date.now());
+            unreadDot.style.display = 'none';
+            openChat(chatId, 'group', null, groupData.name);
+        });
+    });
+
+    listenForBlockedUsers();
+}
+
+        function listenForBlockedUsers() {
+            if (chatListeners.blocked) chatListeners.blocked();
+            chatListeners.blocked = db.collection('profiles').doc(currentUser.uid).onSnapshot(doc => {
+                const profile = doc.data();
+                blockedData = profile.blocked || [];
+                const blockedList = document.getElementById('blocked-users-list');
+                blockedList.innerHTML = '';
+
+                if (blockedData.length > 0) {
+                    blockedData.forEach(async (blockedId) => {
+                        const blockedDoc = await db.collection('profiles').doc(blockedId).get();
+                        if (blockedDoc.exists) {
+                            const blockedUser = blockedDoc.data();
+                            const blockedItem = document.createElement('div');
+                            blockedItem.classList.add('blocked-user-item');
+                            blockedItem.innerHTML = `
+                                <span>${blockedUser.username}#${blockedUser.tag}</span>
+                                <button class="unblock-btn">Unblock</button>
+                            `;
+                            blockedItem.querySelector('.unblock-btn').onclick = () => unblockUser(blockedId);
+                            blockedList.appendChild(blockedItem);
+                        }
+                    });
+                } else {
+                    blockedList.textContent = "No blocked users.";
+                }
+            });
+        }
+
+        toggleBlockedBtn.addEventListener('click', () => {
+            if (blockedUsersList.style.display === 'none' || blockedUsersList.style.display === '') {
+                blockedUsersList.style.display = 'flex';
+                toggleBlockedBtn.textContent = "Hide Blocked Users";
+            } else {
+                blockedUsersList.style.display = 'none';
+                toggleBlockedBtn.textContent = "Show Blocked Users";
+            }
+        });
+
+        async function blockUser(userId) {
+            try {
+                await db.collection('profiles').doc(currentUser.uid).update({
+                    blocked: firebase.firestore.FieldValue.arrayUnion(userId)
+                });
+                await db.collection('profiles').doc(userId).update({
+                    friends: firebase.firestore.FieldValue.arrayRemove(currentUser.uid)
+                });
+                await db.collection('profiles').doc(currentUser.uid).update({
+                    friends: firebase.firestore.FieldValue.arrayRemove(userId)
+                });
+                alert('User blocked and removed from friends.');
+                backToSidebarBtn.click();
+            } catch (error) {
+                console.error("Error blocking user:", error);
+            }
+        }
+
+        async function unblockUser(userId) {
+            try {
+                await db.collection('profiles').doc(currentUser.uid).update({
+                    blocked: firebase.firestore.FieldValue.arrayRemove(userId)
+                });
+                alert('User unblocked.');
+                backToSidebarBtn.click();
+            } catch (error) {
+                console.error("Error unblocking user:", error);
+            }
+        }
+
+async function acceptFriendRequest(requestId, fromUserId) {
+    try {
+        const myProfileRef = db.collection('profiles').doc(currentUser.uid);
+        const theirProfileRef = db.collection('profiles').doc(fromUserId);
+
+        await myProfileRef.update({ friends: firebase.firestore.FieldValue.arrayUnion(fromUserId) });
+        await theirProfileRef.update({ friends: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
+
+        await db.collection('friend_requests').doc(requestId).delete();
+        alert("Friend request accepted!");
+    } catch (error) {
+        console.error("Error accepting request:", error);
+        alert("Failed to accept friend request. This may be due to a permissions issue.");
+    }
+}
+
+async function openChat(chatId, type, memberId, name) {
+    // --- THIS IS THE CRITICAL FIX ---
+    // Correctly detach the old listeners before setting up new ones
+    if (messagesUnsubscribe) {
+        messagesUnsubscribe();
+        messagesUnsubscribe = null;
+    }
+    if (typingIndicatorListener) {
+        rtdb.ref(`/${currentChatId}/typing`).off('value', typingIndicatorListener);
+        typingIndicatorListener = null;
+    }
+    // --- END OF CRITICAL FIX ---
+
+    currentChatId = chatId;
+    currentChatType = type;
+    chatPage.style.display = 'flex';
+    messageInput.disabled = false;
+    sendBtn.disabled = false;
+    messageInput.placeholder = "Type a message...";
+
+    currentChatInfo.textContent = name;
+    
+    leaveGroupBtn.style.display = 'none';
+    groupSettingsBtn.style.display = 'none';
+    currentGroupData = null; 
+
+    if (type === 'group') {
+        const groupDoc = await db.collection('groups').doc(chatId).get();
+        if (groupDoc.exists) {
+            currentGroupData = groupDoc.data();
+            leaveGroupBtn.style.display = 'block';
+            
+            if (currentGroupData.ownerId === currentUser.uid) {
+                groupSettingsBtn.style.display = 'block';
+            }
+        } else {
+            console.error("Group document not found for chat ID:", chatId);
+        }
+    }
+
+    chatMessages.innerHTML = '';
+
+    // --- TYPING INDICATOR LISTENER ---
+    const typingRef = rtdb.ref(`/${chatId}/typing`);
+    typingIndicatorListener = typingRef.on('value', (snapshot) => {
+        const typingUsers = snapshot.val() || {};
+        const otherTypingUsers = Object.keys(typingUsers).filter(uid => uid !== currentUser.uid && typingUsers[uid]);
+        if (otherTypingUsers.length > 0) {
+            let typingNames = otherTypingUsers.map(uid => friendsData[uid] ? friendsData[uid].username : 'Someone');
+            typingIndicator.textContent = `${typingNames.join(', ')} is typing...`;
+            typingIndicator.style.display = 'block';
+        } else {
+            typingIndicator.style.display = 'none';
+        }
+    });
+
+    const chatCollection = db.collection('chats').doc(chatId).collection('messages');
+    
+    messagesUnsubscribe = chatCollection.orderBy('timestamp').onSnapshot(snapshot => {
+        const docChanges = snapshot.docChanges();
+
+        if (docChanges.length === snapshot.docs.length) {
+            chatMessages.innerHTML = '';
+            snapshot.docs.forEach(doc => displayMessage(doc.data(), doc.id));
+        } else {
+            docChanges.forEach(change => {
+                if (change.type === 'added') {
+                    displayMessage(change.doc.data(), change.doc.id);
+                }
+            });
+        }
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+}
+
+backToSidebarBtn.addEventListener('click', () => {
+    if (messagesUnsubscribe) messagesUnsubscribe();
+    if (typingIndicatorListener) {
+        rtdb.ref(`/${currentChatId}/typing`).off('value', typingIndicatorListener);
+    }
+    messagesUnsubscribe = null;
+    typingIndicatorListener = null;
+    currentChatId = null;
+    chatPage.style.display = 'none';
+});
+
+        // --- IMAGE HANDLING LOGIC ---
+
+        async function compressImage(file, maxWidth) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > maxWidth) {
+                            height = height * (maxWidth / width);
+                            width = maxWidth;
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        canvas.toBlob(blob => {
+                            resolve(blob);
+                        }, file.type, 0.8);
+                    };
+                    img.src = event.target.result;
+                };
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function processImageForMessage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    resolve(event.target.result);
+                };
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        imageUploadBtn.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                uploadedImageFile = file;
+                const compressedBlob = await compressImage(file, 400);
+                const dataUrl = URL.createObjectURL(compressedBlob);
+                imageThumbnail.src = dataUrl;
+                imagePreviewDiv.style.display = 'flex';
+            }
+        });
+
+        clearImageBtn.addEventListener('click', () => {
+            uploadedImageFile = null;
+            imagePreviewDiv.style.display = 'none';
+            imageUploadBtn.value = '';
+        });
+
+        messageInput.addEventListener('paste', async (e) => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (const item of items) {
+                if (item.kind === 'file') {
+                    const blob = item.getAsFile();
+                    if (blob.type.startsWith('image/')) {
+                        uploadedImageFile = blob;
+                        e.preventDefault();
+                        const compressedBlob = await compressImage(blob, 400);
+                        const dataUrl = URL.createObjectURL(compressedBlob);
+                        imageThumbnail.src = dataUrl;
+                        imagePreviewDiv.style.display = 'flex';
+                        break;
+                    }
+                }
+            }
+        });
+
+        sendBtn.addEventListener('click', async () => {
+            const messageText = messageInput.value.trim();
+
+            if (!messageText && !uploadedImageFile) return;
+            if (!currentChatId) return;
+
+            let fullMessageContent = messageText;
+
+            try {
+                if (uploadedImageFile) {
+                    const compressedBlob = await compressImage(uploadedImageFile, 400);
+                    const imageBase64 = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(compressedBlob);
+                    });
+
+                    const imageTag = `![](${imageBase64})`;
+                    fullMessageContent = messageText ? `${messageText}\n${imageTag}` : imageTag;
+                }
+
+                const newMessage = {
+                    content: fullMessageContent,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    senderId: currentUser.uid,
+                    senderName: userData.username,
+                    senderColor: userData.bubbleColor,
+                };
+
+                const chatRef = db.collection('chats').doc(currentChatId).collection('messages');
+                await chatRef.add(newMessage);
+
+                messageInput.value = '';
+                uploadedImageFile = null;
+                imagePreviewDiv.style.display = 'none';
+                imageUploadBtn.value = '';
+                setTypingStatus(false);
+
+            } catch (error) {
+                console.error("Error sending message:", error);
+                alert("Failed to send message: " + error.message);
+            }
+        });
+
+        function displayMessage(data, messageId) {
+            const isSent = data.senderId === currentUser.uid;
+            const messageContainer = document.createElement('div');
+            messageContainer.classList.add('message-container');
+
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            if (isSent) {
+                messageElement.classList.add('sent');
+            } else {
+                messageElement.classList.add('received');
+            }
+
+            const bubble = document.createElement('div');
+            bubble.classList.add('message-bubble');
+            if (isSent) {
+                bubble.style.backgroundColor = data.senderColor || userData.bubbleColor;
+            } else {
+                bubble.style.backgroundColor = friendsData[data.senderId]?.bubbleColor || 'var(--bubble-bg-received)';
+            }
+
+            if (!isSent) {
+                const infoDiv = document.createElement('div');
+                infoDiv.classList.add('message-info');
+                const usernameSpan = document.createElement('span');
+                usernameSpan.classList.add('username');
+                usernameSpan.textContent = data.senderName;
+                infoDiv.appendChild(usernameSpan);
+                messageContainer.appendChild(infoDiv);
+            }
+
+            const imageRegex = /!\[\]\((data:image\/[a-zA-Z0-9\-\+\/\=]+)\)/g;
+            const content = data.content;
+            let lastIndex = 0;
+            let match;
+
+            const tempDiv = document.createElement('div');
+
+            while ((match = imageRegex.exec(content)) !== null) {
+                const preText = content.substring(lastIndex, match.index).trim();
+                if (preText) {
+                    const textElement = document.createElement('div');
+                    textElement.innerHTML = marked.parse(preText);
+                    tempDiv.appendChild(textElement);
+                }
+
+                const imageData = match[1];
+                const imageElement = document.createElement('img');
+                imageElement.src = imageData;
+                imageElement.classList.add('message-image');
+                tempDiv.appendChild(imageElement);
+                lastIndex = imageRegex.lastIndex;
+            }
+
+            const remainingText = content.substring(lastIndex).trim();
+            if (remainingText) {
+                const textElement = document.createElement('div');
+                textElement.innerHTML = marked.parse(remainingText);
+                tempDiv.appendChild(textElement);
+            }
+
+            bubble.appendChild(tempDiv);
+            messageElement.appendChild(bubble);
+            messageContainer.appendChild(messageElement);
+            chatMessages.appendChild(messageContainer);
+        }
+
+        // --- GROUP CHAT LOGIC ---
+
+        createGroupBtn.addEventListener('click', async () => {
+            createGroupModal.style.display = 'flex';
+            groupFriendsList.innerHTML = '';
+            const friendIds = userData.friends || [];
+
+            for (const friendId of friendIds) {
+                const friendDoc = await db.collection('profiles').doc(friendId).get();
+                if (friendDoc.exists) {
+                    const friendData = friendDoc.data();
+                    const friendItem = document.createElement('label');
+                    friendItem.classList.add('friend-item');
+                    friendItem.innerHTML = `
+                        <input type="checkbox" data-id="${friendId}">
+                        <span>${friendData.username}#${friendData.tag}</span>
+                    `;
+                    groupFriendsList.appendChild(friendItem);
+                }
+            }
+        });
+
+        confirmCreateGroupBtn.addEventListener('click', async () => {
+            const groupName = groupNameInput.value.trim();
+            const selectedMembers = Array.from(document.querySelectorAll('#group-friends-list input:checked')).map(input => input.dataset.id);
+
+            if (!groupName) {
+                alert("Please enter a group name.");
+                return;
+            }
+
+            if (selectedMembers.length === 0) {
+                alert("Please select at least one friend to create a group.");
+                return;
+            }
+
+            const members = [currentUser.uid, ...selectedMembers];
+
+            try {
+                const groupRef = db.collection('groups').doc();
+                await groupRef.set({
+                    name: groupName,
+                    members: members,
+                    ownerId: currentUser.uid,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert(`Group "${groupName}" created successfully!`);
+                createGroupModal.style.display = 'none';
+                groupNameInput.value = '';
+                
+                // Immediately set currentGroupData and open the chat
+                currentGroupData = {
+                    name: groupName,
+                    members: members,
+                    ownerId: currentUser.uid
+                };
+                
+                listenForFriendsAndGroups();
+                openChat(groupRef.id, 'group', null, groupName);
+            } catch (error) {
+                console.error("Error creating group:", error);
+                alert("Failed to create group.");
+            }
+        });
+
+        cancelCreateGroupBtn.addEventListener('click', () => {
+            createGroupModal.style.display = 'none';
+            groupNameInput.value = '';
+        });
+
+leaveGroupBtn.addEventListener('click', async () => {
+    const confirmed = confirm("Are you sure you want to leave this group?");
+    if (!confirmed) return;
+    try {
+        await db.collection('groups').doc(currentChatId).update({
+            members: firebase.firestore.FieldValue.arrayRemove(currentUser.uid)
+        });
+        alert("You have left the group.");
+        backToSidebarBtn.click();
+        listenForFriendsAndGroups(); // Add this line to refresh the sidebar
+    } catch (error) {
+        console.error("Error leaving group:", error);
+    }
+});
+
+        // --- NEW GROUP SETTINGS LOGIC ---
+        groupSettingsBtn.addEventListener('click', () => {
+            if (currentChatType === 'group' && currentGroupData && currentGroupData.ownerId === currentUser.uid) {
+                groupSettingsTitle.textContent = `${currentGroupData.name} Settings`;
+                groupSettingsModal.style.display = 'flex';
+            }
+        });
+
+        closeSettingsModalBtn.addEventListener('click', () => {
+            groupSettingsModal.style.display = 'none';
+        });
+
+        addMemberBtn.addEventListener('click', async () => {
+            groupSettingsModal.style.display = 'none';
+            addMemberModal.style.display = 'flex';
+            addMemberFriendsList.innerHTML = '';
+            
+            const existingMembers = currentGroupData.members;
+            const friends = userData.friends || [];
+            
+            for (const friendId of friends) {
+                if (!existingMembers.includes(friendId)) {
+                    const friendDoc = await db.collection('profiles').doc(friendId).get();
+                    if (friendDoc.exists) {
+                        const friendData = friendDoc.data();
+                        const friendItem = document.createElement('label');
+                        friendItem.classList.add('friend-item');
+                        friendItem.innerHTML = `
+                            <input type="checkbox" data-id="${friendId}">
+                            <span>${friendData.username}#${friendData.tag}</span>
+                        `;
+                        addMemberFriendsList.appendChild(friendItem);
+                    }
+                }
+            }
+            if (addMemberFriendsList.children.length === 0) {
+                addMemberFriendsList.textContent = "All your friends are already in this group.";
+            }
+        });
+
+        confirmAddMembersBtn.addEventListener('click', async () => {
+            const selectedMembers = Array.from(document.querySelectorAll('#add-member-friends-list input:checked')).map(input => input.dataset.id);
+            if (selectedMembers.length === 0) {
+                alert("Please select at least one friend to add.");
+                return;
+            }
+
+            try {
+                await db.collection('groups').doc(currentChatId).update({
+                    members: firebase.firestore.FieldValue.arrayUnion(...selectedMembers)
+                });
+                alert("Members added successfully!");
+                addMemberModal.style.display = 'none';
+                // Re-open chat to update info
+                openChat(currentChatId, 'group', null, currentGroupData.name);
+            } catch (error) {
+                console.error("Error adding members:", error);
+                alert("Failed to add members.");
+            }
+        });
+
+        cancelAddMembersBtn.addEventListener('click', () => {
+            addMemberModal.style.display = 'none';
+        });
+        
+        deleteGroupBtn.addEventListener('click', async () => {
+            const confirmed = confirm("Are you sure you want to delete this group? This action is permanent.");
+            if (!confirmed) return;
+
+            try {
+                // Delete all messages in the chat
+                const messagesSnapshot = await db.collection('chats').doc(currentChatId).collection('messages').get();
+                const batch = db.batch();
+                messagesSnapshot.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+
+                // Delete the chat document itself
+                await db.collection('chats').doc(currentChatId).delete();
+
+                // Delete the group document
+                await db.collection('groups').doc(currentChatId).delete();
+                
+                alert("Group deleted successfully.");
+                backToSidebarBtn.click();
+            } catch (error) {
+                console.error("Error deleting group:", error);
+                alert("Failed to delete group.");
+            }
+        });
+
+        transferOwnerBtn.addEventListener('click', async () => {
+           
+            groupSettingsModal.style.display = 'none';
+            transferOwnershipModal.style.display = 'flex';
+            transferOwnerList.innerHTML = '';
+            
+            const currentMembers = currentGroupData.members;
+            
+            for (const memberId of currentMembers) {
+                if (memberId !== currentUser.uid) {
+                    const memberDoc = await db.collection('profiles').doc(memberId).get();
+                    if (memberDoc.exists) {
+                        const memberData = memberDoc.data();
+                        const memberItem = document.createElement('label');
+                        memberItem.classList.add('friend-item');
+                        memberItem.innerHTML = `
+                            <input type="radio" name="new-owner" data-id="${memberId}">
+                            <span>${memberData.username}#${memberData.tag}</span>
+                        `;
+                        transferOwnerList.appendChild(memberItem);
+                    }
+                }
+            }
+
+            if (transferOwnerList.children.length === 0) {
+                transferOwnerList.textContent = "No other members to transfer ownership to.";
+                confirmTransferBtn.disabled = true;
+            } else {
+                confirmTransferBtn.disabled = false;
+            }
+        });
+
+        confirmTransferBtn.addEventListener('click', async () => {
+            const newOwnerId = document.querySelector('#transfer-owner-list input:checked')?.dataset.id;
+            if (!newOwnerId) {
+                alert("Please select a new owner.");
+                return;
+            }
+            
+            try {
+                await db.collection('groups').doc(currentChatId).update({
+                    ownerId: newOwnerId
+                });
+                alert("Ownership transferred successfully.");
+                transferOwnershipModal.style.display = 'none';
+                backToSidebarBtn.click();
+            } catch (error) {
+                console.error("Error transferring ownership:", error);
+                alert("Failed to transfer ownership.");
+            }
+        });
+
+        cancelTransferBtn.addEventListener('click', () => {
+            transferOwnershipModal.style.display = 'none';
+        });
+
+
+        saveColorBtn.addEventListener('click', async () => {
+            const newColor = bubbleColorPicker.value;
+            try {
+                await db.collection('profiles').doc(currentUser.uid).update({
+                    bubbleColor: newColor
+                });
+                alert("Color saved successfully!");
+            } catch (error) {
+                console.error("Error saving color:", error);
+                alert("Failed to save color.");
+            }
+        });
+
+        function setupOnlinePresence() {
+            if (!currentUser) return;
+            const uid = currentUser.uid;
+            const userStatusDatabaseRef = rtdb.ref('/status/' + uid);
+            const connectedRef = rtdb.ref('.info/connected');
+            connectedRef.on('value', (snapshot) => {
+                if (snapshot.val() === true) {
+                    userStatusDatabaseRef.onDisconnect().set({ isOnline: false, last_changed: firebase.database.ServerValue.TIMESTAMP });
+                    userStatusDatabaseRef.set({ isOnline: true, last_changed: firebase.database.ServerValue.TIMESTAMP });
+                }
+            });
+        }
+
+        // --- TYPING INDICATOR FIX ---
+        function setTypingStatus(isTyping) {
+            if (!currentChatId || blockedData.includes(currentChatId)) return;
+            const typingRef = rtdb.ref(`/${currentChatId}/typing/${currentUser.uid}`);
+            if (typingTimeout) clearTimeout(typingTimeout);
+            if (isTyping) {
+                typingRef.set(true);
+                typingTimeout = setTimeout(() => {
+                    typingRef.set(false);
+                }, 3000);
+            } else {
+                typingRef.set(false);
+            }
+        }
+
+        userInfoDiv.addEventListener('click', () => {
+    document.getElementById('user-settings-modal').style.display = 'flex';
+    document.getElementById('modal-bubble-color-picker').value = userData.bubbleColor || '#4a90e2';
+    document.getElementById('modal-username').textContent = `${userData.username}#${userData.tag}`;
+});
+document.getElementById('close-user-settings-btn').addEventListener('click', () => {
+    document.getElementById('user-settings-modal').style.display = 'none';
+});
+document.getElementById('modal-save-color-btn').addEventListener('click', async () => {
+    const newColor = document.getElementById('modal-bubble-color-picker').value;
+    try {
+        await db.collection('profiles').doc(currentUser.uid).update({
+            bubbleColor: newColor
+        });
+        bubbleColorPicker.value = newColor;
+        alert('Color saved successfully!');
+        document.getElementById('user-settings-modal').style.display = 'none';
+    } catch (error) {
+        alert('Failed to save color.');
+    }
+});
+bubbleColorPicker.addEventListener('input', async () => {
+    const newColor = bubbleColorPicker.value;
+    try {
+        await db.collection('profiles').doc(currentUser.uid).update({
+            bubbleColor: newColor
+        });
+        document.getElementById('modal-bubble-color-picker').value = newColor;
+    } catch (error) {}
+});
+    </script>
+</body>
+</html>
