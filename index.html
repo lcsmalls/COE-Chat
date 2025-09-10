@@ -1509,7 +1509,7 @@ async function listenForFriendsAndGroups() {
             chatItem.classList.add('user-list-item');
             chatItem.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="online-status"></div>
+                    <div class="online-status" data-uid="${friendId}"></div>
                     <span class="unread-dot" style="display:none;"></span>
                     <span>${friendData.username}#${friendData.tag}</span>
                 </div>
@@ -1540,7 +1540,7 @@ async function listenForFriendsAndGroups() {
             if (!chatListeners[chatId]) chatListeners[chatId] = [];
             chatListeners[chatId].push({ ref: statusRef, callback: statusCallback });
 
-            // Unread dot (realtime)
+            // Unread dot (improved logic)
             const unreadDot = chatItem.querySelector('.unread-dot');
             const lastReadKey = `lastRead_${chatId}`;
             db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp', 'desc').limit(1)
@@ -1548,7 +1548,8 @@ async function listenForFriendsAndGroups() {
                     if (!snap.empty) {
                         const msg = snap.docs[0].data();
                         const lastRead = Number(localStorage.getItem(lastReadKey) || 0);
-                        if (msg.timestamp && msg.timestamp.toMillis() > lastRead) {
+                        // Only show unread if the latest message is from someone else and after lastRead
+                        if (msg.senderId !== currentUser.uid && msg.timestamp && msg.timestamp.toMillis() > lastRead) {
                             unreadDot.style.display = 'inline-block';
                         } else {
                             unreadDot.style.display = 'none';
@@ -1559,6 +1560,7 @@ async function listenForFriendsAndGroups() {
                 });
 
             chatItem.addEventListener('click', () => {
+                // Update lastRead to now when opening chat
                 localStorage.setItem(lastReadKey, Date.now());
                 unreadDot.style.display = 'none';
                 openChat(chatId, 'private', friendId, friendData.username);
@@ -1587,7 +1589,8 @@ async function listenForFriendsAndGroups() {
                 if (!snap.empty) {
                     const msg = snap.docs[0].data();
                     const lastRead = Number(localStorage.getItem(lastReadKey) || 0);
-                    if (msg.timestamp && msg.timestamp.toMillis() > lastRead) {
+                    // Only show unread if the latest message is from someone else and after lastRead
+                    if (msg.senderId !== currentUser.uid && msg.timestamp && msg.timestamp.toMillis() > lastRead) {
                         unreadDot.style.display = 'inline-block';
                     } else {
                         unreadDot.style.display = 'none';
