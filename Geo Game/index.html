@@ -12,7 +12,7 @@
             color: #333;
             line-height: 1.6;
         }
-        #game-container {
+        #lobby-container, #game-container {
             max-width: 800px;
             margin: 50px auto;
             padding: 20px;
@@ -22,6 +22,19 @@
         }
         h1 {
             color: #4CAF50;
+        }
+        input, button {
+            padding: 10px;
+            font-size: 1em;
+            margin: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
         }
         #prompt, #timer {
             font-size: 2em;
@@ -46,11 +59,36 @@
         #country-list li:last-child {
             border-bottom: none;
         }
+        #game-container {
+            display: none;
+        }
     </style>
     <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
 </head>
 <body>
+    <div id="lobby-container">
+        <h1>Welcome to the Geography Game</h1>
+        <div id="login-section">
+            <p>
+                <button onclick="loginWithFirebase()">Login with Email</button>
+            </p>
+        </div>
+        <hr>
+        <div id="game-options" style="display:none;">
+            <h2>Game Lobby</h2>
+            <div id="create-game">
+                <h3>Start a New Game</h3>
+                <button id="create-btn">Create Game</button>
+            </div>
+            <div id="join-game">
+                <h3>Join a Game</h3>
+                <input type="text" id="game-code-input" placeholder="Enter Game Code">
+                <button id="join-btn">Join Game</button>
+            </div>
+        </div>
+    </div>
+
     <div id="game-container">
         <h1>Geography Game</h1>
         <div id="prompt">Get Ready...</div>
@@ -77,16 +115,11 @@
         };
         firebase.initializeApp(firebaseConfig);
         const rtdb = firebase.database();
-
-        // Get the game code and player UID from the URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const gameCode = urlParams.get('code');
-        const currentPlayerId = urlParams.get('uid');
-        
-        // This is the specific Firebase path for this game session
-        const gameRef = rtdb.ref(`games/${gameCode}`);
+        const auth = firebase.auth();
 
         // Game elements
+        const lobbyContainer = document.getElementById('lobby-container');
+        const gameContainer = document.getElementById('game-container');
         const promptEl = document.getElementById('prompt');
         const timerEl = document.getElementById('timer');
         const countryInput = document.getElementById('country-input');
@@ -99,6 +132,8 @@
         let currentContinentIndex = 0;
         let roundStartTime;
         let submittedThisRound = false;
+        let gameCode;
+        let currentPlayer;
 
         const continents = ['Africa', 'Asia', 'Australia', 'Europe', 'Central America', 'North America', 'South America', 'Oceania'];
 
@@ -213,23 +248,30 @@
 
         const usedCountries = {};
         
-        // This is the new part for multiplayer
-        gameRef.child('submittedCountries').on('value', (snapshot) => {
-            const data = snapshot.val();
-            countryListEl.innerHTML = '';
-            if (data) {
-                const submitted = Object.values(data);
-                submitted.sort((a, b) => a.country.localeCompare(b.country));
-                submitted.forEach(item => {
-                    const li = document.createElement('li');
-                    li.textContent = `${item.country} (Score: ${item.score}) - Submitted by ${item.name}`; // Show who submitted
-                    countryListEl.appendChild(li);
-                    usedCountries[item.country.toLowerCase()] = true;
-                });
-            }
-        });
+        // This is the main game logic
+        function startGame(code) {
+            gameCode = code;
+            lobbyContainer.style.display = 'none';
+            gameContainer.style.display = 'block';
 
-        function startGame() {
+            const gameRef = rtdb.ref(`games/${gameCode}`);
+
+            // Listen for updates from Firebase to display submitted countries
+            gameRef.child('submittedCountries').on('value', (snapshot) => {
+                const data = snapshot.val();
+                countryListEl.innerHTML = '';
+                if (data) {
+                    const submitted = Object.values(data);
+                    submitted.sort((a, b) => a.country.localeCompare(b.country));
+                    submitted.forEach(item => {
+                        const li = document.createElement('li');
+                        li.textContent = `${item.country} (Score: ${item.score}) - Submitted by ${item.name}`;
+                        countryListEl.appendChild(li);
+                        usedCountries[item.country.toLowerCase()] = true;
+                    });
+                }
+            });
+
             startRound();
         }
 
@@ -307,10 +349,10 @@
                 country: submitted,
                 score: score,
                 time: timeTaken,
-                name: JSON.parse(localStorage.getItem('currentUser')).displayName // Get the player's name
+                name: currentPlayer.displayName
             };
             
-            // This is the new part. We're pushing the submission to the specific game's path
+            const gameRef = rtdb.ref(`games/${gameCode}`);
             gameRef.child('submittedCountries').push(submission);
             messageEl.textContent = `Submitted! Your score is: ${score}`;
 
@@ -320,8 +362,61 @@
             }, 5000);
         });
 
-        // Start the game logic
-        startGame();
+        // Lobby Logic
+        function loginWithFirebase() {
+            // For this prototype, we'll just simulate a login
+            currentPlayer = {
+                uid: "player" + Math.floor(Math.random() * 10000),
+                displayName: "Guest" + Math.floor(Math.random() * 1000)
+            };
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('game-options').style.display = 'block';
+        }
+
+        document.getElementById('create-btn').addEventListener('click', () => {
+            if (!currentPlayer) {
+                alert("Please log in first.");
+                return;
+            }
+
+            const gameCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const gameRef = rtdb.ref('games/' + gameCode);
+            gameRef.set({
+                status: 'waiting',
+                creator: currentPlayer.uid,
+                players: {
+                    [currentPlayer.uid]: {
+                        name: currentPlayer.displayName,
+                        score: 0
+                    }
+                }
+            }).then(() => {
+                startGame(gameCode);
+            });
+        });
+
+        document.getElementById('join-btn').addEventListener('click', () => {
+            const codeInput = document.getElementById('game-code-input').value.toUpperCase();
+            if (!currentPlayer || !codeInput) {
+                alert("Please log in and enter a game code.");
+                return;
+            }
+
+            const gameRef = rtdb.ref('games/' + codeInput);
+            gameRef.once('value', snapshot => {
+                const gameData = snapshot.val();
+                if (gameData && gameData.status === 'waiting') {
+                    gameRef.child('players/' + currentPlayer.uid).set({
+                        name: currentPlayer.displayName,
+                        score: 0
+                    }).then(() => {
+                        startGame(codeInput);
+                    });
+                } else {
+                    alert("Invalid or full game code.");
+                }
+            });
+        });
     </script>
 </body>
 </html>
