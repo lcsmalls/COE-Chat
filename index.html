@@ -282,11 +282,45 @@
         }
 
         .unread-dot {
-            height: 10px;
-            width: 10px;
+            min-width: 22px;
+            height: 22px;
             background-color: red;
             border-radius: 50%;
             margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #fff;
+            transition: background 0.2s;
+        }
+        .unread-dot span {
+            position: relative;
+            z-index: 1;
+            font-size: 1em;
+            font-weight: bold;
+            color: #fff;
+            text-align: center;
+            width: 100%;
+            pointer-events: none;
+        }
+        .online-status {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background-color: grey;
+            margin-right: 5px;
+            border: 2px solid #222;
+            transition: background 0.2s;
+            display: inline-block;
+        }
+        .online-status.online {
+            background-color: #4CAF50 !important;
+        }
+        .online-status.offline {
+            background-color: grey !important;
         }
 
         .user-list-item-actions {
@@ -297,11 +331,11 @@
         .modal {
             display: none;
             position: fixed;
-            z-index: 1;
+            z-index: 9999; /* Fix: ensure modal is above everything */
             left: 0;
             top: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             overflow: auto;
             background-color: rgba(0,0,0,0.4);
             justify-content: center;
@@ -604,15 +638,22 @@
 
         /* NEW STYLES for Online/Offline Status */
         .online-status {
-            width: 10px;
-            height: 10px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
             background-color: grey;
             margin-right: 5px;
+            border: 2px solid #222;
+            transition: background 0.2s;
+            display: inline-block;
         }
 
         .online-status.online {
-            background-color: #4CAF50;
+            background-color: #4CAF50 !important;
+        }
+
+        .online-status.offline {
+            background-color: grey !important;
         }
 
         #online-users-list {
@@ -787,11 +828,69 @@
         .auth-form button:hover {
             background: #3876c7;
         }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 9999; /* Fix: ensure modal is above everything */
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+
+        #notification-modal .modal-content {
+            background: #23272f;
+            color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            padding: 24px 18px;
+            text-align: center;
+            font-size: 1.1em;
+            gap: 18px;
+        }
+        #notification-modal button {
+            margin-top: 18px;
+            font-size: 1em;
+            background: var(--primary-color);
+            color: #fff;
+            border: none;
+            border-radius: 1.2em;
+            padding: 0.7em 2em;
+            cursor: pointer;
+        }
+        #notification-modal button:hover {
+            background: #3876c7;
+        }
+
+        /* Remove unwanted arrow from all elements */
+        /* Fix for unwanted ::marker or ::before pseudo-element */
+        h2, h3, h4, .chat-title, .auth-btn-row, .auth-form, .sidebar, .container, #auth-screen {
+            /* Remove any list-style or marker */
+            list-style: none;
+        }
+        /* Remove unwanted ::marker globally */
+        *::marker, *::before {
+            content: none !important;
+        }
     </style>
 </head>
 <body>
 
+    <!-- Add notification modal HTML just before closing </body> -->
+    <div id="notification-modal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width:320px;">
+            <span id="notification-modal-message"></span>
+            <button id="notification-modal-close-btn">OK</button>
+        </div>
+    </div>
+
     <div id="auth-screen">
+        <img src="https://coe-chat.vercel.app/favicon.png" alt="Chat Icon" style="width:64px;height:64px;margin-bottom:1.2rem;">
         <h2>Welcome to Chat (working title)</h2>
         <div class="auth-btn-row">
             <button id="show-create-account-btn">Create New Account</button>
@@ -1063,6 +1162,18 @@
         const confirmTransferBtn = document.getElementById('confirm-transfer-btn');
         const cancelTransferBtn = document.getElementById('cancel-transfer-btn');
 
+        let unreadCounts = {}; // Track unread counts per chat
+
+        // --- UNREAD MESSAGE COUNT & PAGE TITLE LOGIC ---
+        function updateUnreadTitle() {
+            const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
+            if (totalUnread > 0) {
+                document.title = `${totalUnread} unread message${totalUnread > 1 ? 's' : ''}`;
+            } else {
+                document.title = "Chat (working title)";
+            }
+        }
+
         // --- AUTHENTICATION & UI LOGIC ---
 
         // DEBUG: If you see permission errors, check your Firebase rules for Realtime Database and Firestore.
@@ -1097,11 +1208,11 @@
                             listenForFriendsAndGroups();
                             listenForFriendRequests();
                         } else {
-                            console.error("User profile not found. This should not happen on a successful login.");
+                            showNotification("User profile not found. This should not happen on a successful login.");
                             await auth.signOut();
                         }
                     }, (error) => {
-                        console.error("Error listening to user profile:", error);
+                        showNotification("Error listening to user profile.");
                     });
                 }
             } else {
@@ -1147,6 +1258,7 @@
                 document.getElementById('modal-bubble-color-picker').value = userData.bubbleColor;
             }
             document.getElementById('modal-username').textContent = `${userData.username}#${userData.tag}`;
+            updateUnreadTitle(); // Set initial title
         }
 
         // CORRECTED KEYBOARD LISTENER
@@ -1191,60 +1303,76 @@
         backToAuthLoginBtn.addEventListener('click', showAuthScreen);
         logoutBtn.addEventListener('click', async () => await auth.signOut());
 
-        createAccountBtn.addEventListener('click', async () => {
-            const email = newEmailInput.value.trim();
-            const password = newPasswordInput.value;
-            const username = newUsernameInput.value.trim();
-            if (!email || !password || !username) {
-                alert("Please fill in all fields.");
-                return;
-            }
+        // --- Notification Modal Logic ---
+    function showNotification(message, callback) {
+        document.getElementById('notification-modal-message').textContent = message;
+        document.getElementById('notification-modal').style.display = 'flex';
+        // Optional callback for after closing
+        document.getElementById('notification-modal-close-btn').onclick = function() {
+            document.getElementById('notification-modal').style.display = 'none';
+            if (typeof callback === 'function') callback();
+        };
+    }
 
-            try {
-                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                const tag = Math.floor(1000 + Math.random() * 9000);
-                await db.collection('profiles').doc(userCredential.user.uid).set({
-                    username: username,
-                    tag: tag,
-                    friends: [],
-                    blocked: [],
-                    bubbleColor: '#4a90e2'
-                });
-            } catch (error) {
-                console.error("Error creating account:", error.message);
-                alert("Error: " + error.message);
-            }
-        });
+    // --- AUTH LOGIC: Fix login and create account ---
+    loginBtn.addEventListener('click', async () => {
+        const email = loginEmailInput.value.trim();
+        const password = loginPasswordInput.value;
+        if (!email || !password) {
+            showNotification("Please enter your email and password.");
+            return;
+        }
+        try {
+            await auth.signInWithEmailAndPassword(email, password);
+            // Modal will close automatically if error, otherwise onAuthStateChanged will handle UI
+        } catch (error) {
+            showNotification("Login failed: " + error.message);
+        }
+    });
 
-        loginBtn.addEventListener('click', async () => {
-            const email = loginEmailInput.value.trim();
-            const password = loginPasswordInput.value;
-            if (!email || !password) {
-                alert("Please enter your email and password.");
-                return;
-            }
+    createAccountBtn.addEventListener('click', async () => {
+        const email = newEmailInput.value.trim();
+        const password = newPasswordInput.value;
+        const username = newUsernameInput.value.trim();
+        if (!email || !password || !username) {
+            showNotification("Please fill in all fields.");
+            return;
+        }
+        try {
+            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+            const tag = Math.floor(1000 + Math.random() * 9000);
+            await db.collection('profiles').doc(userCredential.user.uid).set({
+                username: username,
+                tag: tag,
+                friends: [],
+                blocked: [],
+                bubbleColor: '#4a90e2'
+            });
+            // Modal will close automatically if error, otherwise onAuthStateChanged will handle UI
+        } catch (error) {
+            showNotification("Error: " + error.message);
+        }
+    });
 
-            try {
-                await auth.signInWithEmailAndPassword(email, password);
-            } catch (error) {
-                console.error("Login failed:", error.message);
-                alert("Login failed: " + error.message);
-            }
-        });
+    // --- Fix: Only one modal at a time ---
+    function closeAllModals() {
+        document.getElementById('notification-modal').style.display = 'none';
+        // ...close other modals if needed...
+    }
 
         // --- FRIENDS & MESSAGING LOGIC ---
 
         addFriendBtn.addEventListener('click', async () => {
             const friendTag = addFriendInput.value.trim();
             if (!friendTag.includes('#')) {
-                alert("Please enter a valid username#tag.");
+                showNotification("Please enter a valid username#tag.");
                 return;
             }
             const [username, tagString] = friendTag.split('#');
             const tag = parseInt(tagString, 10);
 
             if (!username || isNaN(tag)) {
-                alert("Invalid format. Use username#tag.");
+                showNotification("Invalid format. Use username#tag.");
                 return;
             }
 
@@ -1256,7 +1384,7 @@
                     .get();
 
                 if (querySnapshot.empty) {
-                    alert("User not found.");
+                    showNotification("User not found.");
                     return;
                 }
 
@@ -1264,12 +1392,12 @@
                 const friendId = friendDoc.id;
 
                 if (friendId === currentUser.uid) {
-                    alert("You cannot add yourself.");
+                    showNotification("You cannot add yourself.");
                     return;
                 }
 
                 if (userData.friends.includes(friendId)) {
-                    alert("This user is already your friend.");
+                    showNotification("This user is already your friend.");
                     return;
                 }
 
@@ -1279,7 +1407,7 @@
                     .get();
 
                 if (!existingRequest.empty) {
-                    alert("A friend request has already been sent to this user.");
+                    showNotification("A friend request has already been sent to this user.");
                     return;
                 }
 
@@ -1289,7 +1417,7 @@
                     .get();
 
                 if (!incomingRequest.empty) {
-                    alert("This user has already sent you a friend request. Please check your pending requests.");
+                    showNotification("This user has already sent you a friend request. Please check your pending requests.");
                     return;
                 }
 
@@ -1299,12 +1427,11 @@
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                alert("Friend request sent successfully!");
+                showNotification("Friend request sent successfully!");
                 addFriendInput.value = '';
 
             } catch (error) {
-                console.error("Error sending friend request:", error.message);
-                alert("Error sending friend request: " + error.message);
+                showNotification("Error sending friend request: " + error.message);
             }
         });
 
@@ -1378,7 +1505,7 @@ async function removeFriend(userId) {
             friends: firebase.firestore.FieldValue.arrayRemove(currentUser.uid)
         });
 
-        alert('Friend and chat removed successfully.');
+        showNotification('Friend and chat removed successfully.');
 
         // Delay the sidebar refresh to allow the database to update
         setTimeout(() => {
@@ -1389,8 +1516,7 @@ async function removeFriend(userId) {
         }, 500); // 500ms delay
 
     } catch (error) {
-        console.error("Error removing friend:", error);
-        alert("Failed to remove friend.");
+        showNotification("Failed to remove friend.");
     }
 }
 
@@ -1438,22 +1564,21 @@ async function acceptFriendRequest(requestId, fromUserId) {
             transaction.delete(db.collection('friend_requests').doc(requestId));
         });
 
-        alert("Friend request accepted!");
+        showNotification("Friend request accepted!");
         // Re-render the sidebar after the transaction is complete
         listenForFriendsAndGroups();
     } catch (error) {
-        console.error("Error accepting request:", error);
-        alert("Failed to accept friend request. This may be due to a permissions issue.");
+        showNotification("Failed to accept friend request. This may be due to a permissions issue.");
     }
 }
       
         async function declineFriendRequest(requestId) {
             try {
                 await db.collection('friend_requests').doc(requestId).delete();
-                alert("Friend request declined.");
+                showNotification("Friend request declined.");
                 listenForFriendsAndGroups();
             } catch (error) {
-                console.error("Error declining request:", error);
+                showNotification("Error declining request.");
             }
         }
 
@@ -1466,26 +1591,22 @@ async function acceptFriendRequest(requestId, fromUserId) {
         });
 
 async function listenForFriendsAndGroups() {
-    // Correctly unsubscribe and null out all old chat listeners to prevent race conditions
+    // Clean up old listeners
     if (messagesUnsubscribe) messagesUnsubscribe();
     if (typingIndicatorListener) {
-        // This is the correct way to detach the listener
         rtdb.ref(`/${currentChatId}/typing`).off('value', typingIndicatorListener);
+        typingIndicatorListener = null;
     }
     messagesUnsubscribe = null;
-    typingIndicatorListener = null;
 
-    // Unsubscribe all old listeners stored in the chatListeners object
-    Object.values(chatListeners).forEach(unsubscribeArray => {
-        if (Array.isArray(unsubscribeArray)) {
-            unsubscribeArray.forEach(f => {
-                if (typeof f === 'function') {
-                    f(); // Call the unsubscribe function
-                }
+    Object.values(chatListeners).forEach(arr => {
+        if (Array.isArray(arr)) {
+            arr.forEach(obj => {
+                if (obj.ref && obj.callback) obj.ref.off('value', obj.callback);
             });
         }
     });
-    chatListeners = {}; // Reset the object
+    chatListeners = {};
 
     friendsList.innerHTML = '';
 
@@ -1498,7 +1619,7 @@ async function listenForFriendsAndGroups() {
         return;
     }
 
-    // Process friends first
+    // Friends
     for (const friendId of friends) {
         const friendDoc = await db.collection('profiles').doc(friendId).get();
         if (friendDoc.exists) {
@@ -1531,9 +1652,13 @@ async function listenForFriendsAndGroups() {
                 const status = snapshot.val();
                 if (status && status.isOnline) {
                     statusDot.classList.add('online');
+                    statusDot.classList.remove('offline');
+                    statusDot.style.backgroundColor = "#4CAF50";
                     statusDot.title = 'Online';
                 } else {
                     statusDot.classList.remove('online');
+                    statusDot.classList.add('offline');
+                    statusDot.style.backgroundColor = "grey";
                     statusDot.title = 'Offline';
                 }
             };
@@ -1541,35 +1666,49 @@ async function listenForFriendsAndGroups() {
             if (!chatListeners[chatId]) chatListeners[chatId] = [];
             chatListeners[chatId].push({ ref: statusRef, callback: statusCallback });
 
-            // Unread dot (improved logic)
+            // Unread dot
             const unreadDot = chatItem.querySelector('.unread-dot');
+            unreadDot.innerHTML = '<span></span>';
+            const unreadNumSpan = unreadDot.querySelector('span');
             const lastReadKey = `lastRead_${chatId}`;
-            db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp', 'desc').limit(1)
+            db.collection('chats').doc(chatId).collection('messages')
+                .orderBy('timestamp')
                 .onSnapshot(snap => {
-                    if (!snap.empty) {
-                        const msg = snap.docs[0].data();
-                        const lastRead = Number(localStorage.getItem(lastReadKey) || 0);
-                        // Only show unread if the latest message is from someone else and after lastRead
-                        if (msg.senderId !== currentUser.uid && msg.timestamp && msg.timestamp.toMillis() > lastRead) {
-                            unreadDot.style.display = 'inline-block';
-                        } else {
-                            unreadDot.style.display = 'none';
+                    let lastRead = Number(localStorage.getItem(lastReadKey) || 0);
+                    let unread = 0;
+                    snap.docs.forEach(doc => {
+                        const msg = doc.data();
+                        if (
+                            msg.senderId !== currentUser.uid &&
+                            msg.timestamp &&
+                            msg.timestamp.toMillis() > lastRead
+                        ) {
+                            unread++;
                         }
+                    });
+                    unreadCounts[chatId] = unread;
+                    updateUnreadTitle();
+                    if (unread > 0) {
+                        unreadDot.style.display = 'flex';
+                        unreadNumSpan.textContent = unread;
                     } else {
                         unreadDot.style.display = 'none';
+                        unreadNumSpan.textContent = '';
                     }
                 });
 
             chatItem.addEventListener('click', () => {
-                // Update lastRead to now when opening chat
                 localStorage.setItem(lastReadKey, Date.now());
+                unreadCounts[chatId] = 0;
+                updateUnreadTitle();
                 unreadDot.style.display = 'none';
+                unreadDot.querySelector('span').textContent = '';
                 openChat(chatId, 'private', friendId, friendData.username);
             });
         }
     }
 
-    // Process groups
+    // Groups
     groups.forEach(groupDoc => {
         const groupData = groupDoc.data();
         const chatId = groupDoc.id;
@@ -1584,32 +1723,46 @@ async function listenForFriendsAndGroups() {
         `;
         friendsList.appendChild(chatItem);
         const unreadDot = chatItem.querySelector('.unread-dot');
+        unreadDot.innerHTML = '<span></span>';
+        const unreadNumSpan = unreadDot.querySelector('span');
         const lastReadKey = `lastRead_${chatId}`;
-        db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp', 'desc').limit(1)
+        db.collection('chats').doc(chatId).collection('messages')
+            .orderBy('timestamp')
             .onSnapshot(snap => {
-                if (!snap.empty) {
-                    const msg = snap.docs[0].data();
-                    const lastRead = Number(localStorage.getItem(lastReadKey) || 0);
-                    // Only show unread if the latest message is from someone else and after lastRead
-                    if (msg.senderId !== currentUser.uid && msg.timestamp && msg.timestamp.toMillis() > lastRead) {
-                        unreadDot.style.display = 'inline-block';
-                    } else {
-                        unreadDot.style.display = 'none';
+                let lastRead = Number(localStorage.getItem(lastReadKey) || 0);
+                let unread = 0;
+                snap.docs.forEach(doc => {
+                    const msg = doc.data();
+                    if (
+                        msg.senderId !== currentUser.uid &&
+                        msg.timestamp &&
+                        msg.timestamp.toMillis() > lastRead
+                    ) {
+                        unread++;
                     }
+                });
+                unreadCounts[chatId] = unread;
+                updateUnreadTitle();
+                if (unread > 0) {
+                    unreadDot.style.display = 'flex';
+                    unreadNumSpan.textContent = unread;
                 } else {
                     unreadDot.style.display = 'none';
+                    unreadNumSpan.textContent = '';
                 }
             });
         chatItem.addEventListener('click', () => {
             localStorage.setItem(lastReadKey, Date.now());
+            unreadCounts[chatId] = 0;
+            updateUnreadTitle();
             unreadDot.style.display = 'none';
+            unreadDot.querySelector('span').textContent = '';
             openChat(chatId, 'group', null, groupData.name);
         });
     });
 
     listenForBlockedUsers();
 }
-
         function listenForBlockedUsers() {
             if (chatListeners.blocked) chatListeners.blocked();
             chatListeners.blocked = db.collection('profiles').doc(currentUser.uid).onSnapshot(doc => {
@@ -1660,10 +1813,10 @@ async function listenForFriendsAndGroups() {
                 await db.collection('profiles').doc(currentUser.uid).update({
                     friends: firebase.firestore.FieldValue.arrayRemove(userId)
                 });
-                alert('User blocked and removed from friends.');
+                showNotification('User blocked and removed from friends.');
                 backToSidebarBtn.click();
             } catch (error) {
-                console.error("Error blocking user:", error);
+                showNotification("Error blocking user.");
             }
         }
 
@@ -1672,10 +1825,10 @@ async function listenForFriendsAndGroups() {
                 await db.collection('profiles').doc(currentUser.uid).update({
                     blocked: firebase.firestore.FieldValue.arrayRemove(userId)
                 });
-                alert('User unblocked.');
+                showNotification('User unblocked.');
                 backToSidebarBtn.click();
             } catch (error) {
-                console.error("Error unblocking user:", error);
+                showNotification("Error unblocking user.");
             }
         }
 
@@ -1688,16 +1841,14 @@ async function acceptFriendRequest(requestId, fromUserId) {
         await theirProfileRef.update({ friends: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
 
         await db.collection('friend_requests').doc(requestId).delete();
-        alert("Friend request accepted!");
+        showNotification("Friend request accepted!");
     } catch (error) {
-        console.error("Error accepting request:", error);
-        alert("Failed to accept friend request. This may be due to a permissions issue.");
+        showNotification("Failed to accept friend request. This may be due to a permissions issue.");
     }
 }
 
 async function openChat(chatId, type, memberId, name) {
-    // --- THIS IS THE CRITICAL FIX ---
-    // Correctly detach the old listeners before setting up new ones
+    // Detach old listeners
     if (messagesUnsubscribe) {
         messagesUnsubscribe();
         messagesUnsubscribe = null;
@@ -1706,7 +1857,6 @@ async function openChat(chatId, type, memberId, name) {
         rtdb.ref(`/${currentChatId}/typing`).off('value', typingIndicatorListener);
         typingIndicatorListener = null;
     }
-    // --- END OF CRITICAL FIX ---
 
     currentChatId = chatId;
     currentChatType = type;
@@ -1716,34 +1866,41 @@ async function openChat(chatId, type, memberId, name) {
     messageInput.placeholder = "Type a message...";
 
     currentChatInfo.textContent = name;
-    
     leaveGroupBtn.style.display = 'none';
     groupSettingsBtn.style.display = 'none';
-    currentGroupData = null; 
+    currentGroupData = null;
 
     if (type === 'group') {
         const groupDoc = await db.collection('groups').doc(chatId).get();
         if (groupDoc.exists) {
             currentGroupData = groupDoc.data();
             leaveGroupBtn.style.display = 'block';
-            
             if (currentGroupData.ownerId === currentUser.uid) {
                 groupSettingsBtn.style.display = 'block';
             }
-        } else {
-            console.error("Group document not found for chat ID:", chatId);
         }
     }
 
     chatMessages.innerHTML = '';
 
-    // --- TYPING INDICATOR LISTENER ---
+    // Typing Indicator Listener
     const typingRef = rtdb.ref(`/${chatId}/typing`);
     typingIndicatorListener = typingRef.on('value', (snapshot) => {
         const typingUsers = snapshot.val() || {};
-        const otherTypingUsers = Object.keys(typingUsers).filter(uid => uid !== currentUser.uid && typingUsers[uid]);
-        if (otherTypingUsers.length > 0) {
-            let typingNames = otherTypingUsers.map(uid => friendsData[uid] ? friendsData[uid].username : 'Someone');
+        let validTypingUsers = [];
+        if (type === 'private') {
+            validTypingUsers = Object.keys(typingUsers).filter(uid =>
+                uid !== currentUser.uid && friendsData[uid]
+            );
+        } else if (type === 'group' && currentGroupData) {
+            validTypingUsers = Object.keys(typingUsers).filter(uid =>
+                uid !== currentUser.uid && currentGroupData.members.includes(uid)
+            );
+        }
+        if (validTypingUsers.length > 0) {
+            let typingNames = validTypingUsers.map(uid =>
+                friendsData[uid]?.username || 'Someone'
+            );
             typingIndicator.textContent = `${typingNames.join(', ')} is typing...`;
             typingIndicator.style.display = 'block';
         } else {
@@ -1751,25 +1908,16 @@ async function openChat(chatId, type, memberId, name) {
         }
     });
 
+    // Messages Listener
     const chatCollection = db.collection('chats').doc(chatId).collection('messages');
-    
     messagesUnsubscribe = chatCollection.orderBy('timestamp').onSnapshot(snapshot => {
-        const docChanges = snapshot.docChanges();
-
-        if (docChanges.length === snapshot.docs.length) {
-            chatMessages.innerHTML = '';
-            snapshot.docs.forEach(doc => displayMessage(doc.data(), doc.id));
-        } else {
-            docChanges.forEach(change => {
-                if (change.type === 'added') {
-                    displayMessage(change.doc.data(), change.doc.id);
-                }
-            });
-        }
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        chatMessages.innerHTML = '';
+        snapshot.docs.forEach(doc => displayMessage(doc.data(), doc.id));
+        setTimeout(() => {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }, 0);
     });
 }
-
 backToSidebarBtn.addEventListener('click', () => {
     if (messagesUnsubscribe) messagesUnsubscribe();
     if (typingIndicatorListener) {
@@ -1779,6 +1927,7 @@ backToSidebarBtn.addEventListener('click', () => {
     typingIndicatorListener = null;
     currentChatId = null;
     chatPage.style.display = 'none';
+    updateUnreadTitle(); // Update title when leaving chat
 });
 
         // --- IMAGE HANDLING LOGIC ---
@@ -1905,74 +2054,149 @@ backToSidebarBtn.addEventListener('click', () => {
             }
         });
 
-        function displayMessage(data, messageId) {
-            const isSent = data.senderId === currentUser.uid;
-            const messageContainer = document.createElement('div');
-            messageContainer.classList.add('message-container');
+function displayMessage(data, messageId) {
+    const isSent = data.senderId === currentUser.uid;
+    const messageContainer = document.createElement('div');
+    messageContainer.classList.add('message-container');
 
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message');
-            if (isSent) {
-                messageElement.classList.add('sent');
-            } else {
-                messageElement.classList.add('received');
-            }
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message');
+    if (isSent) {
+        messageElement.classList.add('sent');
+    } else {
+        messageElement.classList.add('received');
+    }
 
-            const bubble = document.createElement('div');
-            bubble.classList.add('message-bubble');
-            if (isSent) {
-                bubble.style.backgroundColor = data.senderColor || userData.bubbleColor;
-            } else {
-                bubble.style.backgroundColor = friendsData[data.senderId]?.bubbleColor || 'var(--bubble-bg-received)';
-            }
+    const bubble = document.createElement('div');
+    bubble.classList.add('message-bubble');
+    if (isSent) {
+        bubble.style.backgroundColor = data.senderColor || userData.bubbleColor;
+    } else {
+        bubble.style.backgroundColor = friendsData[data.senderId]?.bubbleColor || 'var(--bubble-bg-received)';
+    }
 
-            if (!isSent) {
-                const infoDiv = document.createElement('div');
-                infoDiv.classList.add('message-info');
-                const usernameSpan = document.createElement('span');
-                usernameSpan.classList.add('username');
-                usernameSpan.textContent = data.senderName;
-                infoDiv.appendChild(usernameSpan);
-                messageContainer.appendChild(infoDiv);
-            }
+    if (!isSent) {
+        const infoDiv = document.createElement('div');
+        infoDiv.classList.add('message-info');
+        const usernameSpan = document.createElement('span');
+        usernameSpan.classList.add('username');
+        usernameSpan.textContent = data.senderName;
+        infoDiv.appendChild(usernameSpan);
+        messageContainer.appendChild(infoDiv);
+    }
 
-            const imageRegex = /!\[\]\((data:image\/[a-zA-Z0-9\-\+\/\=]+)\)/g;
-            const content = data.content;
-            let lastIndex = 0;
-            let match;
+    // Parse images and markdown
+    const imageRegex = /!\[\]\((data:image\/[a-zA-Z0-9\-\+\/\=]+)\)/g;
+    const content = data.content;
+    let lastIndex = 0;
+    let match;
 
-            const tempDiv = document.createElement('div');
+    const tempDiv = document.createElement('div');
 
-            while ((match = imageRegex.exec(content)) !== null) {
-                const preText = content.substring(lastIndex, match.index).trim();
-                if (preText) {
-                    const textElement = document.createElement('div');
-                    textElement.innerHTML = marked.parse(preText);
-                    tempDiv.appendChild(textElement);
-                }
-
-                const imageData = match[1];
-                const imageElement = document.createElement('img');
-                imageElement.src = imageData;
-                imageElement.classList.add('message-image');
-                tempDiv.appendChild(imageElement);
-                lastIndex = imageRegex.lastIndex;
-            }
-
-            const remainingText = content.substring(lastIndex).trim();
-            if (remainingText) {
-                const textElement = document.createElement('div');
-                textElement.innerHTML = marked.parse(remainingText);
-                tempDiv.appendChild(textElement);
-            }
-
-            bubble.appendChild(tempDiv);
-            messageElement.appendChild(bubble);
-            messageContainer.appendChild(messageElement);
-            chatMessages.appendChild(messageContainer);
+    while ((match = imageRegex.exec(content)) !== null) {
+        const preText = content.substring(lastIndex, match.index).trim();
+        if (preText) {
+            const textElement = document.createElement('div');
+            textElement.innerHTML = marked.parse(preText);
+            tempDiv.appendChild(textElement);
         }
 
-        // --- GROUP CHAT LOGIC ---
+        const imageData = match[1];
+        const imageElement = document.createElement('img');
+        imageElement.src = imageData;
+        imageElement.classList.add('message-image');
+        tempDiv.appendChild(imageElement);
+        lastIndex = imageRegex.lastIndex;
+    }
+
+    const remainingText = content.substring(lastIndex).trim();
+    if (remainingText) {
+        const textElement = document.createElement('div');
+        textElement.innerHTML = marked.parse(remainingText);
+        tempDiv.appendChild(textElement);
+    }
+
+    bubble.appendChild(tempDiv);
+    messageElement.appendChild(bubble);
+    messageContainer.appendChild(messageElement);
+    chatMessages.appendChild(messageContainer);
+
+    // --- Always scroll to the bottom after adding a message ---
+    setTimeout(() => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }, 0);
+}
+async function openChat(chatId, type, memberId, name) {
+    // Detach old listeners
+    if (messagesUnsubscribe) {
+        messagesUnsubscribe();
+        messagesUnsubscribe = null;
+    }
+    if (typingIndicatorListener) {
+        rtdb.ref(`/${currentChatId}/typing`).off('value', typingIndicatorListener);
+        typingIndicatorListener = null;
+    }
+
+    currentChatId = chatId;
+    currentChatType = type;
+    chatPage.style.display = 'flex';
+    messageInput.disabled = false;
+    sendBtn.disabled = false;
+    messageInput.placeholder = "Type a message...";
+
+    currentChatInfo.textContent = name;
+    leaveGroupBtn.style.display = 'none';
+    groupSettingsBtn.style.display = 'none';
+    currentGroupData = null;
+
+    if (type === 'group') {
+        const groupDoc = await db.collection('groups').doc(chatId).get();
+        if (groupDoc.exists) {
+            currentGroupData = groupDoc.data();
+            leaveGroupBtn.style.display = 'block';
+            if (currentGroupData.ownerId === currentUser.uid) {
+                groupSettingsBtn.style.display = 'block';
+            }
+        }
+    }
+
+    chatMessages.innerHTML = '';
+
+    // --- Typing Indicator Listener ---
+    const typingRef = rtdb.ref(`/${chatId}/typing`);
+    typingIndicatorListener = typingRef.on('value', (snapshot) => {
+        const typingUsers = snapshot.val() || {};
+        let validTypingUsers = [];
+        if (type === 'private') {
+            validTypingUsers = Object.keys(typingUsers).filter(uid =>
+                uid !== currentUser.uid && friendsData[uid]
+            );
+        } else if (type === 'group' && currentGroupData) {
+            validTypingUsers = Object.keys(typingUsers).filter(uid =>
+                uid !== currentUser.uid && currentGroupData.members.includes(uid)
+            );
+        }
+        if (validTypingUsers.length > 0) {
+            let typingNames = validTypingUsers.map(uid =>
+                friendsData[uid]?.username || 'Someone'
+            );
+            typingIndicator.textContent = `${typingNames.join(', ')} is typing...`;
+            typingIndicator.style.display = 'block';
+        } else {
+            typingIndicator.style.display = 'none';
+        }
+    });
+
+    // --- Messages Listener ---
+    const chatCollection = db.collection('chats').doc(chatId).collection('messages');
+    messagesUnsubscribe = chatCollection.orderBy('timestamp').onSnapshot(snapshot => {
+        chatMessages.innerHTML = '';
+        snapshot.docs.forEach(doc => displayMessage(doc.data(), doc.id));
+        setTimeout(() => {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }, 0);
+    });
+}        // --- GROUP CHAT LOGIC ---
 
         createGroupBtn.addEventListener('click', async () => {
             createGroupModal.style.display = 'flex';
@@ -1999,12 +2223,12 @@ backToSidebarBtn.addEventListener('click', () => {
             const selectedMembers = Array.from(document.querySelectorAll('#group-friends-list input:checked')).map(input => input.dataset.id);
 
             if (!groupName) {
-                alert("Please enter a group name.");
+                showNotification("Please enter a group name.");
                 return;
             }
 
             if (selectedMembers.length === 0) {
-                alert("Please select at least one friend to create a group.");
+                showNotification("Please select at least one friend to create a group.");
                 return;
             }
 
@@ -2018,7 +2242,7 @@ backToSidebarBtn.addEventListener('click', () => {
                     ownerId: currentUser.uid,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                alert(`Group "${groupName}" created successfully!`);
+                showNotification(`Group "${groupName}" created successfully!`);
                 createGroupModal.style.display = 'none';
                 groupNameInput.value = '';
                 
@@ -2033,8 +2257,9 @@ backToSidebarBtn.addEventListener('click', () => {
                 openChat(groupRef.id, 'group', null, groupName);
             } catch (error) {
                 console.error("Error creating group:", error);
-                alert("Failed to create group.");
+                showNotification("Failed to create group.");
             }
+
         });
 
         cancelCreateGroupBtn.addEventListener('click', () => {
@@ -2049,11 +2274,11 @@ leaveGroupBtn.addEventListener('click', async () => {
         await db.collection('groups').doc(currentChatId).update({
             members: firebase.firestore.FieldValue.arrayRemove(currentUser.uid)
         });
-        alert("You have left the group.");
+        showNotification("You have left the group.");
         backToSidebarBtn.click();
         listenForFriendsAndGroups(); // Add this line to refresh the sidebar
     } catch (error) {
-        console.error("Error leaving group:", error);
+        showNotification("Error leaving group.");
     }
 });
 
@@ -2071,7 +2296,7 @@ leaveGroupBtn.addEventListener('click', async () => {
 
         addMemberBtn.addEventListener('click', async () => {
             groupSettingsModal.style.display = 'none';
-            addMemberModal.style.display = 'flex';
+                       addMemberModal.style.display = 'flex';
             addMemberFriendsList.innerHTML = '';
             
             const existingMembers = currentGroupData.members;
@@ -2100,7 +2325,7 @@ leaveGroupBtn.addEventListener('click', async () => {
         confirmAddMembersBtn.addEventListener('click', async () => {
             const selectedMembers = Array.from(document.querySelectorAll('#add-member-friends-list input:checked')).map(input => input.dataset.id);
             if (selectedMembers.length === 0) {
-                alert("Please select at least one friend to add.");
+                showNotification("Please select at least one friend to add.");
                 return;
             }
 
@@ -2108,13 +2333,12 @@ leaveGroupBtn.addEventListener('click', async () => {
                 await db.collection('groups').doc(currentChatId).update({
                     members: firebase.firestore.FieldValue.arrayUnion(...selectedMembers)
                 });
-                alert("Members added successfully!");
+                showNotification("Members added successfully!");
                 addMemberModal.style.display = 'none';
                 // Re-open chat to update info
                 openChat(currentChatId, 'group', null, currentGroupData.name);
             } catch (error) {
-                console.error("Error adding members:", error);
-                alert("Failed to add members.");
+                showNotification("Failed to add members.");
             }
         });
 
@@ -2141,11 +2365,10 @@ leaveGroupBtn.addEventListener('click', async () => {
                 // Delete the group document
                 await db.collection('groups').doc(currentChatId).delete();
                 
-                alert("Group deleted successfully.");
+                showNotification("Group deleted successfully.");
                 backToSidebarBtn.click();
             } catch (error) {
-                console.error("Error deleting group:", error);
-                alert("Failed to delete group.");
+                showNotification("Failed to delete group.");
             }
         });
 
@@ -2184,7 +2407,7 @@ leaveGroupBtn.addEventListener('click', async () => {
         confirmTransferBtn.addEventListener('click', async () => {
             const newOwnerId = document.querySelector('#transfer-owner-list input:checked')?.dataset.id;
             if (!newOwnerId) {
-                alert("Please select a new owner.");
+                showNotification("Please select a new owner.");
                 return;
             }
             
@@ -2192,12 +2415,11 @@ leaveGroupBtn.addEventListener('click', async () => {
                 await db.collection('groups').doc(currentChatId).update({
                     ownerId: newOwnerId
                 });
-                alert("Ownership transferred successfully.");
+                showNotification("Ownership transferred successfully.");
                 transferOwnershipModal.style.display = 'none';
                 backToSidebarBtn.click();
             } catch (error) {
-                console.error("Error transferring ownership:", error);
-                alert("Failed to transfer ownership.");
+                showNotification("Failed to transfer ownership.");
             }
         });
 
@@ -2212,71 +2434,131 @@ leaveGroupBtn.addEventListener('click', async () => {
                 await db.collection('profiles').doc(currentUser.uid).update({
                     bubbleColor: newColor
                 });
-                alert("Color saved successfully!");
+                showNotification("Color saved successfully!");
             } catch (error) {
-                console.error("Error saving color:", error);
-                alert("Failed to save color.");
+                showNotification("Failed to save color.");
             }
         });
 
-        function setupOnlinePresence() {
-            if (!currentUser) return;
-            const uid = currentUser.uid;
-            const userStatusDatabaseRef = rtdb.ref('/status/' + uid);
-            const connectedRef = rtdb.ref('.info/connected');
-            connectedRef.on('value', (snapshot) => {
-                if (snapshot.val() === true) {
-                    userStatusDatabaseRef.onDisconnect().set({ isOnline: false, last_changed: firebase.database.ServerValue.TIMESTAMP });
-                    userStatusDatabaseRef.set({ isOnline: true, last_changed: firebase.database.ServerValue.TIMESTAMP });
-                }
-            });
-        }
-
-        // --- TYPING INDICATOR FIX ---
-        function setTypingStatus(isTyping) {
-            if (!currentChatId || blockedData.includes(currentChatId)) return;
-            const typingRef = rtdb.ref(`/${currentChatId}/typing/${currentUser.uid}`);
-            if (typingTimeout) clearTimeout(typingTimeout);
-            if (isTyping) {
-                typingRef.set(true);
-                typingTimeout = setTimeout(() => {
-                    typingRef.set(false);
-                }, 3000);
-            } else {
-                typingRef.set(false);
+        document.getElementById('modal-save-color-btn').addEventListener('click', async () => {
+            const newColor = document.getElementById('modal-bubble-color-picker').value;
+            try {
+                await db.collection('profiles').doc(currentUser.uid).update({
+                    bubbleColor: newColor
+                });
+                bubbleColorPicker.value = newColor;
+                showNotification('Color saved successfully!');
+                document.getElementById('user-settings-modal').style.display = 'none';
+            } catch (error) {
+                showNotification('Failed to save color.');
             }
-        }
-
-        userInfoDiv.addEventListener('click', () => {
-    document.getElementById('user-settings-modal').style.display = 'flex';
-    document.getElementById('modal-bubble-color-picker').value = userData.bubbleColor || '#4a90e2';
-    document.getElementById('modal-username').textContent = `${userData.username}#${userData.tag}`;
-});
-document.getElementById('close-user-settings-btn').addEventListener('click', () => {
-    document.getElementById('user-settings-modal').style.display = 'none';
-});
-document.getElementById('modal-save-color-btn').addEventListener('click', async () => {
-    const newColor = document.getElementById('modal-bubble-color-picker').value;
-    try {
-        await db.collection('profiles').doc(currentUser.uid).update({
-            bubbleColor: newColor
         });
-        bubbleColorPicker.value = newColor;
-        alert('Color saved successfully!');
-        document.getElementById('user-settings-modal').style.display = 'none';
-    } catch (error) {
-        alert('Failed to save color.');
+
+    // --- Typing Indicator Fix ---
+async function openChat(chatId, type, memberId, name) {
+    // --- Detach old listeners ---
+    if (messagesUnsubscribe) {
+        messagesUnsubscribe();
+        messagesUnsubscribe = null;
     }
-});
-bubbleColorPicker.addEventListener('input', async () => {
-    const newColor = bubbleColorPicker.value;
-    try {
-        await db.collection('profiles').doc(currentUser.uid).update({
-            bubbleColor: newColor
-        });
-        document.getElementById('modal-bubble-color-picker').value = newColor;
-    } catch (error) {}
-});
+    if (typingIndicatorListener) {
+        rtdb.ref(`/${currentChatId}/typing`).off('value', typingIndicatorListener);
+        typingIndicatorListener = null;
+    }
+
+    currentChatId = chatId;
+    currentChatType = type;
+    chatPage.style.display = 'flex';
+    messageInput.disabled = false;
+    sendBtn.disabled = false;
+    messageInput.placeholder = "Type a message...";
+
+    currentChatInfo.textContent = name;
+    leaveGroupBtn.style.display = 'none';
+    groupSettingsBtn.style.display = 'none';
+    currentGroupData = null;
+
+    if (type === 'group') {
+        const groupDoc = await db.collection('groups').doc(chatId).get();
+        if (groupDoc.exists) {
+            currentGroupData = groupDoc.data();
+            leaveGroupBtn.style.display = 'block';
+            if (currentGroupData.ownerId === currentUser.uid) {
+                groupSettingsBtn.style.display = 'block';
+            }
+        }
+    }
+
+    chatMessages.innerHTML = '';
+
+    // --- Typing Indicator Listener ---
+    const typingRef = rtdb.ref(`/${chatId}/typing`);
+    typingIndicatorListener = typingRef.on('value', (snapshot) => {
+        const typingUsers = snapshot.val() || {};
+        let validTypingUsers = [];
+        if (type === 'private') {
+            validTypingUsers = Object.keys(typingUsers).filter(uid =>
+                uid !== currentUser.uid && friendsData[uid]
+            );
+        } else if (type === 'group' && currentGroupData) {
+            validTypingUsers = Object.keys(typingUsers).filter(uid =>
+                uid !== currentUser.uid && currentGroupData.members.includes(uid)
+            );
+        }
+        if (validTypingUsers.length > 0) {
+            let typingNames = validTypingUsers.map(uid =>
+                friendsData[uid]?.username || 'Someone'
+            );
+            typingIndicator.textContent = `${typingNames.join(', ')} is typing...`;
+            typingIndicator.style.display = 'block';
+        } else {
+            typingIndicator.style.display = 'none';
+        }
+    });
+
+    // --- Messages Listener ---
+    const chatCollection = db.collection('chats').doc(chatId).collection('messages');
+    messagesUnsubscribe = chatCollection.orderBy('timestamp').onSnapshot(snapshot => {
+        chatMessages.innerHTML = '';
+        snapshot.docs.forEach(doc => displayMessage(doc.data(), doc.id));
+        // --- Auto-scroll after DOM update ---
+        setTimeout(() => {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }, 0);
+    });
+}
+    // --- Notification Modal Logic ---
+    function showNotification(message) {
+        document.getElementById('notification-modal-message').textContent = message;
+        document.getElementById('notification-modal').style.display = 'flex';
+    }
+    document.getElementById('notification-modal-close-btn').onclick = function() {
+        document.getElementById('notification-modal').style.display = 'none';
+    };
+
+    // Add missing setTypingStatus function
+function setTypingStatus(isTyping) {
+    if (!currentUser || !currentChatId) return;
+    const typingRef = rtdb.ref(`/${currentChatId}/typing/${currentUser.uid}`);
+    if (isTyping) {
+        typingRef.set(true);
+    } else {
+        typingRef.remove();
+    }
+}
+
+function setupOnlinePresence() {
+    if (!currentUser) return;
+    const uid = currentUser.uid;
+    const userStatusDatabaseRef = rtdb.ref('/status/' + uid);
+    const connectedRef = rtdb.ref('.info/connected');
+    connectedRef.on('value', (snapshot) => {
+        if (snapshot.val() === true) {
+            userStatusDatabaseRef.onDisconnect().set({ isOnline: false, last_changed: firebase.database.ServerValue.TIMESTAMP });
+            userStatusDatabaseRef.set({ isOnline: true, last_changed: firebase.database.ServerValue.TIMESTAMP });
+        }
+    });
+}
     </script>
 </body>
 </html>
