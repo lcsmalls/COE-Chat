@@ -91,6 +91,10 @@ let gameMode = "Normal"; // default
 // Timer
 let startTime=null, elapsed=0, timerInterval=null, paused=false;
 
+// Continent sequence for Normal/Hard
+const continentOrder = ["Europe","Oceania","Americas","Asia","Africa","Antarctic"];
+let continentIndex = 0;
+
 const manualFeatureMap = {
   northmacedonia: "MKD", southsudan: "SSD", democraticrepublicofthecongo: "COD",
   centralafricanrepublic: "CAF", republicofthecongo: "COG", unitedstates: "USA",
@@ -178,19 +182,36 @@ function nextRound(){
   const submitSpan=document.querySelector("#submit-btn span");
   submitSpan.textContent="arrow_forward_ios"; submitSpan.style.fontSize="24px";
 
-  const remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region!=="Antarctic");
-  if(!remaining.length){ endGame(); return; }
+  let remaining;
+  if(gameMode==="Normal"||gameMode==="Hard"){
+    // Filter to current continent
+    while(continentIndex<continentOrder.length){
+      const cont=continentOrder[continentIndex];
+      remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region===cont);
+      if(remaining.length>0){ break; }
+      continentIndex++;
+    }
+    if(continentIndex>=continentOrder.length){ endGame(); return; }
+  }else{
+    // Easy/Medium → any unrevealed
+    remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region!=="Antarctic");
+  }
+
+  if(!remaining || !remaining.length){ endGame(); return; }
+
   const rec=remaining[Math.floor(Math.random()*remaining.length)];
   currentContinent=rec.region; currentLetter=rec.name[0].toUpperCase();
 
   let promptText = `Round ${round}: Name a country starting with "${currentLetter}"`;
-  if(gameMode==="Normal"||gameMode==="Hard") promptText = `Round ${round}: Name a country in ${currentContinent} starting with "${currentLetter}"`;
+  if(gameMode==="Normal"||gameMode==="Hard"){
+    promptText = `Round ${round}: Name a country in ${currentContinent} starting with "${currentLetter}"`;
+  }
   document.getElementById("prompt").innerText=promptText;
 }
 
 const answerInput=document.getElementById("answer"), autocompleteList=document.getElementById("autocomplete-list");
 answerInput.addEventListener("input", function(){
-  if(gameMode==="Hard"||gameMode==="Medium"){ autocompleteList.innerHTML=""; return; } // no suggestions in Hard or Medium
+  if(gameMode==="Hard"||gameMode==="Medium"){ autocompleteList.innerHTML=""; return; } // no suggestions
   const val=normalizeName(this.value); autocompleteList.innerHTML="";
   if(!val) return;
   let matches=countriesData.map(c=>c.name).filter(n=>normalizeName(n).startsWith(val)&&!revealedCountries.has(n));
