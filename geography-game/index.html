@@ -17,6 +17,23 @@
   .autocomplete-item:hover { background:#444; }
   .country { fill:none; stroke:#555; stroke-width:0.5px; }
   .revealed { stroke:#fff; stroke-width:0.5px; }
+
+  #timer { margin-left:12px; font-weight:bold; }
+  #pause-btn { background:#ff9800; }
+  #pause-btn:hover { background:#cc7a00; }
+
+  #pause-overlay, #results-screen {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.9); display:flex; flex-direction:column;
+    justify-content:center; align-items:center; z-index:2000; color:#fff;
+    font-size:2em; text-align:center; display:none;
+  }
+  #pause-overlay button, #results-screen button {
+    margin-top:1em; padding:0.5em 1em; font-size:1em;
+    border:none; border-radius:8px; cursor:pointer;
+    background:#007acc; color:#fff; width:auto; height:auto;
+    font-family:sans-serif;
+  }
 </style>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://unpkg.com/topojson-client@3"></script>
@@ -32,29 +49,38 @@
       arrow_forward_ios
     </span>
   </button>
+  <button id="pause-btn" title="Pause">&#10073;&#10073;</button>
+  <div id="timer">0:00</div>
 </div>
 <svg id="map"></svg>
+
+<!-- Pause overlay -->
+<div id="pause-overlay">
+  <div>Game Paused</div>
+  <button id="resume-btn">Resume</button>
+</div>
+
+<!-- Results screen -->
+<div id="results-screen">
+  <div id="results-text"></div>
+  <button onclick="location.reload()">Play Again</button>
+</div>
 
 <script>
 let countriesData = [], features = [], projection, path, svg, mapGroup;
 let round = 1, currentContinent = "", currentLetter = "";
 let revealedCountries = new Set(), nameIndex = new Map(), isoIndex = new Map();
 let featureByCCA3 = new Map(), featureByName = new Map();
+let wrongGuesses = 0;
 
-// Expanded manual mapping for tricky countries
+// Timer
+let startTime=null, elapsed=0, timerInterval=null, paused=false;
+
 const manualFeatureMap = {
-  northmacedonia: "MKD",
-  southsudan: "SSD",
-  democraticrepublicofthecongo: "COD",
-  centralafricanrepublic: "CAF",
-  republicofthecongo: "COG",
-  unitedstates: "USA",
-  stvincentandthegrenadines: "VCT",
-  bosniaandherzegovina: "BIH",
-  puertorico: "PRI",
-  papuanewguinea: "PNG",
-  libya: "LBY",
-  dominicanrepublic: "DOM"
+  northmacedonia: "MKD", southsudan: "SSD", democraticrepublicofthecongo: "COD",
+  centralafricanrepublic: "CAF", republicofthecongo: "COG", unitedstates: "USA",
+  stvincentandthegrenadines: "VCT", bosniaandherzegovina: "BIH", puertorico: "PRI",
+  papuanewguinea: "PNG", libya: "LBY", dominicanrepublic: "DOM"
 };
 
 function normalizeName(s){ return s.toLowerCase().replace(/[^a-z]/g,''); }
@@ -65,10 +91,8 @@ async function init() {
   path = d3.geoPath().projection(projection);
   mapGroup = svg.append("g").attr("class","map-content");
 
-  // Zoom/pan
   svg.call(d3.zoom().scaleExtent([1,8]).on("zoom", event=>{ mapGroup.attr("transform", event.transform); }));
 
-  // Load countries data
   const rc = await fetch('https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,altSpellings').then(r=>r.json());
   rc.forEach(c=>{
     const cca3=c.cca3||"", cca2=c.cca2||"", common=c.name.common, region=c.region||"Other";
@@ -79,7 +103,6 @@ async function init() {
     rec.aliases.forEach(a=>nameIndex.set(normalizeName(a), rec));
   });
 
-  // Load TopoJSON
   const topo = await fetch('https://unpkg.com/world-atlas@2/countries-50m.json').then(r=>r.json());
   const objKey = Object.keys(topo.objects)[0];
   features = topojson.feature(topo, topo.objects[objKey]).features;
@@ -91,9 +114,9 @@ async function init() {
     if(pname) featureByName.set(normalizeName(pname),f);
   });
 
-  // Base map paths
   mapGroup.selectAll("path").data(features).join("path").attr("d", path).attr("class","country");
 
+  startTimer();
   nextRound();
 }
 
@@ -134,13 +157,12 @@ function nextRound(){
   submitSpan.textContent="arrow_forward_ios"; submitSpan.style.fontSize="24px";
 
   const remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region!=="Antarctic");
-  if(!remaining.length){document.getElementById("prompt").innerText="Game over! All countries revealed."; return;}
+  if(!remaining.length){ endGame(); return; }
   const rec=remaining[Math.floor(Math.random()*remaining.length)];
   currentContinent=rec.region; currentLetter=rec.name[0].toUpperCase();
   document.getElementById("prompt").innerText=`Round ${round}: Name a country in ${currentContinent} starting with "${currentLetter}"`;
 }
 
-// Autocomplete
 const answerInput=document.getElementById("answer"), autocompleteList=document.getElementById("autocomplete-list");
 answerInput.addEventListener("input", function(){
   const val=normalizeName(this.value); autocompleteList.innerHTML="";
@@ -159,20 +181,50 @@ answerInput.addEventListener("keydown", e=>{ if(e.key==="Enter"){ submitAnswer()
 document.getElementById("submit-btn").addEventListener("click", submitAnswer);
 
 function submitAnswer(){
+  if(paused) return;
   const input=answerInput.value.trim(); answerInput.value=""; autocompleteList.innerHTML="";
   if(!input) return;
 
-  if(input==="|re"){ countriesData.forEach(revealCountry); document.getElementById("prompt").innerText="All countries revealed!"; return; }
+  if(input==="|re"){ countriesData.forEach(revealCountry); endGame(); return; }
 
   const rec=nameIndex.get(normalizeName(input));
   const submitSpan=document.querySelector("#submit-btn span");
-  if(!rec){ alert(`❌ Invalid input: ${input}`); return; }
-  if(rec.region!==currentContinent){ alert(`❌ Wrong continent: ${rec.name} is in ${rec.region}`); return; }
-  if(!rec.name.toUpperCase().startsWith(currentLetter)){ alert(`❌ Wrong letter: ${rec.name} does not start with ${currentLetter}`); return; }
+  if(!rec){ alert(`❌ Invalid input: ${input}`); wrongGuesses++; return; }
+  if(rec.region!==currentContinent){ alert(`❌ Wrong continent: ${rec.name} is in ${rec.region}`); wrongGuesses++; return; }
+  if(!rec.name.toUpperCase().startsWith(currentLetter)){ alert(`❌ Wrong letter: ${rec.name} does not start with ${currentLetter}`); wrongGuesses++; return; }
 
   submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
   revealCountry(rec); round++; setTimeout(nextRound,500);
 }
+
+// Timer
+function startTimer(){ startTime=Date.now()-elapsed; timerInterval=setInterval(updateTimer,1000); }
+function updateTimer(){
+  elapsed=Date.now()-startTime;
+  const totalSec=Math.floor(elapsed/1000);
+  const min=Math.floor(totalSec/60), sec=totalSec%60;
+  document.getElementById("timer").textContent=`${min}:${sec.toString().padStart(2,"0")}`;
+}
+function pauseTimer(){ clearInterval(timerInterval); paused=true; document.getElementById("pause-overlay").style.display="flex"; }
+function resumeTimer(){ startTimer(); paused=false; document.getElementById("pause-overlay").style.display="none"; }
+
+function endGame(){
+  clearInterval(timerInterval);
+  const totalSec=Math.floor(elapsed/1000);
+  const min=Math.floor(totalSec/60), sec=totalSec%60;
+  const correct=round-1; // all completed rounds
+  const total=correct+wrongGuesses;
+  const percent= total>0 ? ((correct/total)*100).toFixed(1) : 100;
+  document.getElementById("results-text").innerHTML=
+    `<div>Game Over!</div>
+     <div>Time: ${min}:${sec.toString().padStart(2,"0")}</div>
+     <div>Wrong Attempts: ${wrongGuesses}</div>
+     <div>Accuracy: ${percent}%</div>`;
+  document.getElementById("results-screen").style.display="flex";
+}
+
+document.getElementById("pause-btn").addEventListener("click", ()=>{ if(!paused) pauseTimer(); });
+document.getElementById("resume-btn").addEventListener("click", resumeTimer);
 
 init();
 </script>
