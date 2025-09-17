@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Catgirl Royale</title>
+  <link rel="icon" type="image/png" href="Catgirl_Royale_favicon.png">
+  <style>
+    body { margin: 0; overflow: hidden; background: #222; }
+    canvas { display: block; margin: 0 auto; background: #333; }
+  </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = 800;
+canvas.height = 600;
+
+// Player properties
+const player = {
+  x: canvas.width / 2,
+  y: canvas.height / 1,
+  radius: 25,
+  speed: 6,
+  angle: 0,
+  color: '#ffb6c1',
+  health: 100,
+  maxHealth: 100,
+  lastMoveDir: { x: 1, y: 0 } // Add lastMoveDir for player 1
+};
+
+// Player 2 properties
+const player2 = {
+  x: canvas.width / 2,
+  y: canvas.height / 1,
+  radius: 25,
+  speed: 6,
+  angle: 0,
+  color: '#4fc3f7',
+  health: 100,
+  maxHealth: 100,
+  lastMoveDir: { x: 1, y: 0 } // Add lastMoveDir for player 2
+};
+
+// Bullets array, now with owner
+const bullets = [];
+const bulletSpeed = 10;
+
+// Fire bullet for a player
+function fireBullet(owner) {
+  const p = owner === 1 ? player : player2;
+  // Use lastMoveDir for aim
+  const angle = Math.atan2(p.lastMoveDir.y, p.lastMoveDir.x);
+  bullets.push({
+    x: p.x + Math.cos(angle) * (p.radius + 10),
+    y: p.y + Math.sin(angle) * (p.radius + 10),
+    dx: Math.cos(angle) * bulletSpeed,
+    dy: Math.sin(angle) * bulletSpeed,
+    radius: 6,
+    owner
+  });
+}
+
+// Keyboard state
+const keys = {};
+let mouseX = player.x;
+let mouseY = player.y;
+let machineGunInterval1 = null;
+let machineGunInterval2 = null;
+const machineGunRate = 80;
+
+// Menu state
+let gameState = 'menu'; // 'menu', 'playing', 'gameover'
+let player1Name = 'Player 1';
+let player2Name = 'Player 2';
+let player1Color = '#ffb6c1';
+let player2Color = '#4fc3f7';
+
+// XP and powerup state
+player.xp = 0;
+player2.xp = 0;
+player.invincible = false;
+player2.invincible = false;
+let invincibleTimeout1 = null;
+let invincibleTimeout2 = null;
+let powerups = [];
+let powerupTimer = 0;
+const POWERUP_SPAWN_INTERVAL = 900; // frames (was 300)
+const INVINCIBLE_DURATION = 5000; // ms (was 10000)
+
+// Create menu elements
+const menuDiv = document.createElement('div');
+menuDiv.style.position = 'fixed';
+menuDiv.style.left = '0';
+menuDiv.style.top = '0';
+menuDiv.style.width = '100vw';
+menuDiv.style.height = '100vh';
+menuDiv.style.background = 'rgba(0,0,0,0.8)';
+menuDiv.style.display = 'flex';
+menuDiv.style.flexDirection = 'column';
+menuDiv.style.justifyContent = 'center';
+menuDiv.style.alignItems = 'center';
+menuDiv.style.zIndex = '10';
+menuDiv.innerHTML = `
+  <div style="background:#222;padding:32px 48px;border-radius:16px;box-shadow:0 0 32px #000;display:flex;flex-direction:column;gap:24px;align-items:center;">
+    <img src="Catgirl_Royale_Logo.png" alt="Catgirl Royale Logo" style="max-width:320px;max-height:120px;margin-bottom:8px;">
+    <div style='display:flex;gap:32px;'>
+      <div style='display:flex;flex-direction:column;align-items:center;'>
+        <label style='color:#fff'>Player 1 Name</label>
+        <input id='p1name' value='Player 1' style='margin-bottom:8px;padding:4px 8px;'>
+        <label style='color:#fff'>Color</label>
+        <select id='p1color' style='width:90px;height:32px;font-size:16px;'>
+          <option value="#4fc3f7">Testicular Blue</option>
+          <option value="#a259e6">Testicular Purple</option>
+          <option value="#ffb6c1" selected>Testicular Pink</option>
+          <option value="#ffb347">Testicular Orange</option>
+          <option value="#7fff7f">Testicular Green</option>
+        </select>
+      </div>
+      <div style='display:flex;flex-direction:column;align-items:center;'>
+        <label style='color:#fff'>Player 2 Name</label>
+        <input id='p2name' value='Player 2' style='margin-bottom:8px;padding:4px 8px;'>
+        <label style='color:#fff'>Color</label>
+        <select id='p2color' style='width:90px;height:32px;font-size:16px;'>
+          <option value="#4fc3f7" selected>Testicular Blue</option>
+          <option value="#a259e6">Testicular Purple</option>
+          <option value="#ffb6c1">Testicular Pink</option>
+          <option value="#ffb347">Testicular Orange</option>
+          <option value="#7fff7f">Testicular Green</option>
+        </select>
+      </div>
+    </div>
+    <button id='playbtn' style='margin-top:16px;padding:8px 32px;font-size:20px;border-radius:8px;border:none;background:#fff;color:#222;cursor:pointer;'>Play</button>
+  </div>
+`;
+document.body.appendChild(menuDiv);
+
+// Start game from menu
+function startGameFromMenu() {
+  player1Name = document.getElementById('p1name').value || 'Player 1';
+  player2Name = document.getElementById('p2name').value || 'Player 2';
+  player1Color = document.getElementById('p1color').value || '#ffb6c1';
+  player2Color = document.getElementById('p2color').value || '#4fc3f7';
+  player1Cat = colorToCat[player1Color] || 'pink';
+  player2Cat = colorToCat[player2Color] || 'blue';
+  menuDiv.style.display = 'none';
+  gameState = 'playing';
+  // Reset players
+  player.x = canvas.width * 3/4;
+  player.y = canvas.height / 2;
+  player.health = player.maxHealth = 100;
+  player.color = player1Color;
+  player.lastMoveDir = { x: -1, y: 0 }; // Player 1 faces left
+  player2.x = canvas.width / 4;
+  player2.y = canvas.height / 2;
+  player2.health = player2.maxHealth = 100;
+  player2.color = player2Color;
+  player2.lastMoveDir = { x: 1, y: 0 }; // Player 2 faces right
+  bullets.length = 0;
+  winner = null;
+  requestAnimationFrame(gameLoop);
+}
+document.getElementById('playbtn').onclick = startGameFromMenu;
+
+let keySequence = '';
+const cheatCodeplayer1 = 'catgirl';
+
+// Keyboard events
+window.addEventListener('keydown', e => {
+  const key = e.key.toLowerCase();
+  if (!keys[key]) {
+    keys[key] = true;
+
+ keySequence += key;
+  if (keySequence.length > cheatCodeplayer1.length) {
+    keySequence = keySequence.slice(-cheatCodeplayer1.length); // keep only last N letters
+  }
+  if (keySequence === cheatCodeplayer1) {
+    winner = player1Name;
+    gameState = 'gameover';
+    
+  }
+
+    // Player 1 shooting (E, now supports autofire)
+    if (e.code === 'KeyE' && !machineGunInterval1) {
+      fireBullet(1);
+      machineGunInterval1 = setInterval(() => fireBullet(1), machineGunRate);
+    }
+    // Player 2 shooting (Right Ctrl, now supports autofire)
+    if (e.code === 'ControlRight' && !machineGunInterval2) {
+      fireBullet(2);
+      machineGunInterval2 = setInterval(() => fireBullet(2), machineGunRate);
+    }
+    // Player 1 machine gun (F, same as E)
+    if (e.code === 'KeyF' && !machineGunInterval1) {
+      fireBullet(1);
+      machineGunInterval1 = setInterval(() => fireBullet(1), machineGunRate);
+    }
+    // Player 2 machine gun (M, same as Ctrl)
+    if (e.code === 'KeyM' && !machineGunInterval2) {
+      fireBullet(2);
+      machineGunInterval2 = setInterval(() => fireBullet(2), machineGunRate);
+    }
+  }
+});
+
+
+
+window.addEventListener('keyup', e => {
+  const key = e.key.toLowerCase();
+  keys[key] = false;
+  if (e.code === 'KeyE' || e.code === 'KeyF') {
+    clearInterval(machineGunInterval1);
+    machineGunInterval1 = null;
+  }
+  if (e.code === 'ControlRight' || e.code === 'KeyM') {
+    clearInterval(machineGunInterval2);
+    machineGunInterval2 = null;
+  }
+});
+
+// Mouse for player 1
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  mouseX = e.clientX - rect.left;
+  mouseY = e.clientY - rect.top;
+});
+
+let winner = null;
+
+function resetPlayers() {
+  player.health = player.maxHealth = 100;
+  player.xp = 0;
+  player.invincible = false;
+  player2.health = player2.maxHealth = 100;
+  player2.xp = 0;
+  player2.invincible = false;
+}
+
+// Remove XP-based damage scaling, always return 1 for default weapon
+function getPlayerDamage(p) {
+  // Always 1 HP per shot, regardless of XP or invincibility
+  return 1;
+}
+
+function circleRectCollides(cx, cy, cr, rx, ry, rw, rh) {
+  // Find the closest point to the circle within the rectangle
+  const closestX = Math.max(rx, Math.min(cx, rx + rw));
+  const closestY = Math.max(ry, Math.min(cy, ry + rh));
+  // Calculate the distance between the circle's center and this closest point
+  const dx = cx - closestX;
+  const dy = cy - closestY;
+  // If the distance is less than the circle's radius, an intersection occurs
+  return (dx * dx + dy * dy) < (cr * cr);
+}
+
+// Utility: resolve circle-rectangle collision (push circle out of wall)
+function resolveCircleRectCollision(p, wall) {
+  // Only resolve if colliding
+  if (!circleRectCollides(p.x, p.y, p.radius, wall.x, wall.y, wall.w, wall.h)) return;
+  // Find the closest point on the wall
+  const closestX = Math.max(wall.x, Math.min(p.x, wall.x + wall.w));
+  const closestY = Math.max(wall.y, Math.min(p.y, wall.y + wall.h));
+  // Vector from closest point to player center
+  let dx = p.x - closestX;
+  let dy = p.y - closestY;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+  // Push out just enough so the circle is not colliding
+  const overlap = p.radius - dist + 0.1;
+  if (overlap > 0) {
+    dx /= dist;
+    dy /= dist;
+    p.x += dx * overlap;
+    p.y += dy * overlap;
+  }
+}
+
+function update() {
+  if (gameState !== 'playing') return;
+  if (winner) return; // Stop game if someone won
+  // Player 1 movement (WASD)
+  let moved1 = false;
+  if (keys['w']) { player.y -= player.speed; player.lastMoveDir = { x: 0, y: -1 }; moved1 = true; }
+  if (keys['s']) { player.y += player.speed; player.lastMoveDir = { x: 0, y: 1 }; moved1 = true; }
+  if (keys['a']) { player.x -= player.speed; player.lastMoveDir = { x: -1, y: 0 }; moved1 = true; }
+  if (keys['d']) { player.x += player.speed; player.lastMoveDir = { x: 1, y: 0 }; moved1 = true; }
+  // After moving, resolve wall collisions for player 1
+  for (const wall of walls) {
+    resolveCircleRectCollision(player, wall);
+  }
+
+  // Player 2 movement (arrows)
+  let moved2 = false;
+  if (keys['arrowup']) { player2.y -= player2.speed; player2.lastMoveDir = { x: 0, y: -1 }; moved2 = true; }
+  if (keys['arrowdown']) { player2.y += player2.speed; player2.lastMoveDir = { x: 0, y: 1 }; moved2 = true; }
+  if (keys['arrowleft']) { player2.x -= player2.speed; player2.lastMoveDir = { x: -1, y: 0 }; moved2 = true; }
+  if (keys['arrowright']) { player2.x += player2.speed; player2.lastMoveDir = { x: 1, y: 0 }; moved2 = true; }
+  // After moving, resolve wall collisions for player 2
+  for (const wall of walls) {
+    resolveCircleRectCollision(player2, wall);
+  }
+
+  // Clamp to canvas
+  player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+  player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+  player2.x = Math.max(player2.radius, Math.min(canvas.width - player2.radius, player2.x));
+  player2.y = Math.max(player2.radius, Math.min(canvas.height - player2.radius, player2.y));
+
+  // Set angle for drawing (use lastMoveDir)
+  player.angle = Math.atan2(player.lastMoveDir.y, player.lastMoveDir.x);
+  player2.angle = Math.atan2(player2.lastMoveDir.y, player2.lastMoveDir.x);
+
+  // Powerup spawn (only one at a time)
+  powerupTimer++;
+  if (powerupTimer >= POWERUP_SPAWN_INTERVAL && powerups.filter(p => p.active).length === 0) {
+    powerupTimer = 0;
+    powerups.push({
+      x: Math.random() * (canvas.width - 60) + 30,
+      y: Math.random() * (canvas.height - 60) + 30,
+      radius: 18,
+      active: true
+    });
+  }
+  // Bullet collision
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    b.x += b.dx;
+    b.y += b.dy;
+    if (
+      b.x < 0 || b.x > canvas.width ||
+      b.y < 0 || b.y > canvas.height
+    ) {
+      bullets.splice(i, 1);
+      continue;
+    }
+    // Check wall collision
+    let hitWall = false;
+    for (const wall of walls) {
+      if (
+        b.x > wall.x - b.radius &&
+        b.x < wall.x + wall.w + b.radius &&
+        b.y > wall.y - b.radius &&
+        b.y < wall.y + wall.h + b.radius &&
+        circleRectCollides(b.x, b.y, b.radius, wall.x, wall.y, wall.w, wall.h)
+      ) {
+        hitWall = true;
+        break;
+      }
+    }
+    if (hitWall) {
+      bullets.splice(i, 1);
+      continue;
+    }
+    if (b.owner === 1) {
+      const dx = b.x - player2.x;
+      const dy = b.y - player2.y;
+      if (Math.sqrt(dx*dx + dy*dy) < player2.radius && !player2.invincible) {
+        const dmg = getPlayerDamage(player);
+        player2.health -= dmg;
+        // player.xp += 10; // XP gain can remain if you want XP for other purposes, but it no longer affects damage
+        bullets.splice(i, 1);
+        continue;
+      }
+    } else if (b.owner === 2) {
+      const dx = b.x - player.x;
+      const dy = b.y - player.y;
+      if (Math.sqrt(dx*dx + dy*dy) < player.radius && !player.invincible) {
+        const dmg = getPlayerDamage(player2);
+        player.health -= dmg;
+        // player2.xp += 10;
+        bullets.splice(i, 1);
+        continue;
+      }
+    }
+  }
+  // Powerup collision
+  for (let i = powerups.length - 1; i >= 0; i--) {
+    const pwr = powerups[i];
+    if (!pwr.active) continue;
+    // Player 1
+    if (Math.hypot(player.x - pwr.x, player.y - pwr.y) < player.radius + pwr.radius) {
+      pwr.active = false;
+      player.invincible = true;
+      clearTimeout(invincibleTimeout1);
+      invincibleTimeout1 = setTimeout(() => player.invincible = false, INVINCIBLE_DURATION);
+    }
+    // Player 2
+    if (Math.hypot(player2.x - pwr.x, player2.y - pwr.y) < player2.radius + pwr.radius) {
+      pwr.active = false;
+      player2.invincible = true;
+      clearTimeout(invincibleTimeout2);
+      invincibleTimeout2 = setTimeout(() => player2.invincible = false, INVINCIBLE_DURATION);
+    }
+  }
+  // Remove inactive powerups
+  powerups = powerups.filter(p => p.active);
+  // Clamp health
+  player.health = Math.max(0, player.health);
+  player2.health = Math.max(0, player2.health);
+  // Check for win
+  if (player.health <= 0) { winner = player2Name; gameState = 'gameover'; }
+  if (player2.health <= 0) { winner = player1Name; gameState = 'gameover'; }
+}
+
+// Utility: get contrasting text color (black or white) for a given background color
+function getContrastYIQ(hexcolor) {
+  hexcolor = hexcolor.replace('#', '');
+  if (hexcolor.length === 3) hexcolor = hexcolor[0]+hexcolor[0]+hexcolor[1]+hexcolor[1]+hexcolor[2]+hexcolor[2];
+  const r = parseInt(hexcolor.substr(0,2),16);
+  const g = parseInt(hexcolor.substr(2,2),16);
+  const b = parseInt(hexcolor.substr(4,2),16);
+  const yiq = ((r*299)+(g*587)+(b*114))/1000;
+  return (yiq >= 128) ? '#222' : '#fff';
+}
+
+function drawXPBars() {
+  // Player 1 (below health bar)
+  ctx.save();
+  ctx.fillStyle = '#444';
+  ctx.fillRect(20, 44, 200, 10);
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(20, 44, Math.min(200, player.xp * 2), 10);
+  ctx.strokeStyle = '#fff';
+  ctx.strokeRect(20, 44, 200, 10);
+  // Player 2 (below health bar)
+  ctx.fillStyle = '#444';
+  ctx.fillRect(canvas.width - 220, 44, 200, 10);
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(canvas.width - 220, 44, Math.min(200, player2.xp * 2), 10);
+  ctx.strokeStyle = '#fff';
+  ctx.strokeRect(canvas.width - 220, 44, 200, 10);
+  ctx.restore();
+}
+
+function drawPowerups() {
+  ctx.save();
+  for (const pwr of powerups) {
+    if (!pwr.active) continue;
+    ctx.beginPath();
+    ctx.arc(pwr.x, pwr.y, pwr.radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#00ffea';
+    ctx.shadowColor = '#fff';
+    ctx.shadowBlur = 16;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.font = 'bold 18px Bagel Fat';
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.fillText('★', pwr.x, pwr.y + 7);
+  }
+  ctx.restore();
+}
+
+// Load gun images for all four directions
+const gunImgRight = new Image();
+gunImgRight.src = 'gun_facing_right.png';
+const gunImgLeft = new Image();
+gunImgLeft.src = 'gun_facing_left.png';
+const gunImgUp = new Image();
+gunImgUp.src = 'gun_facing_up.png';
+const gunImgDown = new Image();
+gunImgDown.src = 'gun_facing_down.png';
+
+// Load cat images
+const catImages = {
+  blue: new Image(),
+  violet: new Image(),
+  pink: new Image(),
+  orange: new Image(),
+  green: new Image()
+};
+catImages.blue.src = 'cat_blue.png';
+catImages.violet.src = 'cat_violet.png';
+catImages.pink.src = 'cat_pink.png';
+catImages.orange.src = 'cat_orange.png';
+catImages.green.src = 'cat_green.png';
+
+// Map color value to cat image key
+const colorToCat = {
+  '#4fc3f7': 'blue',
+  '#a259e6': 'violet',
+  '#ffb6c1': 'pink',
+  '#ffb347': 'orange',
+  '#7fff7f': 'green'
+};
+
+// Default cat image keys for each player
+let player1Cat = 'pink';
+let player2Cat = 'blue';
+
+function drawPlayer(p) {
+  ctx.save();
+  let catKey;
+  if (p === player) catKey = player1Cat;
+  else catKey = player2Cat;
+  const img = catImages[catKey];
+
+  // Draw the cat image at a slightly larger size and a bit longer on y-axis (e.g. 56x74)
+  const drawW = 56;
+  const drawH = 74;
+  if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+    ctx.drawImage(img, p.x - drawW / 2, p.y - drawH / 2, drawW, drawH);
+  } else {
+    // fallback: draw a circle if image not loaded
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+  }
+
+  // Draw gun image in correct direction, on top of cat
+  let angle = p.angle;
+  angle = (angle + 2 * Math.PI) % (2 * Math.PI); // Normalize to [0, 2π)
+  let gunImg, gunAngle = 0, offsetX = 0, offsetY = 0;
+  const gunOffset = 36; // adjust for new cat size
+  if ((angle < Math.PI / 4) || (angle >= 7 * Math.PI / 4)) {
+    gunImg = gunImgRight;
+    gunAngle = 0;
+    offsetX = gunOffset;
+    offsetY = 0;
+  } else if (angle >= Math.PI / 4 && angle < 3 * Math.PI / 4) {
+    gunImg = gunImgDown;
+    gunAngle = Math.PI / 2;
+    offsetX = 0;
+    offsetY = gunOffset;
+  } else if (angle >= 3 * Math.PI / 4 && angle < 5 * Math.PI / 4) {
+    gunImg = gunImgLeft;
+    gunAngle = Math.PI;
+    offsetX = -gunOffset;
+    offsetY = 0;
+  } else {
+    gunImg = gunImgUp;
+    gunAngle = -Math.PI / 2;
+    offsetX = 0;
+    offsetY = -gunOffset;
+  }
+  if (gunImg.complete && gunImg.naturalWidth > 0) {
+    ctx.save();
+    ctx.translate(p.x + offsetX, p.y + offsetY);
+    ctx.rotate(gunAngle - p.angle);
+    ctx.drawImage(gunImg, -8, -8, 32, 32);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawBullets() {
+  ctx.save();
+  for (const b of bullets) {
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+    ctx.fillStyle = b.owner === 1 ? '#fff' : '#4fc3f7';
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawHealthBars() {
+  // Player 1 (top left)
+  ctx.save();
+  ctx.fillStyle = '#222';
+  ctx.fillRect(20, 20, 200, 20);
+  ctx.fillStyle = player1Color;
+  ctx.fillRect(20, 20, 200 * (player.health / player.maxHealth), 20);
+  ctx.strokeStyle = '#fff';
+  ctx.strokeRect(20, 20, 200, 20);
+  ctx.font = '16px Bagel Fat';
+  ctx.fillStyle = getContrastYIQ(player1Color);
+  ctx.fillText(player1Name, 25, 35);
+  // Player 2 (top right)
+  ctx.fillStyle = '#222';
+  ctx.fillRect(canvas.width - 220, 20, 200, 20);
+  ctx.fillStyle = player2Color;
+  ctx.fillRect(canvas.width - 220, 20, 200 * (player2.health / player2.maxHealth), 20);
+  ctx.strokeStyle = '#fff';
+  ctx.strokeRect(canvas.width - 220, 20, 200, 20);
+  ctx.font = '16px Bagel Fat';
+  ctx.fillStyle = getContrastYIQ(player2Color);
+  ctx.fillText(player2Name, canvas.width - 215, 35);
+  ctx.restore();
+}
+
+function drawDeathScreen() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#fff';
+  ctx.font = '48px Bagel Fat';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${winner} won!`, canvas.width / 2, canvas.height / 2);
+  // Restart button
+  ctx.font = '28px Bagel Fat';
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(canvas.width/2-80, canvas.height/2+40, 160, 50);
+  ctx.strokeStyle = '#222';
+  ctx.strokeRect(canvas.width/2-80, canvas.height/2+40, 160, 50);
+  ctx.fillStyle = '#222';
+  ctx.fillText('Rematch', canvas.width/2, canvas.height/2+75);
+  ctx.restore();
+}
+
+canvas.addEventListener('click', function(e) {
+  if (gameState === 'gameover') {
+    const x = e.offsetX, y = e.offsetY;
+    if (x > canvas.width/2-80 && x < canvas.width/2+80 && y > canvas.height/2+40 && y < canvas.height/2+90) {
+      menuDiv.style.display = 'flex';
+      gameState = 'menu';
+    }
+  }
+});
+
+// Add prettier styles at the top of the JS
+const style = document.createElement('style');
+style.textContent = `
+
+@import url('https://fonts.googleapis.com/css2?family=Bagel+Fat+One&display=swap');
+
+body {
+  font-family: 'Bagel Fat', sans-serif;
+  background: linear-gradient(135deg, #232526 0%, #414345 100%);
+}
+
+canvas {
+  border: 4px solid #fff;
+  border-radius: 18px;
+  box-shadow: 0 0 32px #000a;
+  margin-top: 32px;
+}
+
+#game-menu input[type="text"] {
+  font-family: 'Bagel Fat', sans-serif;
+  font-size: 18px;
+  padding: 4px 10px;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+}
+
+#game-menu input[type="color"] {
+  font-family: 'Bagel Fat', sans-serif;
+  border: none;
+  background: none;
+}
+
+#game-menu button {
+  font-family: 'Bagel Fat', sans-serif;
+  font-size: 22px;
+  font-weight: bold;
+  color: #222;
+  padding: 10px 40px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #0003;
+  background: linear-gradient(90deg, #ffb6c1 0%, #4fc3f7 100%);
+  transition: background 0.2s;
+}
+
+#game-menu button:hover {
+  background: linear-gradient(90deg, #4fc3f7 0%, #ffb6c1 100%);
+}
+`;
+document.head.appendChild(style);
+
+// Walls array: each wall is {x, y, w, h}
+const walls = [
+  // Example walls (customize as needed)
+  { x: 300, y: 200, w: 40, h: 200 },
+  { x: 500, y: 100, w: 200, h: 40 },
+  { x: 150, y: 400, w: 120, h: 40 }
+];
+
+function drawWalls() {
+  ctx.save();
+  ctx.fillStyle = "#888";
+  for (const wall of walls) {
+    ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+  }
+  ctx.restore();
+}
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (gameState === 'playing') {
+    update();
+    drawWalls();
+    drawPlayer(player);
+    drawPlayer(player2);
+    drawBullets();
+    drawPowerups();
+    drawHealthBars();
+    drawXPBars();
+    if (!winner) requestAnimationFrame(gameLoop);
+    else drawDeathScreen();
+  } else if (gameState === 'gameover') {
+    drawWalls();
+    drawPlayer(player);
+    drawPlayer(player2);
+    drawBullets();
+    drawPowerups();
+    drawHealthBars();
+    drawXPBars();
+    drawDeathScreen();
+  }
+}
+
+if (gameState === 'menu') {
+  menuDiv.style.display = 'flex';
+} else {
+  menuDiv.style.display = 'none';
+  requestAnimationFrame(gameLoop);
+}
+</script>
+</body>
+</html>
