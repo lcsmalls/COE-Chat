@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Alphabet World Map Game</title>
@@ -17,9 +19,9 @@
     margin: 1em;
     position: relative;
     display: flex;
-    align-items: center; /* vertically align input and button */
+    align-items: center;
     justify-content: center;
-    gap: 8px; /* space between input and button */
+    gap: 8px;
   }
   input[type=text] {
     padding: 0.5em;
@@ -191,6 +193,18 @@ function submitAnswer() {
   autocompleteList.innerHTML = "";
   if(!input) return;
 
+  // Special command: reveal all countries
+  if(input === "&revealAllCountries&") {
+    countriesData.forEach(rec => {
+      if(!revealedCountries.has(rec.name)) {
+        revealedCountries.add(rec.name);
+        revealCountry(rec);
+      }
+    });
+    document.getElementById("prompt").innerText = "All countries revealed!";
+    return;
+  }
+
   const rec = nameIndex.get(input.toLowerCase());
   const submitSpan = document.querySelector("#submit-btn span");
 
@@ -203,28 +217,29 @@ function submitAnswer() {
     return;
   }
   if(!rec.name.startsWith(currentLetter)){
-    alert(`❌ Wrong letter: ${rec.name} does not start with ${currentLetter}`);
-    return;
-  }
+    alert(`❌ Wrong letter: ${rec
+.name} does not start with ${currentLetter}`);
+return;
+}
 
-  submitSpan.textContent = "check_circle";
-  submitSpan.style.fontSize = "36px";
+submitSpan.textContent = "check_circle";
+submitSpan.style.fontSize = "36px";
 
-  revealedCountries.add(rec.name);
-  revealCountry(rec);
-  round++;
-  setTimeout(nextRound, 500);
+revealedCountries.add(rec.name);
+revealCountry(rec);
+round++;
+setTimeout(nextRound, 500);
 }
 
 function revealCountry(rec) {
-  const f = featureByCCA3.get(rec.cca3) || featureByName.get(rec.name.toLowerCase());
-  if(!f) return;
-  svg.append("path").datum(f).attr("d", path).attr("class","revealed");
-  const [x,y] = path.centroid(f);
-  svg.append("text").attr("x",x).attr("y",y).attr("class","label").text(rec.name);
+const f = featureByCCA3.get(rec.cca3) || featureByName.get(rec.name.toLowerCase());
+if(!f) return;
+svg.append("path").datum(f).attr("d", path).attr("class","revealed");
+const [x,y] = path.centroid(f);
+svg.append("text").attr("x",x).attr("y",y).attr("class","label").text(rec.name);
 }
 
 init();
 </script>
-</body>
-</html>
+
+</body> </html> 
