@@ -72,6 +72,7 @@
   .country { fill: none; stroke: #555; stroke-width: 0.5px; }
   .revealed { fill: steelblue; stroke: #fff; stroke-width: 1px; }
   .label { font-size: 8px; text-anchor: middle; fill: #fff; }
+  .leader-line { stroke: #fff; stroke-width: 0.5px; }
 </style>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://unpkg.com/topojson-client@3"></script>
@@ -104,7 +105,6 @@ let isoIndex = new Map();
 let featureByCCA3 = new Map();
 let featureByName = new Map();
 
-// Helper to normalise names
 function normalizeName(s) {
   return s.toLowerCase().replace(/[^a-z]/g,'');
 }
@@ -114,8 +114,7 @@ async function init() {
   projection = d3.geoMercator().scale(120).translate([window.innerWidth/2, window.innerHeight/2.2]);
   path = d3.geoPath().projection(projection);
 
-  const rc = await fetch('https://restcountries.com/v3.1/all?fields=cca3,name,region,altSpellings')
-    .then(r => r.json());
+  const rc = await fetch('https://restcountries.com/v3.1/all?fields=cca3,name,region,altSpellings').then(r => r.json());
 
   rc.forEach(c => {
     const cca3 = c.cca3 || "";
@@ -148,7 +147,7 @@ async function init() {
   nextRound();
 }
 
-// Next round logic
+// Next round
 function nextRound() {
   const submitSpan = document.querySelector("#submit-btn span");
   submitSpan.textContent = "arrow_forward_ios";
@@ -190,8 +189,58 @@ answerInput.addEventListener("input", function() {
     autocompleteList.appendChild(div);
   });
 });
+
 document.addEventListener("click", e => { if(e.target !== answerInput) autocompleteList.innerHTML = ""; });
 answerInput.addEventListener("keydown", e => { if(e.key==="Enter"){ submitAnswer(); autocompleteList.innerHTML=""; } });
+
+// Reveal logic
+function getFeature(rec) {
+  return featureByCCA3.get(rec.cca3) || featureByName.get(normalizeName(rec.name));
+}
+
+function revealCountry(rec) {
+  if(revealedCountries.has(rec.name)) return;
+  revealedCountries.add(rec.name);
+
+  const f = getFeature(rec);
+  if(!f) return;
+
+  svg.append("path").datum(f).attr("d", path).attr("class","revealed");
+
+  const centroid = path.centroid(f);
+  const tempText = svg.append("text")
+      .attr("class","label")
+      .text(rec.name)
+      .attr("x", centroid[0])
+      .attr("y", centroid[1])
+      .attr("text-anchor","middle");
+
+  const bbox = tempText.node().getBBox();
+  const fBounds = path.bounds(f);
+  const fWidth = fBounds[1][0] - fBounds[0][0];
+  const fHeight = fBounds[1][1] - fBounds[0][1];
+
+  if(bbox.width > fWidth || bbox.height > fHeight) {
+    const scale = Math.min(fWidth / bbox.width, fHeight / bbox.height, 1);
+    tempText.attr("transform", `translate(${centroid[0]},${centroid[1]}) scale(${scale})`);
+  }
+
+  const finalBBox = tempText.node().getBBox();
+  if(finalBBox.width < 20 || finalBBox.height < 8) {
+    const labelX = fBounds[1][0] + 10;
+    const labelY = centroid[1];
+    tempText.attr("x", labelX).attr("y", labelY)
+            .attr("transform", null)
+            .attr("text-anchor","start");
+
+    svg.append("line")
+       .attr("x1", centroid[0])
+       .attr("y1", centroid[1])
+       .attr("x2", labelX)
+       .attr("y2", labelY)
+       .attr("class","leader-line");
+  }
+}
 
 function submitAnswer() {
   const input = answerInput.value.trim();
@@ -199,14 +248,8 @@ function submitAnswer() {
   autocompleteList.innerHTML = "";
   if(!input) return;
 
-  // Special command: reveal all countries
   if(input === "&revealAllCountries&") {
-    countriesData.forEach(rec => {
-      if(!revealedCountries.has(rec.name)) {
-        revealedCountries.add(rec.name);
-        revealCountry(rec);
-      }
-    });
+    countriesData.forEach(revealCountry);
     document.getElementById("prompt").innerText = "All countries revealed!";
     return;
   }
@@ -230,18 +273,9 @@ function submitAnswer() {
   submitSpan.textContent = "check_circle";
   submitSpan.style.fontSize = "36px";
 
-  revealedCountries.add(rec.name);
   revealCountry(rec);
   round++;
   setTimeout(nextRound, 500);
-}
-
-function revealCountry(rec) {
-  const f = featureByCCA3.get(rec.cca3) || featureByName.get(normalizeName(rec.name));
-  if(!f) return;
-  svg.append("path").datum(f).attr("d", path).attr("class","revealed");
-  const [x,y] = path.centroid(f);
-  svg.append("text").attr("x",x).attr("y",y).attr("class","label").text(rec.name);
 }
 
 init();
