@@ -64,6 +64,7 @@
 <div id="results-screen">
   <div id="results-text"></div>
   <button onclick="location.reload()">Play Again</button>
+  <button id="close-results-btn">Close</button>
 </div>
 
 <script>
@@ -212,7 +213,7 @@ function endGame(){
   clearInterval(timerInterval);
   const totalSec=Math.floor(elapsed/1000);
   const min=Math.floor(totalSec/60), sec=totalSec%60;
-  const correct=round-1; // all completed rounds
+  const correct=round-1;
   const total=correct+wrongGuesses;
   const percent= total>0 ? ((correct/total)*100).toFixed(1) : 100;
   document.getElementById("results-text").innerHTML=
@@ -225,6 +226,9 @@ function endGame(){
 
 document.getElementById("pause-btn").addEventListener("click", ()=>{ if(!paused) pauseTimer(); });
 document.getElementById("resume-btn").addEventListener("click", resumeTimer);
+document.getElementById("close-results-btn").addEventListener("click", ()=>{
+  document.getElementById("results-screen").style.display="none";
+});
 
 init();
 </script>
