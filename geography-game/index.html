@@ -7,7 +7,273 @@
 <style>
   body { font-family:sans-serif; margin:0; padding:0; text-align:center; background:#121212; color:#eee; }
   h1 { margin:1em 0 0.3em; }
+  #map { width:100%; height:70vh; border:1px solid #444; <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Geography A to Z</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
+<style>
+  body { font-family:sans-serif; margin:0; padding:0; text-align:center; background:#121212; color:#eee; }
+  h1 { margin:1em 0 0.3em; }
   #map { width:100%; height:70vh; border:1px solid #444; background:#1e1e1e; border-radius:12px; }
+  #controls { margin:1em; display:flex; align-items:center; justify-content:center; gap:8px; position:relative; }
+  input[type=text] { padding:0.5em; width:250px; border-radius:8px; border:1px solid #555; background:#222; color:#eee; flex-shrink:0; }
+  button { width:40px; height:40px; border-radius:50%; border:none; background:#007acc; color:#fff; cursor:pointer; font-family:'Material Symbols Rounded'; font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 48; font-size:20px; display:flex; align-items:center; justify-content:center; padding:0; }
+  button:hover { background:#005f99; }
+  #autocomplete-list { position:absolute; top:4em; left:0; width:250px; border:1px solid #555; border-radius:8px; background:#222; max-height:150px; overflow-y:auto; z-index:1000; box-shadow:0 2px 6px rgba(0,0,0,0.5); }
+  .autocomplete-item { padding:0.3em 0.5em; cursor:pointer; }
+  .autocomplete-item:hover { background:#444; }
+  .country { fill:none; stroke:#555; stroke-width:0.5px; }
+  .revealed { stroke:#fff; stroke-width:0.5px; }
+
+  #timer { margin-left:12px; font-weight:bold; }
+  #pause-btn { background:#ff9800; }
+  #pause-btn:hover { background:#cc7a00; }
+
+  #pause-overlay, #results-screen, #start-screen {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.9); display:flex; flex-direction:column;
+    justify-content:center; align-items:center; z-index:2000; color:#fff;
+    text-align:center; display:none;
+  }
+  #pause-overlay button, #results-screen button, #start-screen button {
+    margin-top:1em; padding:0.5em 1em; font-size:1em;
+    border:none; border-radius:8px; cursor:pointer;
+    background:#007acc; color:#fff; width:auto; height:auto;
+    font-family:sans-serif;
+  }
+  #start-screen img { width:100px; height:100px; margin-bottom:1em; }
+  #start-screen h1 { margin-bottom:0.5em; }
+</style>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/topojson-client@3"></script>
+</head>
+<body>
+<h1>Geography A to Z</h1>
+<div id="controls">
+  <div id="prompt">Loading game...</div>
+  <input id="answer" type="text" placeholder="Type country name" autocomplete="off">
+  <div id="autocomplete-list"></div>
+  <button id="submit-btn">
+    <span class="material-symbols-rounded" style="font-variation-settings:'FILL' 1;font-size:24px;">
+      arrow_forward_ios
+    </span>
+  </button>
+  <button id="pause-btn" title="Pause">&#10073;&#10073;</button>
+  <div id="timer">0:00</div>
+</div>
+<svg id="map"></svg>
+
+<!-- Start screen -->
+<div id="start-screen">
+  <img src="https://coe-chat.vercel.app/favicon.png" alt="Game Logo">
+  <h1>Geography A to Z</h1>
+  <p>Select a mode to start:</p>
+  <button onclick="startGame('Easy')">Easy</button>
+  <button onclick="startGame('Medium')">Medium</button>
+  <button onclick="startGame('Normal')">Normal</button>
+  <button onclick="startGame('Hard')">Hard</button>
+</div>
+
+<!-- Pause overlay -->
+<div id="pause-overlay">
+  <div>Game Paused</div>
+  <button id="resume-btn">Resume</button>
+</div>
+
+<!-- Results screen -->
+<div id="results-screen">
+  <div id="results-text"></div>
+  <button onclick="location.reload()">Play Again</button>
+  <button id="close-results-btn">Close</button>
+</div>
+
+<script>
+let countriesData = [], features = [], projection, path, svg, mapGroup;
+let round = 1, currentContinent = "", currentLetter = "";
+let revealedCountries = new Set(), nameIndex = new Map(), isoIndex = new Map();
+let featureByCCA3 = new Map(), featureByName = new Map();
+let wrongGuesses = 0;
+let gameMode = "Normal"; // default
+
+// Timer
+let startTime=null, elapsed=0, timerInterval=null, paused=false;
+
+const manualFeatureMap = {
+  northmacedonia: "MKD", southsudan: "SSD", democraticrepublicofthecongo: "COD",
+  centralafricanrepublic: "CAF", republicofthecongo: "COG", unitedstates: "USA",
+  stvincentandthegrenadines: "VCT", bosniaandherzegovina: "BIH", puertorico: "PRI",
+  papuanewguinea: "PNG", libya: "LBY", dominicanrepublic: "DOM"
+};
+
+function normalizeName(s){ return s.toLowerCase().replace(/[^a-z]/g,''); }
+
+async function init() {
+  svg = d3.select("#map");
+  projection = d3.geoMercator().scale(120).translate([window.innerWidth/2, window.innerHeight/2.2]);
+  path = d3.geoPath().projection(projection);
+  mapGroup = svg.append("g").attr("class","map-content");
+
+  svg.call(d3.zoom().scaleExtent([1,8]).on("zoom", event=>{ mapGroup.attr("transform", event.transform); }));
+
+  const rc = await fetch('https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,altSpellings').then(r=>r.json());
+  rc.forEach(c=>{
+    const cca3=c.cca3||"", cca2=c.cca2||"", common=c.name.common, region=c.region||"Other";
+    const aliases=new Set([common, c.name.official, ...(c.altSpellings||[])]);
+    const rec={name:common, cca2, cca3, region, aliases:[...aliases]};
+    countriesData.push(rec);
+    isoIndex.set(cca3, rec);
+    rec.aliases.forEach(a=>nameIndex.set(normalizeName(a), rec));
+  });
+
+  const topo = await fetch('https://unpkg.com/world-atlas@2/countries-50m.json').then(r=>r.json());
+  const objKey = Object.keys(topo.objects)[0];
+  features = topojson.feature(topo, topo.objects[objKey]).features;
+  features.forEach(f=>{
+    const props=f.properties||{};
+    const iso=props.iso_a3||props.ISO_A3||props.ADM0_A3||"";
+    const pname=props.name||props.NAME||props.ADMIN||"";
+    if(iso) featureByCCA3.set(iso,f);
+    if(pname) featureByName.set(normalizeName(pname),f);
+  });
+
+  mapGroup.selectAll("path").data(features).join("path").attr("d", path).attr("class","country");
+
+  // Show start screen
+  document.getElementById("start-screen").style.display="flex";
+}
+
+function startGame(mode){
+  gameMode = mode;
+  document.getElementById("start-screen").style.display="none";
+  startTimer();
+  nextRound();
+}
+
+function getFeature(rec){
+  const key=normalizeName(rec.name);
+  if(manualFeatureMap[key] && featureByCCA3.has(manualFeatureMap[key])) return featureByCCA3.get(manualFeatureMap[key]);
+  if(featureByCCA3.has(rec.cca3)) return featureByCCA3.get(rec.cca3);
+  if(featureByName.has(key)) return featureByName.get(key);
+  return null;
+}
+
+function revealCountry(rec){
+  if(revealedCountries.has(rec.name)) return;
+  revealedCountries.add(rec.name);
+  const f=getFeature(rec);
+  if(!f) return;
+
+  const bounds=path.bounds(f), w=bounds[1][0]-bounds[0][0], h=bounds[1][1]-bounds[0][1];
+  mapGroup.append("clipPath")
+    .attr("id", `clip-${rec.cca3}`)
+    .append("path")
+    .attr("d", path(f));
+
+  mapGroup.append("image")
+    .attr("href", rec.cca2?`https://flagcdn.com/w640/${rec.cca2.toLowerCase()}.png`:"")
+    .attr("x", bounds[0][0])
+    .attr("y", bounds[0][1])
+    .attr("width", w)
+    .attr("height", h)
+    .attr("preserveAspectRatio","xMidYMid slice")
+    .attr("clip-path", `url(#clip-${rec.cca3})`)
+    .attr("stroke","#fff")
+    .attr("stroke-width",0.5);
+}
+
+function nextRound(){
+  const submitSpan=document.querySelector("#submit-btn span");
+  submitSpan.textContent="arrow_forward_ios"; submitSpan.style.fontSize="24px";
+
+  const remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region!=="Antarctic");
+  if(!remaining.length){ endGame(); return; }
+  const rec=remaining[Math.floor(Math.random()*remaining.length)];
+  currentContinent=rec.region; currentLetter=rec.name[0].toUpperCase();
+
+  let promptText = `Round ${round}: Name a country starting with "${currentLetter}"`;
+  if(gameMode==="Normal"||gameMode==="Hard") promptText = `Round ${round}: Name a country in ${currentContinent} starting with "${currentLetter}"`;
+  document.getElementById("prompt").innerText=promptText;
+}
+
+const answerInput=document.getElementById("answer"), autocompleteList=document.getElementById("autocomplete-list");
+answerInput.addEventListener("input", function(){
+  if(gameMode==="Hard"||gameMode==="Medium"){ autocompleteList.innerHTML=""; return; } // no suggestions in Hard or Medium
+  const val=normalizeName(this.value); autocompleteList.innerHTML="";
+  if(!val) return;
+  let matches=countriesData.map(c=>c.name).filter(n=>normalizeName(n).startsWith(val)&&!revealedCountries.has(n));
+  matches.slice(0,10).forEach(name=>{
+    const div=document.createElement("div");
+    div.classList.add("autocomplete-item"); div.textContent=name;
+    div.onclick=()=>{ answerInput.value=name; autocompleteList.innerHTML=""; submitAnswer(); };
+    autocompleteList.appendChild(div);
+  });
+});
+document.addEventListener("click", e=>{ if(e.target!==answerInput) autocompleteList.innerHTML=""; });
+answerInput.addEventListener("keydown", e=>{ if(e.key==="Enter"){ submitAnswer(); autocompleteList.innerHTML=""; } });
+
+document.getElementById("submit-btn").addEventListener("click", submitAnswer);
+
+function submitAnswer(){
+  if(paused) return;
+  const input=answerInput.value.trim(); answerInput.value=""; autocompleteList.innerHTML="";
+  if(!input) return;
+
+  if(input==="|re"){ countriesData.forEach(revealCountry); endGame(); return; }
+
+  const rec=nameIndex.get(normalizeName(input));
+  const submitSpan=document.querySelector("#submit-btn span");
+  if(!rec){ alert(`❌ Invalid input: ${input}`); wrongGuesses++; return; }
+
+  if((gameMode==="Normal"||gameMode==="Hard") && rec.region!==currentContinent){ 
+    alert(`❌ Wrong continent: ${rec.name} is in ${rec.region}`); wrongGuesses++; return; 
+  }
+  if(!rec.name.toUpperCase().startsWith(currentLetter)){ 
+    alert(`❌ Wrong letter: ${rec.name} does not start with ${currentLetter}`); wrongGuesses++; return; 
+  }
+
+  submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
+  revealCountry(rec); round++; setTimeout(nextRound,500);
+}
+
+// Timer
+function startTimer(){ startTime=Date.now()-elapsed; timerInterval=setInterval(updateTimer,1000); }
+function updateTimer(){
+  elapsed=Date.now()-startTime;
+  const totalSec=Math.floor(elapsed/1000);
+  const min=Math.floor(totalSec/60), sec=totalSec%60;
+  document.getElementById("timer").textContent=`${min}:${sec.toString().padStart(2,"0")}`;
+}
+function pauseTimer(){ clearInterval(timerInterval); paused=true; document.getElementById("pause-overlay").style.display="flex"; }
+function resumeTimer(){ startTimer(); paused=false; document.getElementById("pause-overlay").style.display="none"; }
+
+function endGame(){
+  clearInterval(timerInterval);
+  const totalSec=Math.floor(elapsed/1000);
+  const min=Math.floor(totalSec/60), sec=totalSec%60;
+  const correct=round-1;
+  const total=correct+wrongGuesses;
+  const percent= total>0 ? ((correct/total)*100).toFixed(1) : 100;
+  document.getElementById("results-text").innerHTML=
+    `<div>Game Over! (${gameMode} Mode)</div>
+     <div>Time: ${min}:${sec.toString().padStart(2,"0")}</div>
+     <div>Wrong Attempts: ${wrongGuesses}</div>
+     <div>Accuracy: ${percent}%</div>`;
+  document.getElementById("results-screen").style.display="flex";
+}
+
+document.getElementById("pause-btn").addEventListener("click", ()=>{ if(!paused) pauseTimer(); });
+document.getElementById("resume-btn").addEventListener("click", resumeTimer);
+document.getElementById("close-results-btn").addEventListener("click", ()=>{
+  document.getElementById("results-screen").style.display="none";
+});
+
+init();
+</script>
+</body>
+</html>
+background:#1e1e1e; border-radius:12px; }
   #controls { margin:1em; display:flex; align-items:center; justify-content:center; gap:8px; position:relative; }
   input[type=text] { padding:0.5em; width:250px; border-radius:8px; border:1px solid #555; background:#222; color:#eee; flex-shrink:0; }
   button { width:40px; height:40px; border-radius:50%; border:none; background:#007acc; color:#fff; cursor:pointer; font-family:'Material Symbols Rounded'; font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 48; font-size:20px; display:flex; align-items:center; justify-content:center; padding:0; }
