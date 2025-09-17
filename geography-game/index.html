@@ -104,6 +104,11 @@ let isoIndex = new Map();
 let featureByCCA3 = new Map();
 let featureByName = new Map();
 
+// Helper to normalise names
+function normalizeName(s) {
+  return s.toLowerCase().replace(/[^a-z]/g,'');
+}
+
 async function init() {
   svg = d3.select("#map");
   projection = d3.geoMercator().scale(120).translate([window.innerWidth/2, window.innerHeight/2.2]);
@@ -120,7 +125,7 @@ async function init() {
     const rec = { name: common, cca3, region, aliases:[...aliases] };
     countriesData.push(rec);
     isoIndex.set(cca3, rec);
-    rec.aliases.forEach(a => nameIndex.set(a.toLowerCase(), rec));
+    rec.aliases.forEach(a => nameIndex.set(normalizeName(a), rec));
   });
 
   const topo = await fetch('https://unpkg.com/world-atlas@2/countries-50m.json').then(r => r.json());
@@ -131,7 +136,7 @@ async function init() {
     const iso = props.iso_a3 || props.ISO_A3 || props.ADM0_A3 || "";
     const pname = props.name || props.NAME || props.ADMIN || "";
     if(iso) featureByCCA3.set(iso, f);
-    if(pname) featureByName.set(pname.toLowerCase(), f);
+    if(pname) featureByName.set(normalizeName(pname), f);
   });
 
   svg.selectAll("path")
@@ -168,10 +173,11 @@ const answerInput = document.getElementById("answer");
 const autocompleteList = document.getElementById("autocomplete-list");
 
 answerInput.addEventListener("input", function() {
-  const val = this.value.toLowerCase();
+  const val = normalizeName(this.value);
   autocompleteList.innerHTML = "";
   if (!val) return;
-  let matches = countriesData.map(c=>c.name).filter(n=>n.toLowerCase().startsWith(val) && !revealedCountries.has(n));
+  let matches = countriesData.map(c=>c.name)
+    .filter(n=>normalizeName(n).startsWith(val) && !revealedCountries.has(n));
   matches.slice(0,10).forEach(name=>{
     const div = document.createElement("div");
     div.classList.add("autocomplete-item");
@@ -205,7 +211,7 @@ function submitAnswer() {
     return;
   }
 
-  const rec = nameIndex.get(input.toLowerCase());
+  const rec = nameIndex.get(normalizeName(input));
   const submitSpan = document.querySelector("#submit-btn span");
 
   if(!rec){
@@ -217,29 +223,28 @@ function submitAnswer() {
     return;
   }
   if(!rec.name.startsWith(currentLetter)){
-    alert(`❌ Wrong letter: ${rec
-.name} does not start with ${currentLetter}`);
-return;
-}
+    alert(`❌ Wrong letter: ${rec.name} does not start with ${currentLetter}`);
+    return;
+  }
 
-submitSpan.textContent = "check_circle";
-submitSpan.style.fontSize = "36px";
+  submitSpan.textContent = "check_circle";
+  submitSpan.style.fontSize = "36px";
 
-revealedCountries.add(rec.name);
-revealCountry(rec);
-round++;
-setTimeout(nextRound, 500);
+  revealedCountries.add(rec.name);
+  revealCountry(rec);
+  round++;
+  setTimeout(nextRound, 500);
 }
 
 function revealCountry(rec) {
-const f = featureByCCA3.get(rec.cca3) || featureByName.get(rec.name.toLowerCase());
-if(!f) return;
-svg.append("path").datum(f).attr("d", path).attr("class","revealed");
-const [x,y] = path.centroid(f);
-svg.append("text").attr("x",x).attr("y",y).attr("class","label").text(rec.name);
+  const f = featureByCCA3.get(rec.cca3) || featureByName.get(normalizeName(rec.name));
+  if(!f) return;
+  svg.append("path").datum(f).attr("d", path).attr("class","revealed");
+  const [x,y] = path.centroid(f);
+  svg.append("text").attr("x",x).attr("y",y).attr("class","label").text(rec.name);
 }
 
 init();
 </script>
-
-</body> </html> 
+</body>
+</html>
