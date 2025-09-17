@@ -22,18 +22,20 @@
   #pause-btn { background:#ff9800; }
   #pause-btn:hover { background:#cc7a00; }
 
-  #pause-overlay, #results-screen {
+  #pause-overlay, #results-screen, #start-screen {
     position:fixed; top:0; left:0; width:100%; height:100%;
     background:rgba(0,0,0,0.9); display:flex; flex-direction:column;
     justify-content:center; align-items:center; z-index:2000; color:#fff;
-    font-size:2em; text-align:center; display:none;
+    text-align:center; display:none;
   }
-  #pause-overlay button, #results-screen button {
+  #pause-overlay button, #results-screen button, #start-screen button {
     margin-top:1em; padding:0.5em 1em; font-size:1em;
     border:none; border-radius:8px; cursor:pointer;
     background:#007acc; color:#fff; width:auto; height:auto;
     font-family:sans-serif;
   }
+  #start-screen img { width:100px; height:100px; margin-bottom:1em; }
+  #start-screen h1 { margin-bottom:0.5em; }
 </style>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://unpkg.com/topojson-client@3"></script>
@@ -54,6 +56,16 @@
 </div>
 <svg id="map"></svg>
 
+<!-- Start screen -->
+<div id="start-screen">
+  <img src="https://coe-chat.vercel.app/favicon.png" alt="Game Logo">
+  <h1>Geography A to Z</h1>
+  <p>Select a mode to start:</p>
+  <button onclick="startGame('Easy')">Easy</button>
+  <button onclick="startGame('Normal')">Normal</button>
+  <button onclick="startGame('Hard')">Hard</button>
+</div>
+
 <!-- Pause overlay -->
 <div id="pause-overlay">
   <div>Game Paused</div>
@@ -73,6 +85,7 @@ let round = 1, currentContinent = "", currentLetter = "";
 let revealedCountries = new Set(), nameIndex = new Map(), isoIndex = new Map();
 let featureByCCA3 = new Map(), featureByName = new Map();
 let wrongGuesses = 0;
+let gameMode = "Normal"; // default
 
 // Timer
 let startTime=null, elapsed=0, timerInterval=null, paused=false;
@@ -117,6 +130,13 @@ async function init() {
 
   mapGroup.selectAll("path").data(features).join("path").attr("d", path).attr("class","country");
 
+  // Show start screen
+  document.getElementById("start-screen").style.display="flex";
+}
+
+function startGame(mode){
+  gameMode = mode;
+  document.getElementById("start-screen").style.display="none";
   startTimer();
   nextRound();
 }
@@ -161,11 +181,15 @@ function nextRound(){
   if(!remaining.length){ endGame(); return; }
   const rec=remaining[Math.floor(Math.random()*remaining.length)];
   currentContinent=rec.region; currentLetter=rec.name[0].toUpperCase();
-  document.getElementById("prompt").innerText=`Round ${round}: Name a country in ${currentContinent} starting with "${currentLetter}"`;
+
+  let promptText = `Round ${round}: Name a country starting with "${currentLetter}"`;
+  if(gameMode!=="Easy") promptText = `Round ${round}: Name a country in ${currentContinent} starting with "${currentLetter}"`;
+  document.getElementById("prompt").innerText=promptText;
 }
 
 const answerInput=document.getElementById("answer"), autocompleteList=document.getElementById("autocomplete-list");
 answerInput.addEventListener("input", function(){
+  if(gameMode==="Hard"){ autocompleteList.innerHTML=""; return; } // no suggestions in Hard mode
   const val=normalizeName(this.value); autocompleteList.innerHTML="";
   if(!val) return;
   let matches=countriesData.map(c=>c.name).filter(n=>normalizeName(n).startsWith(val)&&!revealedCountries.has(n));
@@ -191,7 +215,8 @@ function submitAnswer(){
   const rec=nameIndex.get(normalizeName(input));
   const submitSpan=document.querySelector("#submit-btn span");
   if(!rec){ alert(`❌ Invalid input: ${input}`); wrongGuesses++; return; }
-  if(rec.region!==currentContinent){ alert(`❌ Wrong continent: ${rec.name} is in ${rec.region}`); wrongGuesses++; return; }
+
+  if(gameMode!=="Easy" && rec.region!==currentContinent){ alert(`❌ Wrong continent: ${rec.name} is in ${rec.region}`); wrongGuesses++; return; }
   if(!rec.name.toUpperCase().startsWith(currentLetter)){ alert(`❌ Wrong letter: ${rec.name} does not start with ${currentLetter}`); wrongGuesses++; return; }
 
   submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
@@ -217,7 +242,7 @@ function endGame(){
   const total=correct+wrongGuesses;
   const percent= total>0 ? ((correct/total)*100).toFixed(1) : 100;
   document.getElementById("results-text").innerHTML=
-    `<div>Game Over!</div>
+    `<div>Game Over! (${gameMode} Mode)</div>
      <div>Time: ${min}:${sec.toString().padStart(2,"0")}</div>
      <div>Wrong Attempts: ${wrongGuesses}</div>
      <div>Accuracy: ${percent}%</div>`;
