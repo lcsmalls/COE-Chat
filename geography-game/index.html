@@ -16,8 +16,8 @@ button:hover { background:#005f99; }
 #autocomplete-list { position:absolute; top:4em; left:0; width:250px; border:1px solid #555; border-radius:8px; background:#222; max-height:150px; overflow-y:auto; z-index:1000; box-shadow:0 2px 6px rgba(0,0,0,0.5); }
 .autocomplete-item { padding:0.3em 0.5em; cursor:pointer; }
 .autocomplete-item:hover { background:#444; }
-.country { fill:none; stroke:#555; stroke-width:0.5px; }
-.revealed { stroke:#fff; stroke-width:0.5px; }
+.country { fill:none; stroke:#555; stroke-width:0.25px; } /* thinner outline */
+.revealed { stroke:#fff; stroke-width:0.25px; }
 #timer { margin-left:12px; font-weight:bold; }
 #pause-btn { background:#ff9800; }
 #pause-btn:hover { background:#cc7a00; }
@@ -35,6 +35,19 @@ button:hover { background:#005f99; }
 }
 #start-screen img { width:100px; height:100px; margin-bottom:1em; }
 #start-screen h1 { margin-bottom:0.5em; }
+#popup-country {
+  position:fixed;
+  pointer-events:none;
+  background:rgba(30,30,30,0.95);
+  color:#fff;
+  padding:0.4em 0.8em;
+  border-radius:8px;
+  font-size:1em;
+  z-index:3000;
+  box-shadow:0 2px 8px rgba(0,0,0,0.5);
+  display:none;
+  transition:opacity 0.15s;
+}
 </style>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://unpkg.com/topojson-client@3"></script>
@@ -50,6 +63,7 @@ button:hover { background:#005f99; }
   <div id="timer">0:00</div>
 </div>
 <svg id="map"></svg>
+<div id="popup-country"></div>
 
 <div id="start-screen">
   <img src="https://coe-chat.vercel.app/geography-game/favicon.png" alt="Game Logo">
@@ -82,12 +96,18 @@ let startTime=null, elapsed=0, timerInterval=null, paused=false;
 const continentOrder=["Europe","Oceania","Americas","Asia","Africa","Antarctic"];
 let continentIndex=0;
 
+// Improved manual mapping for problematic countries
 const manualFeatureMap={
   northmacedonia:"MKD", southsudan:"SSD", democraticrepublicofthecongo:"COD",
   centralafricanrepublic:"CAF", republicofthecongo:"COG", unitedstates:"USA",
   stvincentandthegrenadines:"VCT", bosniaandherzegovina:"BIH", puertorico:"PRI",
   papuanewguinea:"PNG", libya:"LBY", dominicanrepublic:"DOM",
-  "são tomé and príncipe":"STP", svalbard:"SJM"
+  "sãotoméandpríncipe":"STP", "sao tome and principe":"STP", "sao tome":"STP",
+  "são tomé":"STP", "são tomé e príncipe":"STP", "sao tome e principe":"STP",
+  svalbard:"SJM", "ivorycoast":"CIV", "cotedivoire":"CIV", "capeverde":"CPV",
+  "timorleste":"TLS", "easttimor":"TLS", "vaticancity":"VAT", "holysee":"VAT",
+  "eswatini":"SWZ", "swaziland":"SWZ", "burma":"MMR", "myanmar":"MMR",
+  "palestine":"PSE", "palestinianterritory":"PSE", "palestinian territories":"PSE"
 };
 
 function normalizeName(s){ return s.toLowerCase().replace(/[^a-z]+/g,''); }
@@ -97,12 +117,24 @@ async function init(){
   projection=d3.geoMercator().scale(120).translate([window.innerWidth/2, window.innerHeight/2.2]);
   path=d3.geoPath().projection(projection);
   mapGroup=svg.append("g").attr("class","map-content");
-  svg.call(d3.zoom().scaleExtent([1,8]).on("zoom",event=>{mapGroup.attr("transform",event.transform);}));
+  svg.call(d3.zoom().scaleExtent([1,16]).on("zoom",event=>{mapGroup.attr("transform",event.transform);})); // increased zoom
 
   const rc=await fetch('https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,altSpellings').then(r=>r.json());
   rc.forEach(c=>{
     const cca3=c.cca3||"", cca2=c.cca2||"", common=c.name.common, region=c.region||"Other";
     const aliases=new Set([common,c.name.official,...(c.altSpellings||[])]);
+    // Add normalized aliases for edge cases
+    if(common==="São Tomé and Príncipe") aliases.add("Sao Tome and Principe");
+    if(common==="Democratic Republic of the Congo") aliases.add("DR Congo");
+    if(common==="Central African Republic") aliases.add("CAR");
+    if(common==="Dominican Republic") aliases.add("Dom. Rep.");
+    if(common==="Republic of the Congo") aliases.add("Congo");
+    if(common==="Ivory Coast") aliases.add("Côte d'Ivoire");
+    if(common==="East Timor") aliases.add("Timor-Leste");
+    if(common==="Vatican City") aliases.add("Holy See");
+    if(common==="Myanmar") aliases.add("Burma");
+    if(common==="Eswatini") aliases.add("Swaziland");
+    if(common==="Palestine") aliases.add("Palestinian Territories");
     const rec={name:common,cca2,cca3,region,aliases:[...aliases]};
     countriesData.push(rec);
     rec.aliases.forEach(a=>nameIndex.set(normalizeName(a),rec));
@@ -128,6 +160,33 @@ function startGame(mode){
   startTimer(); nextRound();
 }
 
+function getLargestPolygon(feature) {
+  // For MultiPolygon, return the largest polygon by area
+  if (feature.geometry.type === "MultiPolygon") {
+    let maxArea = 0, largest = null;
+    feature.geometry.coordinates.forEach(coords => {
+      const poly = {type: "Polygon", coordinates: coords};
+      const area = d3.geoArea({type: "Feature", geometry: poly});
+      if (area > maxArea) { maxArea = area; largest = poly; }
+    });
+    if (largest) return {type: "Feature", geometry: largest, properties: feature.properties};
+  }
+  return feature;
+}
+
+function getAllPolygons(feature) {
+  // Returns an array of features, one for each polygon
+  if (feature.geometry.type === "MultiPolygon") {
+    return feature.geometry.coordinates.map(coords => ({
+      type: "Feature",
+      geometry: {type: "Polygon", coordinates: coords},
+      properties: feature.properties
+    }));
+  }
+  return [feature];
+}
+
+// Improved feature lookup for problematic countries
 function getFeature(rec){
   const key=normalizeName(rec.name);
   // 1) manual mapping
@@ -138,58 +197,169 @@ function getFeature(rec){
   if(featureByName.has(key)) return featureByName.get(key);
   // 4) fallback: aliases
   for(let alias of rec.aliases){
-    const f=featureByName.get(normalizeName(alias));
+    const aliasKey=normalizeName(alias);
+    if(manualFeatureMap[aliasKey] && featureByCCA3.has(manualFeatureMap[aliasKey])) return featureByCCA3.get(manualFeatureMap[aliasKey]);
+    const f=featureByName.get(aliasKey);
     if(f) return f;
   }
+  // 5) fallback: partial match (for edge cases)
+  for(let [name, f] of featureByName){
+    if(name.includes(key) || key.includes(name)) return f;
+  }
+  // 6) South Sudan and DR Congo hard fallback
+  if(rec.name === "South Sudan") return featureByCCA3.get("SSD");
+  if(rec.name === "Democratic Republic of the Congo") return featureByCCA3.get("COD");
   return null;
 }
 
 function computeVisualCenter(feature){
-  // Take centroid of largest polygon
-  const coordsArray = feature.geometry.coordinates;
-  let maxArea=0, cx=0, cy=0;
-  const flattenPolygon=(coords)=>{
-    return coords.flat(Infinity).filter(c=>Array.isArray(c[0]));
-  };
-  const polygons = (feature.geometry.type==="Polygon"?[feature.geometry.coordinates]:coordsArray);
-  polygons.forEach(poly=>{
-    const projPts = flattenPolygon(poly).map(pt=>projection(pt));
-    if(projPts.length===0) return;
-    const xs=projPts.map(p=>p[0]), ys=projPts.map(p=>p[1]);
-    const area=(Math.max(...xs)-Math.min(...xs))*(Math.max(...ys)-Math.min(...ys));
-    if(area>maxArea){ maxArea=area; cx=(Math.min(...xs)+Math.max(...xs))/2; cy=(Math.min(...ys)+Math.max(...ys))/2; }
-  });
-  return maxArea>0 ? [cx,cy] : path.centroid(feature);
+  // Use d3.geoCentroid for better accuracy
+  try {
+    const centroid = d3.geoCentroid(feature);
+    return projection(centroid);
+  } catch {
+    return path.centroid(feature);
+  }
 }
 
 function revealCountry(rec){
   if(revealedCountries.has(rec.name)) return;
   revealedCountries.add(rec.name);
-  const feature=getFeature(rec); if(!feature) return;
+  let feature=getFeature(rec); if(!feature) return;
 
-  const clipId=`clip-${rec.cca3 || normalizeName(rec.name)}`;
-  mapGroup.append("clipPath").attr("id",clipId).append("path").attr("d",path(feature));
+  // For USA, DRC, SS: fill all polygons with stretched flag
+  if(rec.cca3==="USA" || rec.cca3==="SSD" || rec.cca3==="COD") {
+    const polygons = getAllPolygons(feature);
+    polygons.forEach((poly, i) => {
+      const clipId = `clip-${rec.cca3}-${i}`;
+      mapGroup.append("clipPath").attr("id",clipId).append("path").attr("d",path(poly));
+      const bbox=path.bounds(poly);
+      const boxWidth=bbox[1][0]-bbox[0][0], boxHeight=bbox[1][1]-bbox[0][1];
+      const flagUrl = rec.cca2 ? `https://flagcdn.com/w320/${rec.cca2.toLowerCase()}.png` : "";
+      mapGroup.append("image")
+        .attr("href", flagUrl)
+        .attr("x", bbox[0][0]).attr("y", bbox[0][1])
+        .attr("width", boxWidth).attr("height", boxHeight)
+        .attr("preserveAspectRatio","none")
+        .attr("clip-path", `url(#${clipId})`)
+        .attr("style","pointer-events:none;")
+        .on("error", function() {
+          d3.select(this).remove();
+          mapGroup.append("path")
+            .attr("d", path(poly))
+            .attr("clip-path", `url(#${clipId})`)
+            .attr("fill", "#005f99")
+            .attr("opacity", 0.7)
+            .attr("stroke", "#fff").attr("stroke-width", 0.8);
+        });
+    });
+    // Highlight all polygons for these countries by matching all features with the same ISO code
+    const iso = rec.cca3;
+    mapGroup.selectAll("path.country")
+      .filter(d => {
+        const props = d.properties || {};
+        // Some TopoJSON features may have ISO_A3 or ADM0_A3
+        return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
+      })
+      .classed("revealed",true)
+      .raise();
+    return;
+  }
+  // France: shift image left and use fixed aspect ratio to show all three colors
+  else if(rec.cca2==="FR") {
+    const clipId=`clip-${rec.cca3 || normalizeName(rec.name)}`;
+    mapGroup.append("clipPath").attr("id",clipId).append("path").attr("d",path(feature));
+    const bbox=path.bounds(feature);
+    const boxWidth=bbox[1][0]-bbox[0][0], boxHeight=bbox[1][1]-bbox[0][1];
+    // Use flag aspect ratio (3:2), shift left by 1/3 of width to show blue/red
+    const flagWidth = boxHeight * 1.5;
+    const xOffset = bbox[0][0] - (flagWidth - boxWidth) / 2;
+    mapGroup.append("image")
+      .attr("href", "https://flagcdn.com/w320/fr.png")
+      .attr("x", xOffset).attr("y", bbox[0][1])
+      .attr("width", flagWidth).attr("height", boxHeight)
+      .attr("preserveAspectRatio","xMinYMin slice")
+      .attr("clip-path", `url(#${clipId})`)
+      .attr("style","pointer-events:none;")
+      .on("error", function() {
+        d3.select(this).remove();
+        mapGroup.append("path")
+          .attr("d", path(feature))
+          .attr("clip-path", `url(#${clipId})`)
+          .attr("fill", "#005f99")
+          .attr("opacity", 0.7)
+          .attr("stroke", "#fff").attr("stroke-width", 0.8);
+      });
+    // Highlight France by matching all features with the same ISO code
+    const iso = rec.cca3;
+    mapGroup.selectAll("path.country")
+      .filter(d => {
+        const props = d.properties || {};
+        return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
+      })
+      .classed("revealed",true)
+      .raise();
+    return;
+  }
+  // All other countries: stretch flag as before
+  else {
+    const clipId=`clip-${rec.cca3 || normalizeName(rec.name)}`;
+    mapGroup.append("clipPath").attr("id",clipId).append("path").attr("d",path(feature));
+    const bbox=path.bounds(feature);
+    const boxWidth=bbox[1][0]-bbox[0][0], boxHeight=bbox[1][1]-bbox[0][1];
+    const flagUrl = rec.cca2 ? `https://flagcdn.com/w320/${rec.cca2.toLowerCase()}.png` : "";
+    const img = mapGroup.append("image")
+      .attr("href", flagUrl)
+      .attr("x", bbox[0][0]).attr("y", bbox[0][1])
+      .attr("width", boxWidth).attr("height", boxHeight)
+      .attr("preserveAspectRatio","none")
+      .attr("clip-path", `url(#${clipId})`)
+      .attr("style","pointer-events:none;")
+    img.on("error", function() {
+      d3.select(this).remove();
+      mapGroup.append("path")
+        .attr("d", path(feature))
+        .attr("clip-path", `url(#${clipId})`)
+        .attr("fill", "#005f99")
+        .attr("opacity", 0.7)
+        .attr("stroke", "#fff").attr("stroke-width", 0.8);
+    });
 
-  const [cx,cy] = computeVisualCenter(feature);
+    // Highlight country by matching all features with the same ISO code
+    const iso = rec.cca3;
+    mapGroup.selectAll("path.country")
+      .filter(d => {
+        const props = d.properties || {};
+        return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
+      })
+      .classed("revealed",true)
+      .raise();
+  }
 
-  const bbox=path.bounds(feature);
-  const boxWidth=bbox[1][0]-bbox[0][0], boxHeight=bbox[1][1]-bbox[0][1];
-  const flagAspect=1.5;
-  let w=boxWidth, h=w/flagAspect;
-  if(h>boxHeight){ h=boxHeight; w=h*flagAspect; }
-
-  mapGroup.append("image")
-    .attr("href", rec.cca2?`https://flagcdn.com/w320/${rec.cca2.toLowerCase()}.png`:"")
-    .attr("x", cx-w/2).attr("y", cy-h/2)
-    .attr("width", w).attr("height", h)
-    .attr("preserveAspectRatio","xMidYMid meet")
-    .attr("clip-path", `url(#${clipId})`)
-    .attr("stroke","#fff").attr("stroke-width",0.5);
-
-  mapGroup.selectAll("path").filter(d=>d===feature).classed("revealed",true);
+  // At the end of each reveal, add mouse events for popup on revealed country
+  setTimeout(() => {
+    const iso = rec.cca3;
+    mapGroup.selectAll("path.country")
+      .filter(d => {
+        const props = d.properties || {};
+        return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
+      })
+      .on("mousemove", function(event, d) {
+        const popup = document.getElementById("popup-country");
+        popup.textContent = rec.name;
+        popup.style.display = "block";
+        popup.style.left = (event.clientX + 12) + "px";
+        popup.style.top = (event.clientY - 10) + "px";
+        popup.style.opacity = "1";
+      })
+      .on("mouseleave", function() {
+        const popup = document.getElementById("popup-country");
+        popup.style.opacity = "0";
+        popup.style.display = "none";
+      });
+  }, 10);
 }
 
-// Game logic remains unchanged from previous version...
 // nextRound, submitAnswer, autocomplete, timer, pause/resume, endGame
 
 function nextRound(){
