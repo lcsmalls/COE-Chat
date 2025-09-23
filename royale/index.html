@@ -2,714 +2,874 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Catgirl Royale</title>
+  <title>Catgirl Royale Online</title>
+  <meta name="viewport" content="width=800, user-scalable=no">
   <link rel="icon" type="image/png" href="https://coe-chat.vercel.app/royale/Catgirl_Royale_favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Geologica:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet" />
   <style>
-    body { margin: 0; overflow: hidden; background: #222; }
-    canvas { display: block; margin: 0 auto; background: #333; }
+    :root {
+      --cat-pink: #ffb6c1;
+      --cat-blue: #4fc3f7;
+      --cat-purple: #a259e6;
+      --cat-orange: #ffb347;
+      --cat-green: #7fff7f;
+      --bg-gradient: linear-gradient(135deg, #ffb6c1 0%, #4fc3f7 100%);
+      --panel-bg: #fffafd;
+      --panel-bg2: #f7faff;
+      --shadow: 0 8px 32px #4fc3f766;
+      --radius: 28px;
+      font-size: 18px;
+    }
+    body {
+      font-family: 'Geologica', Arial, sans-serif;
+      background: var(--bg-gradient);
+      color: #444;
+      margin: 0;
+      min-height: 100vh;
+      box-sizing: border-box;
+      letter-spacing: 0.02em;
+      overflow-x: hidden;
+    }
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 48px 18px 24px 18px;
+      background: var(--panel-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      max-width: 430px;
+      margin: 28px auto 0 auto;
+      position: relative;
+    }
+    .active {
+      display: flex !important;
+      animation: fadeIn 0.6s;
+    }
+    @keyframes fadeIn { from {opacity:0;transform:scale(0.98);} to{opacity:1;transform:scale(1);} }
+    .logo {
+      margin-bottom: 12px;
+      max-width: 240px;
+      border-radius: 18px;
+      box-shadow: 0 0 20px #ffb6c199;
+      display: block;
+    }
+    h1, h2, h3 {
+      font-weight: 700;
+      margin: 0 0 22px 0;
+      letter-spacing: 0.04em;
+      font-family: 'Geologica', Arial, sans-serif;
+    }
+    h1 { font-size: 2.3em;}
+    h2 { font-size: 1.4em;}
+    label {
+      font-size: 1em;
+      margin-bottom: 7px;
+      font-weight: 500;
+      color: #567;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    input, select {
+      font-family: 'Geologica', Arial, sans-serif;
+      font-size: 1em;
+      padding: 8px 14px;
+      border-radius: 14px;
+      border: 2px solid #e3e3e3;
+      background: #fff;
+      margin-bottom: 8px;
+      outline: none;
+      transition: border-color 0.18s;
+      box-shadow: 0 2px 8px #f3f3f3;
+    }
+    select { min-width: 120px;}
+    input:focus, select:focus { border-color: var(--cat-blue);}
+    .btn {
+      font-family: 'Geologica', Arial, sans-serif;
+      font-size: 1.06em;
+      font-weight: 700;
+      padding: 14px 38px;
+      background: var(--cat-blue);
+      color: #fff;
+      border: none;
+      border-radius: 20px;
+      box-shadow: 0 2px 8px #4fc3f722;
+      cursor: pointer;
+      margin-top: 10px;
+      margin-bottom: 8px;
+      transition: background 0.18s;
+      outline: none;
+      letter-spacing: 0.04em;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn.pink {background: var(--cat-pink);}
+    .btn:active {background: #aeefff;}
+    .btn.pink:active {background: #ffd6e8;}
+    .btn .material-symbols-rounded {font-size: 1.3em;}
+    .panel {
+      background: var(--panel-bg2);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 18px #4fc3f733;
+      padding: 22px 18px;
+      margin-bottom: 18px;
+      width: 100%;
+      max-width: 355px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .player-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 10px;
+      margin-top: 6px;
+      width: 100%;
+    }
+    .player-list .player {
+      font-size: 1.2em;
+      padding: 10px 0 10px 0;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 2px 8px #4fc3f711;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      color: #222;
+      letter-spacing: 0.04em;
+      border-left: 11px solid var(--cat-blue);
+    }
+    .player-list .creator {background: #e7faff; border-left: 11px solid var(--cat-pink);}
+    .lobby-code {
+      font-size: 1.5em;
+      background: #fff;
+      border-radius: 12px;
+      padding: 6px 22px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: 0.18em;
+      border: 2px solid var(--cat-blue);
+      color: var(--cat-blue);
+      box-shadow: 0 1px 8px #4fc3f711;
+      user-select: all;
+    }
+    .game-tips {
+      font-size: 0.97em;
+      color: #888;
+      text-align: left;
+      margin-bottom: 10px;
+      margin-top: 10px;
+      padding: 5px 6px;
+    }
+    .cat-select {
+      display: flex; gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .cat-color {
+      width: 28px; height: 28px; border-radius: 50%; border: 2px solid #eee;
+      box-shadow: 0 1px 8px #2222; cursor: pointer; outline: none; 
+      margin-right: 10px;
+    }
+    .cat-color.selected { border: 2.5px solid var(--cat-blue);}
+    .material-symbols-rounded {
+      font-family: 'Material Symbols Rounded';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 1.25em;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      direction: ltr;
+      vertical-align: middle;
+      font-feature-settings: 'liga';
+      -webkit-font-feature-settings: 'liga';
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+    .canvas-panel {
+      background: var(--panel-bg2);
+      border-radius: var(--radius);
+      box-shadow: 0 6px 32px #4fc3f799;
+      padding: 12px;
+      margin-top: 28px;
+      margin-bottom: 28px;
+      max-width: 850px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #game {
+      border: 5px solid #fff;
+      border-radius: 22px;
+      box-shadow: 0 0 32px #4fc3f733;
+      background: #f7faff;
+      margin-top: 12px;
+      margin-bottom: 12px;
+      display: block; 
+    }
+    @media (max-width: 900px) {
+      .canvas-panel {padding: 3vw;}
+      #game {width:90vw !important; height:67vw !important;}
+    }
+    .rematch-btn {
+      margin-top: 32px;
+      background: var(--cat-pink);
+      font-size: 1.2em;
+      padding: 14px 44px;
+      border-radius: 22px;
+      border: none;
+      box-shadow: 0 2px 8px #ffb6c122;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.18s;
+    }
+    .rematch-btn:active {background: #ffd6e8;}
+    .hide {display:none !important;}
+    ::-webkit-scrollbar {
+      width: 9px;
+      background: #f7faff;
+      border-radius: 12px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #ffb6c1;
+      border-radius: 12px;
+    }
   </style>
 </head>
 <body>
-<canvas id="game"></canvas>
+<!-- ALL SCREENS -->
+<div id="ss1-mode-select" class="screen active">
+  <img class="logo" src="https://coe-chat.vercel.app/royale/Catgirl_Royale_Logo.png" alt="Catgirl Royale Logo">
+  <h1>Catgirl Royale</h1>
+  <div class="panel">
+    <button class="btn pink" onclick="startOffline()">
+      <span class="material-symbols-rounded">videogame_asset</span>
+      Offline Mode
+    </button>
+    <button class="btn" onclick="startOnline()">
+      <span class="material-symbols-rounded">public</span>
+      Online Mode
+    </button>
+  </div>
+  <div class="game-tips">
+    <b>Offline:</b> WASD/E for Player 1, Arrow Keys + M for Player 2.<br>
+    <b>Online:</b> All players use WASD/E.<br>
+  </div>
+</div>
+<div id="ss2-player-info" class="screen">
+  <img class="logo" src="https://coe-chat.vercel.app/royale/Catgirl_Royale_Logo.png" alt="Catgirl Royale Logo">
+  <h2>Name & Color</h2>
+  <div class="panel">
+    <label for="onlineName">
+      <span class="material-symbols-rounded">person</span>
+      Your Name
+    </label>
+    <input id="onlineName" type="text" maxlength="16" value="" autocomplete="off">
+    <label for="onlineColor">
+      <span class="material-symbols-rounded">palette</span>
+      Catgirl Color
+    </label>
+    <div class="cat-select">
+      <div class="cat-color" style="background:var(--cat-pink)" onclick="selectCatColor('#ffb6c1')" id="cat-pink"></div>
+      <div class="cat-color" style="background:var(--cat-blue)" onclick="selectCatColor('#4fc3f7')" id="cat-blue"></div>
+      <div class="cat-color" style="background:var(--cat-purple)" onclick="selectCatColor('#a259e6')" id="cat-purple"></div>
+      <div class="cat-color" style="background:var(--cat-orange)" onclick="selectCatColor('#ffb347')" id="cat-orange"></div>
+      <div class="cat-color" style="background:var(--cat-green)" onclick="selectCatColor('#7fff7f')" id="cat-green"></div>
+    </div>
+    <input id="onlineColor" type="hidden" value="#ffb6c1">
+    <button class="btn" onclick="confirmPlayerInfo()">
+      <span class="material-symbols-rounded">check_circle</span>
+      Confirm
+    </button>
+  </div>
+</div>
+<div id="ss3-create-join" class="screen">
+  <img class="logo" src="https://coe-chat.vercel.app/royale/Catgirl_Royale_Logo.png" alt="Catgirl Royale Logo">
+  <h2>Online: Create or Join</h2>
+  <div class="panel">
+    <button class="btn pink" onclick="createGame()">
+      <span class="material-symbols-rounded">add_circle</span>
+      Create Game
+    </button>
+    <button class="btn" onclick="showJoinScreen()">
+      <span class="material-symbols-rounded">login</span>
+      Join Game
+    </button>
+  </div>
+</div>
+<div id="ss4-join-game" class="screen">
+  <img class="logo" src="https://coe-chat.vercel.app/royale/Catgirl_Royale_Logo.png" alt="Catgirl Royale Logo">
+  <h2>Join Game</h2>
+  <div class="panel">
+    <label for="joinCode">
+      <span class="material-symbols-rounded">key</span>
+      Game Code
+    </label>
+    <input id="joinCode" type="text" maxlength="8" autocomplete="off" style="width:160px;">
+    <button class="btn" onclick="joinGame()">
+      <span class="material-symbols-rounded">login</span>
+      Join
+    </button>
+  </div>
+</div>
+<div id="lobby" class="screen">
+  <img class="logo" src="https://coe-chat.vercel.app/royale/Catgirl_Royale_Logo.png" alt="Catgirl Royale Logo">
+  <h2>Lobby</h2>
+  <div class="panel" style="align-items:center;">
+    <div class="lobby-code" id="lobbyCode"></div>
+    <div class="player-list" id="playerList"></div>
+    <button class="btn pink" id="startBtn" onclick="startGame()" style="display:none;">
+      <span class="material-symbols-rounded">play_arrow</span>
+      Start Game
+    </button>
+    <div class="game-tips">
+      <span class="material-symbols-rounded" style="font-size:1.2em;">info</span>
+      Share code & wait for up to 4 players. Only creator can start. 
+    </div>
+  </div>
+</div>
+<div id="offlineSetup" class="screen">
+  <img class="logo" src="https://coe-chat.vercel.app/royale/Catgirl_Royale_Logo.png" alt="Catgirl Royale Logo">
+  <h2>Local Multiplayer</h2>
+  <div class="panel">
+    <label>Player 1 Name</label>
+    <input id="p1name" value="Player 1" maxlength="16">
+    <label>Player 1 Color</label>
+    <div class="cat-select" id="p1cat-select">
+      <div class="cat-color" style="background:var(--cat-pink)" onclick="selectOfflineCatColor(1, '#ffb6c1')" id="p1cat-pink"></div>
+      <div class="cat-color" style="background:var(--cat-blue)" onclick="selectOfflineCatColor(1, '#4fc3f7')" id="p1cat-blue"></div>
+      <div class="cat-color" style="background:var(--cat-purple)" onclick="selectOfflineCatColor(1, '#a259e6')" id="p1cat-purple"></div>
+      <div class="cat-color" style="background:var(--cat-orange)" onclick="selectOfflineCatColor(1, '#ffb347')" id="p1cat-orange"></div>
+      <div class="cat-color" style="background:var(--cat-green)" onclick="selectOfflineCatColor(1, '#7fff7f')" id="p1cat-green"></div>
+    </div>
+    <input id="p1color" type="hidden" value="#ffb6c1">
+    <label>Player 2 Name</label>
+    <input id="p2name" value="Player 2" maxlength="16">
+    <label>Player 2 Color</label>
+    <div class="cat-select" id="p2cat-select">
+      <div class="cat-color" style="background:var(--cat-pink)" onclick="selectOfflineCatColor(2, '#ffb6c1')" id="p2cat-pink"></div>
+      <div class="cat-color" style="background:var(--cat-blue)" onclick="selectOfflineCatColor(2, '#4fc3f7')" id="p2cat-blue"></div>
+      <div class="cat-color" style="background:var(--cat-purple)" onclick="selectOfflineCatColor(2, '#a259e6')" id="p2cat-purple"></div>
+      <div class="cat-color" style="background:var(--cat-orange)" onclick="selectOfflineCatColor(2, '#ffb347')" id="p2cat-orange"></div>
+      <div class="cat-color" style="background:var(--cat-green)" onclick="selectOfflineCatColor(2, '#7fff7f')" id="p2cat-green"></div>
+    </div>
+    <input id="p2color" type="hidden" value="#4fc3f7">
+    <button class="btn pink" onclick="startOfflineGame()">Start Game</button>
+  </div>
+  <div class="game-tips">
+    WASD/E for Player 1<br>Arrow Keys + M for Player 2
+  </div>
+</div>
+<div id="game-panel" class="canvas-panel hide">
+  <canvas id="game" width="800" height="600"></canvas>
+</div>
+<div id="deathScreen" class="screen" style="z-index:30;display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;align-items:center;justify-content:center;background:rgba(255,255,255,0.93);">
+  <h1 id="winnerText"></h1>
+  <button class="rematch-btn" onclick="rematch()">
+    <span class="material-symbols-rounded">restart_alt</span>
+    Rematch
+  </button>
+</div>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script>
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-canvas.width = 800;
-canvas.height = 600;
-
-// Player properties
-const player = {
-  x: canvas.width / 2,
-  y: canvas.height / 1,
-  radius: 25,
-  speed: 6,
-  angle: 0,
-  color: '#ffb6c1',
-  health: 100,
-  maxHealth: 100,
-  lastMoveDir: { x: 1, y: 0 } // Add lastMoveDir for player 1
+const firebaseConfig = {
+  apiKey: "AIzaSyC5yaurfWJZJYqYDH6os2pgjsouHvQkRQg",
+  authDomain: "catgirl-royale-4ceec.firebaseapp.com",
+  databaseURL: "https://catgirl-royale-4ceec-default-rtdb.firebaseio.com",
+  projectId: "catgirl-royale-4ceec",
+  storageBucket: "catgirl-royale-4ceec.appspot.com",
+  messagingSenderId: "239457944443",
+  appId: "1:239457944443:web:d885e55fbb084d671db3de",
+  measurementId: "G-L96K0QM97T"
 };
-
-// Player 2 properties
-const player2 = {
-  x: canvas.width / 2,
-  y: canvas.height / 1,
-  radius: 25,
-  speed: 6,
-  angle: 0,
-  color: '#4fc3f7',
-  health: 100,
-  maxHealth: 100,
-  lastMoveDir: { x: 1, y: 0 } // Add lastMoveDir for player 2
-};
-
-// Bullets array, now with owner
-const bullets = [];
-const bulletSpeed = 10;
-
-// Fire bullet for a player
-function fireBullet(owner) {
-  const p = owner === 1 ? player : player2;
-  // Use lastMoveDir for aim
-  const angle = Math.atan2(p.lastMoveDir.y, p.lastMoveDir.x);
-  bullets.push({
-    x: p.x + Math.cos(angle) * (p.radius + 10),
-    y: p.y + Math.sin(angle) * (p.radius + 10),
-    dx: Math.cos(angle) * bulletSpeed,
-    dy: Math.sin(angle) * bulletSpeed,
-    radius: 6,
-    owner
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+let firebaseUser = null;
+firebase.auth().onAuthStateChanged(function(user) {
+  if (user) { firebaseUser = user; }
+  else { firebase.auth().signInAnonymously(); }
+});
+let myName = "", myColor = "#ffb6c1", mode = "offline";
+let gameCode = null, isCreator = false, onlinePlayers = [];
+let myUID = null, gameStarted = false;
+let players = [], bullets = [], winner = null, gameState = 'menu';
+let keySequence = '', cheatCode = 'catgirl';
+let keys = {}, onlineHeldKeys = {}, machineGunInterval = null;
+let powerups = [], powerupTimer = 0;
+let invincibleTimeouts = [null, null, null, null];
+let mouseX = 400, mouseY = 300, walls = [
+  { x: 300, y: 200, w: 40, h: 200 },
+  { x: 500, y: 100, w: 200, h: 40 },
+  { x: 150, y: 400, w: 120, h: 40 }
+];
+function showScreen(id) {
+  for (const el of document.querySelectorAll('.screen')) el.classList.remove('active');
+  const target = document.getElementById(id);
+  if (target) target.classList.add('active');
+  document.getElementById("game-panel").classList.toggle('hide', id !== "game-panel");
+  document.getElementById("deathScreen").style.display = "none";
+  window.scrollTo(0,0);
+  resizeGameArea();
+}
+function genUID() { return "u" + Math.random().toString(36).substr(2,9); }
+function genCode() { return Math.random().toString(36).substr(2,6).toUpperCase(); }
+function startOffline() { mode = "offline"; showScreen("offlineSetup"); }
+function startOnline() { mode = "online"; showScreen("ss2-player-info"); document.getElementById('onlineName').value = ""; selectCatColor("#ffb6c1"); }
+function selectCatColor(color) {
+  myColor = color; document.getElementById('onlineColor').value = color;
+  for (const el of document.querySelectorAll('.cat-color')) el.classList.remove('selected');
+  const elid = {"#ffb6c1":"cat-pink", "#4fc3f7":"cat-blue", "#a259e6":"cat-purple", "#ffb347":"cat-orange", "#7fff7f":"cat-green"}[color];
+  document.getElementById(elid).classList.add('selected');
+}
+function confirmPlayerInfo() { myName = document.getElementById('onlineName').value.trim() || "Player"; showScreen("ss3-create-join"); }
+function showJoinScreen() { showScreen("ss4-join-game"); document.getElementById("joinCode").value = ""; }
+function createGame() {
+  myUID = genUID(); const code = genCode(); gameCode = code; isCreator = true;
+  db.ref('games/' + code).set({
+    creator: myUID, started: false, winner: null, cheatwinner: null,
+    players: { [myUID]: { name: myName, color: myColor, uid: myUID, ready: false, health: 100, invincible: false } }
+  }).then(() => { showLobby(); listenLobby(); });
+}
+function joinGame() {
+  const code = document.getElementById('joinCode').value.trim();
+  myUID = genUID();
+  db.ref('games/' + code + '/players').once('value').then(snap => {
+    const pl = snap.val();
+    if (!pl || Object.keys(pl).length >= 4) { alert("Game not found or full!"); return; }
+    gameCode = code; isCreator = false;
+    db.ref('games/' + code + '/players/' + myUID).set({ name: myName, color: myColor, uid: myUID, ready: false, health: 100, invincible: false }).then(() => { showLobby(); listenLobby(); });
   });
 }
-
-// Keyboard state
-const keys = {};
-let mouseX = player.x;
-let mouseY = player.y;
-let machineGunInterval1 = null;
-let machineGunInterval2 = null;
-const machineGunRate = 80;
-
-// Menu state
-let gameState = 'menu'; // 'menu', 'playing', 'gameover'
-let player1Name = 'Player 1';
-let player2Name = 'Player 2';
-let player1Color = '#ffb6c1';
-let player2Color = '#4fc3f7';
-
-// XP and powerup state
-player.xp = 0;
-player2.xp = 0;
-player.invincible = false;
-player2.invincible = false;
-let invincibleTimeout1 = null;
-let invincibleTimeout2 = null;
-let powerups = [];
-let powerupTimer = 0;
-const POWERUP_SPAWN_INTERVAL = 900; // frames (was 300)
-const INVINCIBLE_DURATION = 5000; // ms (was 10000)
-
-// Create menu elements
-const menuDiv = document.createElement('div');
-menuDiv.style.position = 'fixed';
-menuDiv.style.left = '0';
-menuDiv.style.top = '0';
-menuDiv.style.width = '100vw';
-menuDiv.style.height = '100vh';
-menuDiv.style.background = 'rgba(0,0,0,0.8)';
-menuDiv.style.display = 'flex';
-menuDiv.style.flexDirection = 'column';
-menuDiv.style.justifyContent = 'center';
-menuDiv.style.alignItems = 'center';
-menuDiv.style.zIndex = '10';
-menuDiv.innerHTML = `
-  <div style="background:#222;padding:32px 48px;border-radius:16px;box-shadow:0 0 32px #000;display:flex;flex-direction:column;gap:24px;align-items:center;">
-    <img src="https://coe-chat.vercel.app/royale/Catgirl_Royale_Logo.png" alt="Catgirl Royale Logo" style="max-width:320px;max-height:120px;margin-bottom:8px;">
-    <div style='display:flex;gap:32px;'>
-      <div style='display:flex;flex-direction:column;align-items:center;'>
-        <label style='color:#fff'>Player 1 Name</label>
-        <input id='p1name' value='Player 1' style='margin-bottom:8px;padding:4px 8px;'>
-        <label style='color:#fff'>Color</label>
-        <select id='p1color' style='width:90px;height:32px;font-size:16px;'>
-          <option value="#4fc3f7">Testicular Blue</option>
-          <option value="#a259e6">Testicular Purple</option>
-          <option value="#ffb6c1" selected>Testicular Pink</option>
-          <option value="#ffb347">Testicular Orange</option>
-          <option value="#7fff7f">Testicular Green</option>
-        </select>
-      </div>
-      <div style='display:flex;flex-direction:column;align-items:center;'>
-        <label style='color:#fff'>Player 2 Name</label>
-        <input id='p2name' value='Player 2' style='margin-bottom:8px;padding:4px 8px;'>
-        <label style='color:#fff'>Color</label>
-        <select id='p2color' style='width:90px;height:32px;font-size:16px;'>
-          <option value="#4fc3f7" selected>Testicular Blue</option>
-          <option value="#a259e6">Testicular Purple</option>
-          <option value="#ffb6c1">Testicular Pink</option>
-          <option value="#ffb347">Testicular Orange</option>
-          <option value="#7fff7f">Testicular Green</option>
-        </select>
-      </div>
-    </div>
-    <button id='playbtn' style='margin-top:16px;padding:8px 32px;font-size:20px;border-radius:8px;border:none;background:#fff;color:#222;cursor:pointer;'>Play</button>
-  </div>
-`;
-document.body.appendChild(menuDiv);
-
-// Start game from menu
-function startGameFromMenu() {
-  player1Name = document.getElementById('p1name').value || 'Player 1';
-  player2Name = document.getElementById('p2name').value || 'Player 2';
-  player1Color = document.getElementById('p1color').value || '#ffb6c1';
-  player2Color = document.getElementById('p2color').value || '#4fc3f7';
-  player1Cat = colorToCat[player1Color] || 'pink';
-  player2Cat = colorToCat[player2Color] || 'blue';
-  menuDiv.style.display = 'none';
-  gameState = 'playing';
-  // Reset players
-  player.x = canvas.width * 3/4;
-  player.y = canvas.height / 2;
-  player.health = player.maxHealth = 100;
-  player.color = player1Color;
-  player.lastMoveDir = { x: -1, y: 0 }; // Player 1 faces left
-  player2.x = canvas.width / 4;
-  player2.y = canvas.height / 2;
-  player2.health = player2.maxHealth = 100;
-  player2.color = player2Color;
-  player2.lastMoveDir = { x: 1, y: 0 }; // Player 2 faces right
-  bullets.length = 0;
-  winner = null;
-  requestAnimationFrame(gameLoop);
+function showLobby() { showScreen("lobby"); document.getElementById("lobbyCode").innerText = gameCode; document.getElementById("startBtn").style.display = "none"; updatePlayerList([]); }
+function updatePlayerList(list) {
+  const listEl = document.getElementById("playerList"); listEl.innerHTML = "";
+  list.forEach((p,i) => { const div = document.createElement('div'); div.className = "player" + (i===0?" creator":""); div.innerHTML = `<span class="player-color" style="background:${p.color}"></span> ${p.name}`; listEl.appendChild(div); });
 }
-document.getElementById('playbtn').onclick = startGameFromMenu;
-
-let keySequence = '';
-const cheatCodeplayer1 = 'catgirl';
-
-// Keyboard events
-window.addEventListener('keydown', e => {
-  const key = e.key.toLowerCase();
-  if (!keys[key]) {
-    keys[key] = true;
-
- keySequence += key;
-  if (keySequence.length > cheatCodeplayer1.length) {
-    keySequence = keySequence.slice(-cheatCodeplayer1.length); // keep only last N letters
-  }
-  if (keySequence === cheatCodeplayer1) {
-    winner = player1Name;
-    gameState = 'gameover';
-    
-  }
-
-    // Player 1 shooting (E, now supports autofire)
-    if (e.code === 'KeyE' && !machineGunInterval1) {
-      fireBullet(1);
-      machineGunInterval1 = setInterval(() => fireBullet(1), machineGunRate);
+function listenLobby() {
+  db.ref('games/' + gameCode + '/players').on('value', snap => {
+    const pl = snap.val()||{}; onlinePlayers = Object.values(pl); updatePlayerList(onlinePlayers);
+    if (isCreator && onlinePlayers.length >= 2 && onlinePlayers.length <= 4) document.getElementById("startBtn").style.display = "";
+    else document.getElementById("startBtn").style.display = "none";
+  });
+  db.ref('games/' + gameCode + '/started').on('value', snap => { 
+    if (snap.val()) { 
+      winner = null; gameState = 'playing';
+      gameStarted = true; // <-- Fix: set gameStarted true so processShootEvents runs
+      db.ref('games/' + gameCode + '/winner').set(null);
+      db.ref('games/' + gameCode + '/cheatwinner').set(null);
+      startOnlineGame(true); 
+    } 
+  });
+  db.ref('games/' + gameCode + '/winner').on('value', snap => { if (snap.val()) showWinScreen(snap.val()); });
+  db.ref('games/' + gameCode + '/cheatwinner').on('value', snap => { if (snap.val()) showWinScreen(snap.val()); });
+}
+function startGame() { 
+  // Reset health/invincible for all players before starting
+  db.ref('games/' + gameCode + '/players').once('value').then(snap => {
+    const pl = snap.val();
+    if (pl) {
+      Object.keys(pl).forEach(uid => {
+        db.ref('games/' + gameCode + '/players/' + uid).update({ health: 100, invincible: false });
+      });
     }
-    // Player 2 shooting (Right Ctrl, now supports autofire)
-    if (e.code === 'ControlRight' && !machineGunInterval2) {
-      fireBullet(2);
-      machineGunInterval2 = setInterval(() => fireBullet(2), machineGunRate);
-    }
-    // Player 1 machine gun (F, same as E)
-    if (e.code === 'KeyF' && !machineGunInterval1) {
-      fireBullet(1);
-      machineGunInterval1 = setInterval(() => fireBullet(1), machineGunRate);
-    }
-    // Player 2 machine gun (M, same as Ctrl)
-    if (e.code === 'KeyM' && !machineGunInterval2) {
-      fireBullet(2);
-      machineGunInterval2 = setInterval(() => fireBullet(2), machineGunRate);
-    }
-  }
-});
-
-
-
-window.addEventListener('keyup', e => {
-  const key = e.key.toLowerCase();
-  keys[key] = false;
-  if (e.code === 'KeyE' || e.code === 'KeyF') {
-    clearInterval(machineGunInterval1);
-    machineGunInterval1 = null;
-  }
-  if (e.code === 'ControlRight' || e.code === 'KeyM') {
-    clearInterval(machineGunInterval2);
-    machineGunInterval2 = null;
-  }
-});
-
-// Mouse for player 1
-canvas.addEventListener('mousemove', e => {
-  const rect = canvas.getBoundingClientRect();
-  mouseX = e.clientX - rect.left;
-  mouseY = e.clientY - rect.top;
-});
-
-let winner = null;
-
-function resetPlayers() {
-  player.health = player.maxHealth = 100;
-  player.xp = 0;
-  player.invincible = false;
-  player2.health = player2.maxHealth = 100;
-  player2.xp = 0;
-  player2.invincible = false;
+    db.ref('games/' + gameCode + '/winner').set(null);
+    db.ref('games/' + gameCode + '/cheatwinner').set(null);
+    db.ref('games/' + gameCode + '/started').set(true);
+  });
 }
-
-// Remove XP-based damage scaling, always return 1 for default weapon
-function getPlayerDamage(p) {
-  // Always 1 HP per shot, regardless of XP or invincibility
-  return 1;
-}
-
-function circleRectCollides(cx, cy, cr, rx, ry, rw, rh) {
-  // Find the closest point to the circle within the rectangle
-  const closestX = Math.max(rx, Math.min(cx, rx + rw));
-  const closestY = Math.max(ry, Math.min(cy, ry + rh));
-  // Calculate the distance between the circle's center and this closest point
-  const dx = cx - closestX;
-  const dy = cy - closestY;
-  // If the distance is less than the circle's radius, an intersection occurs
-  return (dx * dx + dy * dy) < (cr * cr);
-}
-
-// Utility: resolve circle-rectangle collision (push circle out of wall)
-function resolveCircleRectCollision(p, wall) {
-  // Only resolve if colliding
-  if (!circleRectCollides(p.x, p.y, p.radius, wall.x, wall.y, wall.w, wall.h)) return;
-  // Find the closest point on the wall
-  const closestX = Math.max(wall.x, Math.min(p.x, wall.x + wall.w));
-  const closestY = Math.max(wall.y, Math.min(p.y, wall.y + wall.h));
-  // Vector from closest point to player center
-  let dx = p.x - closestX;
-  let dy = p.y - closestY;
-  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-  // Push out just enough so the circle is not colliding
-  const overlap = p.radius - dist + 0.1;
-  if (overlap > 0) {
-    dx /= dist;
-    dy /= dist;
-    p.x += dx * overlap;
-    p.y += dy * overlap;
-  }
-}
-
-function update() {
-  if (gameState !== 'playing') return;
-  if (winner) return; // Stop game if someone won
-  // Player 1 movement (WASD)
-  let moved1 = false;
-  if (keys['w']) { player.y -= player.speed; player.lastMoveDir = { x: 0, y: -1 }; moved1 = true; }
-  if (keys['s']) { player.y += player.speed; player.lastMoveDir = { x: 0, y: 1 }; moved1 = true; }
-  if (keys['a']) { player.x -= player.speed; player.lastMoveDir = { x: -1, y: 0 }; moved1 = true; }
-  if (keys['d']) { player.x += player.speed; player.lastMoveDir = { x: 1, y: 0 }; moved1 = true; }
-  // After moving, resolve wall collisions for player 1
-  for (const wall of walls) {
-    resolveCircleRectCollision(player, wall);
-  }
-
-  // Player 2 movement (arrows)
-  let moved2 = false;
-  if (keys['arrowup']) { player2.y -= player2.speed; player2.lastMoveDir = { x: 0, y: -1 }; moved2 = true; }
-  if (keys['arrowdown']) { player2.y += player2.speed; player2.lastMoveDir = { x: 0, y: 1 }; moved2 = true; }
-  if (keys['arrowleft']) { player2.x -= player2.speed; player2.lastMoveDir = { x: -1, y: 0 }; moved2 = true; }
-  if (keys['arrowright']) { player2.x += player2.speed; player2.lastMoveDir = { x: 1, y: 0 }; moved2 = true; }
-  // After moving, resolve wall collisions for player 2
-  for (const wall of walls) {
-    resolveCircleRectCollision(player2, wall);
-  }
-
-  // Clamp to canvas
-  player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
-  player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
-  player2.x = Math.max(player2.radius, Math.min(canvas.width - player2.radius, player2.x));
-  player2.y = Math.max(player2.radius, Math.min(canvas.height - player2.radius, player2.y));
-
-  // Set angle for drawing (use lastMoveDir)
-  player.angle = Math.atan2(player.lastMoveDir.y, player.lastMoveDir.x);
-  player2.angle = Math.atan2(player2.lastMoveDir.y, player2.lastMoveDir.x);
-
-  // Powerup spawn (only one at a time)
-  powerupTimer++;
-  if (powerupTimer >= POWERUP_SPAWN_INTERVAL && powerups.filter(p => p.active).length === 0) {
-    powerupTimer = 0;
-    powerups.push({
-      x: Math.random() * (canvas.width - 60) + 30,
-      y: Math.random() * (canvas.height - 60) + 30,
-      radius: 18,
-      active: true
+function showWinScreen(name) { document.getElementById("winnerText").innerText = `${name} won!`; document.getElementById("deathScreen").style.display = "flex"; resizeGameArea(); }
+function rematch() {
+  if (mode == "offline") showScreen("offlineSetup");
+  else {
+    db.ref('games/' + gameCode + '/winner').set(null);
+    db.ref('games/' + gameCode + '/cheatwinner').set(null);
+    db.ref('games/' + gameCode + '/bullets').set([]);
+    db.ref('games/' + gameCode + '/powerups').set([]);
+    db.ref('games/' + gameCode + '/started').set(false);
+    let newPlayers = {};
+    onlinePlayers.forEach((p, i) => {
+      newPlayers[p.uid] = { name: p.name, color: p.color, uid: p.uid, ready: false, health: 100, invincible: false };
     });
+    db.ref('games/' + gameCode + '/players').set(newPlayers);
+    db.ref('games/' + gameCode + '/creator').set(onlinePlayers[0]?.uid || myUID);
+    isCreator = (onlinePlayers[0]?.uid === myUID);
+    winner = null; gameState = 'menu';
+    showLobby();
+    listenLobby();
   }
-  // Bullet collision
-  for (let i = bullets.length - 1; i >= 0; i--) {
-    const b = bullets[i];
-    b.x += b.dx;
-    b.y += b.dy;
-    if (
-      b.x < 0 || b.x > canvas.width ||
-      b.y < 0 || b.y > canvas.height
-    ) {
-      bullets.splice(i, 1);
-      continue;
-    }
-    // Check wall collision
-    let hitWall = false;
-    for (const wall of walls) {
-      if (
-        b.x > wall.x - b.radius &&
-        b.x < wall.x + wall.w + b.radius &&
-        b.y > wall.y - b.radius &&
-        b.y < wall.y + wall.h + b.radius &&
-        circleRectCollides(b.x, b.y, b.radius, wall.x, wall.y, wall.w, wall.h)
-      ) {
-        hitWall = true;
-        break;
-      }
-    }
-    if (hitWall) {
-      bullets.splice(i, 1);
-      continue;
-    }
-    if (b.owner === 1) {
-      const dx = b.x - player2.x;
-      const dy = b.y - player2.y;
-      if (Math.sqrt(dx*dx + dy*dy) < player2.radius && !player2.invincible) {
-        const dmg = getPlayerDamage(player);
-        player2.health -= dmg;
-        // player.xp += 10; // XP gain can remain if you want XP for other purposes, but it no longer affects damage
-        bullets.splice(i, 1);
-        continue;
-      }
-    } else if (b.owner === 2) {
-      const dx = b.x - player.x;
-      const dy = b.y - player.y;
-      if (Math.sqrt(dx*dx + dy*dy) < player.radius && !player.invincible) {
-        const dmg = getPlayerDamage(player2);
-        player.health -= dmg;
-        // player2.xp += 10;
-        bullets.splice(i, 1);
-        continue;
-      }
-    }
-  }
-  // Powerup collision
-  for (let i = powerups.length - 1; i >= 0; i--) {
-    const pwr = powerups[i];
-    if (!pwr.active) continue;
-    // Player 1
-    if (Math.hypot(player.x - pwr.x, player.y - pwr.y) < player.radius + pwr.radius) {
-      pwr.active = false;
-      player.invincible = true;
-      clearTimeout(invincibleTimeout1);
-      invincibleTimeout1 = setTimeout(() => player.invincible = false, INVINCIBLE_DURATION);
-    }
-    // Player 2
-    if (Math.hypot(player2.x - pwr.x, player2.y - pwr.y) < player2.radius + pwr.radius) {
-      pwr.active = false;
-      player2.invincible = true;
-      clearTimeout(invincibleTimeout2);
-      invincibleTimeout2 = setTimeout(() => player2.invincible = false, INVINCIBLE_DURATION);
-    }
-  }
-  // Remove inactive powerups
-  powerups = powerups.filter(p => p.active);
-  // Clamp health
-  player.health = Math.max(0, player.health);
-  player2.health = Math.max(0, player2.health);
-  // Check for win
-  if (player.health <= 0) { winner = player2Name; gameState = 'gameover'; }
-  if (player2.health <= 0) { winner = player1Name; gameState = 'gameover'; }
 }
-
-// Utility: get contrasting text color (black or white) for a given background color
-function getContrastYIQ(hexcolor) {
-  hexcolor = hexcolor.replace('#', '');
-  if (hexcolor.length === 3) hexcolor = hexcolor[0]+hexcolor[0]+hexcolor[1]+hexcolor[1]+hexcolor[2]+hexcolor[2];
-  const r = parseInt(hexcolor.substr(0,2),16);
-  const g = parseInt(hexcolor.substr(2,2),16);
-  const b = parseInt(hexcolor.substr(4,2),16);
-  const yiq = ((r*299)+(g*587)+(b*114))/1000;
-  return (yiq >= 128) ? '#222' : '#fff';
-}
-
-function drawXPBars() {
-  // Player 1 (below health bar)
-  ctx.save();
-  ctx.fillStyle = '#444';
-  ctx.fillRect(20, 44, 200, 10);
-  ctx.fillStyle = '#ffd700';
-  ctx.fillRect(20, 44, Math.min(200, player.xp * 2), 10);
-  ctx.strokeStyle = '#fff';
-  ctx.strokeRect(20, 44, 200, 10);
-  // Player 2 (below health bar)
-  ctx.fillStyle = '#444';
-  ctx.fillRect(canvas.width - 220, 44, 200, 10);
-  ctx.fillStyle = '#ffd700';
-  ctx.fillRect(canvas.width - 220, 44, Math.min(200, player2.xp * 2), 10);
-  ctx.strokeStyle = '#fff';
-  ctx.strokeRect(canvas.width - 220, 44, 200, 10);
-  ctx.restore();
-}
-
-function drawPowerups() {
-  ctx.save();
-  for (const pwr of powerups) {
-    if (!pwr.active) continue;
-    ctx.beginPath();
-    ctx.arc(pwr.x, pwr.y, pwr.radius, 0, Math.PI * 2);
-    ctx.fillStyle = '#00ffea';
-    ctx.shadowColor = '#fff';
-    ctx.shadowBlur = 16;
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.font = 'bold 18px Bagel Fat';
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'center';
-    ctx.fillText('★', pwr.x, pwr.y + 7);
-  }
-  ctx.restore();
-}
-
-// Load gun images for all four directions
-const gunImgRight = new Image();
-gunImgRight.src = 'https://coe-chat.vercel.app/royale/gun_facing_right.png';
-const gunImgLeft = new Image();
-gunImgLeft.src = 'https://coe-chat.vercel.app/royale/gun_facing_left.png';
-const gunImgUp = new Image();
-gunImgUp.src = 'https://coe-chat.vercel.app/royale/gun_facing_up.png';
-const gunImgDown = new Image();
-gunImgDown.src = 'https://coe-chat.vercel.app/royale/gun_facing_down.png';
-
-// Load cat images
-const catImages = {
-  blue: new Image(),
-  violet: new Image(),
-  pink: new Image(),
-  orange: new Image(),
-  green: new Image()
-};
+const catImages = { blue: new Image(), violet: new Image(), pink: new Image(), orange: new Image(), green: new Image() };
 catImages.blue.src = 'https://coe-chat.vercel.app/royale/cat_blue.png';
 catImages.violet.src = 'https://coe-chat.vercel.app/royale/cat_violet.png';
 catImages.pink.src = 'https://coe-chat.vercel.app/royale/cat_pink.png';
 catImages.orange.src = 'https://coe-chat.vercel.app/royale/cat_orange.png';
 catImages.green.src = 'https://coe-chat.vercel.app/royale/cat_green.png';
+const colorToCat = { '#4fc3f7':'blue', '#a259e6':'violet', '#ffb6c1':'pink', '#ffb347':'orange', '#7fff7f':'green' };
+const gunImgRight = new Image(); gunImgRight.src = 'https://coe-chat.vercel.app/royale/gun_facing_right.png';
+const gunImgLeft = new Image(); gunImgLeft.src = 'https://coe-chat.vercel.app/royale/gun_facing_left.png';
+const gunImgUp = new Image(); gunImgUp.src = 'https://coe-chat.vercel.app/royale/gun_facing_up.png';
+const gunImgDown = new Image(); gunImgDown.src = 'https://coe-chat.vercel.app/royale/gun_facing_down.png';
+const canvas = document.getElementById('game'); const ctx = canvas.getContext('2d'); canvas.width = 800; canvas.height = 600;
+const bulletSpeed = 10, machineGunRate = 80, POWERUP_SPAWN_INTERVAL = 900, INVINCIBLE_DURATION = 5000;
+/* -- Offline Logic -- */
+function selectOfflineCatColor(playerNum, color) {
+  document.getElementById('p'+playerNum+'color').value = color;
+  for (const el of document.querySelectorAll('#p'+playerNum+'cat-select .cat-color')) el.classList.remove('selected');
+  const elid = {"#ffb6c1":"p"+playerNum+"cat-pink", "#4fc3f7":"p"+playerNum+"cat-blue", "#a259e6":"p"+playerNum+"cat-purple", "#ffb347":"p"+playerNum+"cat-orange", "#7fff7f":"p"+playerNum+"cat-green"}[color];
+  document.getElementById(elid).classList.add('selected');
+}
+selectOfflineCatColor(1, "#ffb6c1");
+selectOfflineCatColor(2, "#4fc3f7");
+function startOfflineGame() {
+  players = [
+    { x: canvas.width*3/4, y: canvas.height/2, radius: 25, speed: 4, angle: 0, color: document.getElementById('p1color').value, name: document.getElementById('p1name').value.trim()||'Player 1', health: 100, maxHealth: 100, xp:0, invincible:false, lastMoveDir:{x:-1,y:0} },
+    { x: canvas.width/4, y: canvas.height/2, radius: 25, speed: 4, angle: 0, color: document.getElementById('p2color').value, name: document.getElementById('p2name').value.trim()||'Player 2', health: 100, maxHealth: 100, xp:0, invincible:false, lastMoveDir:{x:1,y:0} }
+  ];
+  bullets = []; winner = null; powerups = []; powerupTimer = 0; gameState = 'playing'; showScreen("game-panel"); requestAnimationFrame(gameLoop); setupInputHandlers(2);
+}
+function setupInputHandlers(numPlayers) {
+  keys = {}; keySequence = ''; machineGunInterval = null;
+  window.onkeydown = function(e) {
+    const key = e.key.toLowerCase();
+    if (!keys[key]) {
+      keys[key] = true;
+      keySequence += key;
+      if (keySequence.length > cheatCode.length) keySequence = keySequence.slice(-cheatCode.length);
+      if (keySequence === cheatCode) { winner = players[0].name; gameState = 'gameover'; showWinScreen(winner); }
+      if (e.code == "KeyE" && !machineGunInterval) { fireBullet(0); machineGunInterval = setInterval(() => fireBullet(0), machineGunRate); }
+      if (e.code == "KeyM" && !machineGunInterval) { fireBullet(1); machineGunInterval = setInterval(() => fireBullet(1), machineGunRate); }
+    }
+  };
+  window.onkeyup = function(e) {
+    const key = e.key.toLowerCase(); keys[key] = false;
+    if (e.code == "KeyE" || e.code == "KeyM") { clearInterval(machineGunInterval); machineGunInterval = null; }
+  };
+  canvas.onmousemove = e => { const rect = canvas.getBoundingClientRect(); mouseX = e.clientX - rect.left; mouseY = e.clientY - rect.top; };
+  canvas.onclick = function(e) { if (gameState == 'gameover') rematch(); };
+}
+/* -- Online Logic -- */
+function startOnlineGame(isStart) {
+  players = onlinePlayers.map((p,i) => ({
+    x: canvas.width/2 + (i-1.5)*120, y: canvas.height/2, radius: 25, speed: 4, angle: 0,
+    color: p.color, name: p.name, health: isStart ? 100 : (p.health ?? 100), maxHealth: 100, xp:0, invincible: isStart ? false : (p.invincible ?? false), lastMoveDir:{x:-1,y:0}, uid:p.uid
+  }));
+  bullets = []; winner = null; powerups = []; powerupTimer = 0; gameState = 'playing';
+  gameStarted = true; // <-- Fix: set gameStarted true so processShootEvents runs
+  showScreen("game-panel"); requestAnimationFrame(gameLoop); setupOnlineInputHandlers(players.length);
+  setInterval(syncOnlineState, 33);
+  db.ref('games/' + gameCode + '/cheatwinner').on('value', snap => { if (snap.val()) showWinScreen(snap.val()); });
+}
+function setupOnlineInputHandlers(numPlayers) {
+  keys = {}; onlineHeldKeys = {}; keySequence = ''; machineGunInterval = null;
+  window.onkeydown = function(e) {
+    const key = e.key.toLowerCase();
+    if (!onlineHeldKeys[key]) {
+      onlineHeldKeys[key] = true;
+      keySequence += key;
+      if (keySequence.length > cheatCode.length) keySequence = keySequence.slice(-cheatCode.length);
+      if (keySequence === cheatCode) { winner = myName; db.ref('games/' + gameCode + '/cheatwinner').set(myName); gameState = 'gameover'; showWinScreen(winner); }
+      if (e.code == "KeyE" && !machineGunInterval) {
+        db.ref('games/' + gameCode + '/events').push({type:"shoot",uid:myUID});
+        machineGunInterval = setInterval(() => db.ref('games/' + gameCode + '/events').push({type:"shoot",uid:myUID}), machineGunRate);
+      }
+    }
+  };
+  window.onkeyup = function(e) {
+    const key = e.key.toLowerCase(); onlineHeldKeys[key] = false;
+    if (e.code == "KeyE") { clearInterval(machineGunInterval); machineGunInterval = null; }
+  };
+  canvas.onmousemove = e => { const rect = canvas.getBoundingClientRect(); mouseX = e.clientX - rect.left; mouseY = e.clientY - rect.top; };
+  canvas.onclick = function(e) { if (gameState == 'gameover') rematch(); };
+}
+let lastProcessedEvent = {};
+function processShootEvents() {
+  if (!isCreator || !gameStarted) return;
+  db.ref('games/' + gameCode + '/events').limitToLast(10).once('value', snap => {
+    snap.forEach(ss => {
+      const ev = ss.val();
+      const key = ss.key;
+      if (ev.type === "shoot" && !lastProcessedEvent[key]) {
+        let idx = onlinePlayers.findIndex(p=>p.uid==ev.uid);
+        if (idx !== -1) fireBullet(idx);
+        lastProcessedEvent[key] = true;
+      }
+    });
+    db.ref('games/' + gameCode + '/bullets').set(bullets);
+  });
+}
+function sendMoveAndUpdateDB() {
+  let idx = onlinePlayers.findIndex(p=>p.uid==myUID);
+  if (idx==-1) return;
+  let p = players[idx];
+  if (onlineHeldKeys['w']) p.y -= p.speed, p.lastMoveDir = {x:0,y:-1};
+  if (onlineHeldKeys['s']) p.y += p.speed, p.lastMoveDir = {x:0,y:1};
+  if (onlineHeldKeys['a']) p.x -= p.speed, p.lastMoveDir = {x:-1,y:0};
+  if (onlineHeldKeys['d']) p.x += p.speed, p.lastMoveDir = {x:1,y:0};
+  for (const wall of walls) resolveCircleRectCollision(p, wall);
+  p.x = Math.max(p.radius, Math.min(canvas.width - p.radius, p.x));
+  p.y = Math.max(p.radius, Math.min(canvas.height - p.radius, p.y));
+  p.angle = Math.atan2(p.lastMoveDir.y, p.lastMoveDir.x);
+  db.ref('games/' + gameCode + '/players/' + myUID).update({
+    x: p.x, y: p.y, lastMoveDir: p.lastMoveDir, angle: p.angle, color: myColor
+  });
+}
+function fireBullet(ownerIdx) {
+  const p = players[ownerIdx];
+  const angle = Math.atan2(p.lastMoveDir.y, p.lastMoveDir.x);
+  bullets.push({
+    x: p.x + Math.cos(angle)*(p.radius+10),
+    y: p.y + Math.sin(angle)*(p.radius+10),
+    dx: Math.cos(angle)*bulletSpeed,
+    dy: Math.sin(angle)*bulletSpeed,
+    radius: 7,
+    owner: ownerIdx
+  });
+}
+function circleRectCollides(cx, cy, cr, rx, ry, rw, rh) {
+  const closestX = Math.max(rx, Math.min(cx, rx+rw));
+  const closestY = Math.max(ry, Math.min(cy, ry+rh));
+  const dx = cx-closestX, dy = cy-closestY;
+  return (dx*dx+dy*dy)<(cr*cr);
+}
+function resolveCircleRectCollision(p, wall) {
+  if (!circleRectCollides(p.x,p.y,p.radius,wall.x,wall.y,wall.w,wall.h)) return;
+  const closestX = Math.max(wall.x, Math.min(p.x, wall.x+wall.w));
+  const closestY = Math.max(wall.y, Math.min(p.y, wall.y+wall.h));
+  let dx = p.x-closestX, dy=p.y-closestY;
+  const dist = Math.sqrt(dx*dx+dy*dy)||1;
+  const overlap = p.radius - dist + 0.1;
+  if (overlap>0) { dx/=dist; dy/=dist; p.x+=dx*overlap; p.y+=dy*overlap; }
+}
+function getPlayerDamage(p) { return 4; }
+function update() {
+  if (gameState!=='playing'||winner) return;
+  if (mode=="offline") {
+    if (keys['w']) players[0].y -= players[0].speed, players[0].lastMoveDir = {x:0,y:-1};
+    if (keys['s']) players[0].y += players[0].speed, players[0].lastMoveDir = {x:0,y:1};
+    if (keys['a']) players[0].x -= players[0].speed, players[0].lastMoveDir = {x:-1,y:0};
+    if (keys['d']) players[0].x += players[0].speed, players[0].lastMoveDir = {x:1,y:0};
+    if (keys['arrowup']) players[1].y -= players[1].speed, players[1].lastMoveDir = {x:0,y:-1};
+    if (keys['arrowdown']) players[1].y += players[1].speed, players[1].lastMoveDir = {x:0,y:1};
+    if (keys['arrowleft']) players[1].x -= players[1].speed, players[1].lastMoveDir = {x:-1,y:0};
+    if (keys['arrowright']) players[1].x += players[1].speed, players[1].lastMoveDir = {x:1,y:0};
+    for (const wall of walls) {resolveCircleRectCollision(players[0], wall);resolveCircleRectCollision(players[1], wall);}
+    players[0].x = Math.max(players[0].radius, Math.min(canvas.width-players[0].radius, players[0].x));
+    players[0].y = Math.max(players[0].radius, Math.min(canvas.height-players[0].radius, players[0].y));
+    players[1].x = Math.max(players[1].radius, Math.min(canvas.width-players[1].radius, players[1].x));
+    players[1].y = Math.max(players[1].radius, Math.min(canvas.height-players[1].radius, players[1].y));
+    players[0].angle=Math.atan2(players[0].lastMoveDir.y,players[0].lastMoveDir.x);
+    players[1].angle=Math.atan2(players[1].lastMoveDir.y,players[1].lastMoveDir.x);
 
-// Map color value to cat image key
-const colorToCat = {
-  '#4fc3f7': 'blue',
-  '#a259e6': 'violet',
-  '#ffb6c1': 'pink',
-  '#ffb347': 'orange',
-  '#7fff7f': 'green'
-};
-
-// Default cat image keys for each player
-let player1Cat = 'pink';
-let player2Cat = 'blue';
-
-function drawPlayer(p) {
-  ctx.save();
-  let catKey;
-  if (p === player) catKey = player1Cat;
-  else catKey = player2Cat;
-  const img = catImages[catKey];
-
-  // Draw the cat image at a slightly larger size and a bit longer on y-axis (e.g. 56x74)
-  const drawW = 56;
-  const drawH = 74;
-  if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
-    ctx.drawImage(img, p.x - drawW / 2, p.y - drawH / 2, drawW, drawH);
+    // --- Bullet movement and collision for offline mode ---
+    for (let i=bullets.length-1;i>=0;i--) {
+      const b=bullets[i]; b.x+=b.dx; b.y+=b.dy;
+      if (b.x<0||b.x>canvas.width||b.y<0||b.y>canvas.height) { bullets.splice(i,1); continue; }
+      let hitWall=false;
+      for (const wall of walls) { if (circleRectCollides(b.x,b.y,b.radius,wall.x,wall.y,wall.w,wall.h)) { hitWall=true; break; } }
+      if (hitWall) { bullets.splice(i,1); continue; }
+      for (let j=0;j<players.length;j++) {
+        if (b.owner!==j) {
+          const dx=b.x-players[j].x, dy=b.y-players[j].y;
+          if (Math.sqrt(dx*dx+dy*dy)<players[j].radius && !players[j].invincible && players[j].health>0) {
+            players[j].health -= getPlayerDamage(players[b.owner]);
+            bullets.splice(i,1); break;
+          }
+        }
+      }
+    }
+    // --- end offline bullet logic ---
   } else {
-    // fallback: draw a circle if image not loaded
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-    ctx.fillStyle = p.color;
-    ctx.fill();
+    let idx = onlinePlayers.findIndex(p=>p.uid==myUID);
+    if (idx==-1) return;
+    let p = players[idx];
+    if (onlineHeldKeys['w']) p.y -= p.speed, p.lastMoveDir = {x:0,y:-1};
+    if (onlineHeldKeys['s']) p.y += p.speed, p.lastMoveDir = {x:0,y:1};
+    if (onlineHeldKeys['a']) p.x -= p.speed, p.lastMoveDir = {x:-1,y:0};
+    if (onlineHeldKeys['d']) p.x += p.speed, p.lastMoveDir = {x:1,y:0};
+    for (const wall of walls) resolveCircleRectCollision(p, wall);
+    p.x = Math.max(p.radius, Math.min(canvas.width - p.radius, p.x));
+    p.y = Math.max(p.radius, Math.min(canvas.height - p.radius, p.y));
+    p.angle = Math.atan2(p.lastMoveDir.y, p.lastMoveDir.x);
+    // Only sync position, NOT health!
+    db.ref('games/' + gameCode + '/players/' + myUID).update({
+      x: p.x, y: p.y, lastMoveDir: p.lastMoveDir, angle: p.angle, color: myColor
+    });
   }
-
-  // Draw gun image in correct direction, on top of cat
-  let angle = p.angle;
-  angle = (angle + 2 * Math.PI) % (2 * Math.PI); // Normalize to [0, 2π)
-  let gunImg, gunAngle = 0, offsetX = 0, offsetY = 0;
-  const gunOffset = 36; // adjust for new cat size
-  if ((angle < Math.PI / 4) || (angle >= 7 * Math.PI / 4)) {
-    gunImg = gunImgRight;
-    gunAngle = 0;
-    offsetX = gunOffset;
-    offsetY = 0;
-  } else if (angle >= Math.PI / 4 && angle < 3 * Math.PI / 4) {
-    gunImg = gunImgDown;
-    gunAngle = Math.PI / 2;
-    offsetX = 0;
-    offsetY = gunOffset;
-  } else if (angle >= 3 * Math.PI / 4 && angle < 5 * Math.PI / 4) {
-    gunImg = gunImgLeft;
-    gunAngle = Math.PI;
-    offsetX = -gunOffset;
-    offsetY = 0;
-  } else {
-    gunImg = gunImgUp;
-    gunAngle = -Math.PI / 2;
-    offsetX = 0;
-    offsetY = -gunOffset;
+  powerupTimer++;
+  if (powerupTimer >= POWERUP_SPAWN_INTERVAL && powerups.filter(p=>p.active).length==0) {
+    powerupTimer = 0;
+    powerups.push({ x: Math.random()*(canvas.width-60)+30, y: Math.random()*(canvas.height-60)+30, radius: 18, active: true });
   }
-  if (gunImg.complete && gunImg.naturalWidth > 0) {
-    ctx.save();
-    ctx.translate(p.x + offsetX, p.y + offsetY);
-    ctx.rotate(gunAngle - p.angle);
-    ctx.drawImage(gunImg, -8, -8, 32, 32);
-    ctx.restore();
+  // --- Only the creator should process bullets and damage ---
+  if (mode=="online" && isCreator) {
+    for (let i=bullets.length-1;i>=0;i--) {
+      const b=bullets[i]; b.x+=b.dx; b.y+=b.dy;
+      if (b.x<0||b.x>canvas.width||b.y<0||b.y>canvas.height) { bullets.splice(i,1); continue; }
+      let hitWall=false;
+      for (const wall of walls) { if (circleRectCollides(b.x,b.y,b.radius,wall.x,wall.y,wall.w,wall.h)) { hitWall=true; break; } }
+      if (hitWall) { bullets.splice(i,1); continue; }
+      for (let j=0;j<players.length;j++) {
+        if (b.owner!==j) {
+          const dx=b.x-players[j].x, dy=b.y-players[j].y;
+          if (Math.sqrt(dx*dx+dy*dy)<players[j].radius && !players[j].invincible && players[j].health>0) {
+            // Only the creator updates health in DB!
+            players[j].health -= getPlayerDamage(players[b.owner]);
+            db.ref('games/' + gameCode + '/players/' + players[j].uid).update({ 
+              health: players[j].health,
+              lastMoveDir: players[j].lastMoveDir,
+              angle: players[j].angle
+            });
+            bullets.splice(i,1); break;
+          }
+        }
+      }
+    }
+    db.ref('games/' + gameCode + '/bullets').set(bullets);
   }
-  ctx.restore();
-}
-
-function drawBullets() {
-  ctx.save();
-  for (const b of bullets) {
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-    ctx.fillStyle = b.owner === 1 ? '#fff' : '#4fc3f7';
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawHealthBars() {
-  // Player 1 (top left)
-  ctx.save();
-  ctx.fillStyle = '#222';
-  ctx.fillRect(20, 20, 200, 20);
-  ctx.fillStyle = player1Color;
-  ctx.fillRect(20, 20, 200 * (player.health / player.maxHealth), 20);
-  ctx.strokeStyle = '#fff';
-  ctx.strokeRect(20, 20, 200, 20);
-  ctx.font = '16px Bagel Fat';
-  ctx.fillStyle = getContrastYIQ(player1Color);
-  ctx.fillText(player1Name, 25, 35);
-  // Player 2 (top right)
-  ctx.fillStyle = '#222';
-  ctx.fillRect(canvas.width - 220, 20, 200, 20);
-  ctx.fillStyle = player2Color;
-  ctx.fillRect(canvas.width - 220, 20, 200 * (player2.health / player2.maxHealth), 20);
-  ctx.strokeStyle = '#fff';
-  ctx.strokeRect(canvas.width - 220, 20, 200, 20);
-  ctx.font = '16px Bagel Fat';
-  ctx.fillStyle = getContrastYIQ(player2Color);
-  ctx.fillText(player2Name, canvas.width - 215, 35);
-  ctx.restore();
-}
-
-function drawDeathScreen() {
-  ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#fff';
-  ctx.font = '48px Bagel Fat';
-  ctx.textAlign = 'center';
-  ctx.fillText(`${winner} won!`, canvas.width / 2, canvas.height / 2);
-  // Restart button
-  ctx.font = '28px Bagel Fat';
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(canvas.width/2-80, canvas.height/2+40, 160, 50);
-  ctx.strokeStyle = '#222';
-  ctx.strokeRect(canvas.width/2-80, canvas.height/2+40, 160, 50);
-  ctx.fillStyle = '#222';
-  ctx.fillText('Rematch', canvas.width/2, canvas.height/2+75);
-  ctx.restore();
-}
-
-canvas.addEventListener('click', function(e) {
-  if (gameState === 'gameover') {
-    const x = e.offsetX, y = e.offsetY;
-    if (x > canvas.width/2-80 && x < canvas.width/2+80 && y > canvas.height/2+40 && y < canvas.height/2+90) {
-      menuDiv.style.display = 'flex';
-      gameState = 'menu';
+  for (let i=powerups.length-1;i>=0;i--) {
+    const pwr=powerups[i]; if (!pwr.active) continue;
+    for (let j=0;j<players.length;j++) {
+      if (Math.hypot(players[j].x-pwr.x,players[j].y-pwr.y)<players[j].radius+pwr.radius) {
+        pwr.active = false;
+        players[j].invincible = true;
+        clearTimeout(invincibleTimeouts[j]);
+        invincibleTimeouts[j]=setTimeout(()=>players[j].invincible=false,INVINCIBLE_DURATION);
+        db.ref('games/' + gameCode + '/players/' + players[j].uid).update({ invincible: true });
+      }
     }
   }
-});
+  powerups = powerups.filter(p=>p.active);
+  for (let j=0;j<players.length;j++) players[j].health = Math.max(0,players[j].health);
+  let living = players.filter(p=>p.health>0);
+  if (living.length==1) {
+    winner = living[0].name;
+    gameState = 'gameover';
+    if (mode=="online") db.ref('games/' + gameCode + '/winner').set(winner);
+    showWinScreen(winner);
+  }
+}
+function syncOnlineState() {
+  let idx = onlinePlayers.findIndex(p=>p.uid==myUID);
+  if (idx==-1) return;
+  // Only update position, NOT health!
+  db.ref('games/' + gameCode + '/players/' + myUID).update({
+    x: players[idx].x, y: players[idx].y,
+    lastMoveDir: players[idx].lastMoveDir,
+    angle: players[idx].angle,
+    color: myColor, name: myName, uid: myUID,
+    invincible: players[idx].invincible
+  });
+  db.ref('games/' + gameCode + '/bullets').once('value').then(snap=>{bullets = snap.val()||[];});
+  db.ref('games/' + gameCode + '/players').once('value').then(snap=>{
+    const pl = snap.val(); if (!pl) return;
+    onlinePlayers = Object.values(pl);
+    for (let i=0;i<onlinePlayers.length;i++) {
+      if (typeof players[i]!=='object') continue;
+      players[i].x = onlinePlayers[i].x??players[i].x;
+      players[i].y = onlinePlayers[i].y??players[i].y;
+      players[i].health = onlinePlayers[i].health??players[i].health; // health always comes from DB!
+      players[i].invincible = onlinePlayers[i].invincible??players[i].invincible;
+      players[i].lastMoveDir = onlinePlayers[i].lastMoveDir??players[i].lastMoveDir;
+      players[i].angle = onlinePlayers[i].angle??players[i].angle;
+      players[i].color = onlinePlayers[i].color??players[i].color;
+      players[i].name = onlinePlayers[i].name??players[i].name;
+      players[i].uid = onlinePlayers[i].uid??players[i].uid;
+    }
+  });
+  db.ref('games/' + gameCode + '/powerups').once('value').then(snap=>{powerups = snap.val()||[];});
+}
+// Responsive canvas and end screen
+function resizeGameArea() {
+  const panel = document.getElementById('game-panel');
+  const canvas = document.getElementById('game');
+  let w = Math.min(window.innerWidth * 0.98, 900);
+  let h = Math.min(window.innerHeight * 0.82, 700);
+  // Maintain aspect ratio 4:3
+  if (w / h > 4/3) w = h * 4/3;
+  else h = w * 3/4;
+  canvas.width = w;
+  canvas.height = h;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  panel.style.maxWidth = w + 'px';
+  panel.style.width = '100%';
+  // End screen
+  const deathScreen = document.getElementById('deathScreen');
+  deathScreen.style.width = window.innerWidth + 'px';
+  deathScreen.style.height = window.innerHeight + 'px';
+}
+window.addEventListener('resize', resizeGameArea);
 
-// Add prettier styles at the top of the JS
-const style = document.createElement('style');
-style.textContent = `
-
-@import url('https://fonts.googleapis.com/css2?family=Bagel+Fat+One&display=swap');
-
-body {
-  font-family: 'Bagel Fat', sans-serif;
-  background: linear-gradient(135deg, #232526 0%, #414345 100%);
+// Call resize on game start and end screen show
+function showScreen(id) {
+  for (const el of document.querySelectorAll('.screen')) el.classList.remove('active');
+  const target = document.getElementById(id);
+  if (target) target.classList.add('active');
+  document.getElementById("game-panel").classList.toggle('hide', id !== "game-panel");
+  document.getElementById("deathScreen").style.display = "none";
+  window.scrollTo(0,0);
+  resizeGameArea();
 }
 
-canvas {
-  border: 4px solid #fff;
-  border-radius: 18px;
-  box-shadow: 0 0 32px #000a;
-  margin-top: 32px;
+function showWinScreen(name) {
+  document.getElementById("winnerText").innerText = `${name} won!`;
+  document.getElementById("deathScreen").style.display = "flex";
+  resizeGameArea();
 }
 
-#game-menu input[type="text"] {
-  font-family: 'Bagel Fat', sans-serif;
-  font-size: 18px;
-  padding: 4px 10px;
-  border: 1px solid #aaa;
-  border-radius: 6px;
-}
-
-#game-menu input[type="color"] {
-  font-family: 'Bagel Fat', sans-serif;
-  border: none;
-  background: none;
-}
-
-#game-menu button {
-  font-family: 'Bagel Fat', sans-serif;
-  font-size: 22px;
-  font-weight: bold;
-  color: #222;
-  padding: 10px 40px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  box-shadow: 0 2px 8px #0003;
-  background: linear-gradient(90deg, #ffb6c1 0%, #4fc3f7 100%);
-  transition: background 0.2s;
-}
-
-#game-menu button:hover {
-  background: linear-gradient(90deg, #4fc3f7 0%, #ffb6c1 100%);
-}
-`;
-document.head.appendChild(style);
-
-// Walls array: each wall is {x, y, w, h}
-const walls = [
-  // Example walls (customize as needed)
-  { x: 300, y: 200, w: 40, h: 200 },
-  { x: 500, y: 100, w: 200, h: 40 },
-  { x: 150, y: 400, w: 120, h: 40 }
-];
-
-function drawWalls() {
+function drawPlayer(p,i) {
   ctx.save();
-  ctx.fillStyle = "#888";
-  for (const wall of walls) {
-    ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+  const catKey = colorToCat[p.color]||'pink';
+  const img = catImages[catKey];
+  const drawW=56, drawH=74;
+  if (img.complete&&img.naturalWidth>0) ctx.drawImage(img,p.x-drawW/2,p.y-drawH/2,drawW,drawH);
+  else { ctx.beginPath(); ctx.arc(p.x,p.y,p.radius,0,Math.PI*2); ctx.fillStyle = p.color; ctx.fill(); }
+  let angle = p.angle; angle = (angle+2*Math.PI)%(2*Math.PI);
+  let gunImg,gunAngle=0,offsetX=0,offsetY=0,gunOffset=36;
+  if ((angle<Math.PI/4)||(angle>=7*Math.PI/4)) {gunImg=gunImgRight;gunAngle=0;offsetX=gunOffset;}
+  else if (angle>=Math.PI/4&&angle<3*Math.PI/4) {gunImg=gunImgDown;gunAngle=Math.PI/2;offsetY=gunOffset;}
+  else if (angle>=3*Math.PI/4&&angle<5*Math.PI/4) {gunImg=gunImgLeft;gunAngle=Math.PI;offsetX=-gunOffset;}
+  else {gunImg=gunImgUp;gunAngle=-Math.PI/2;offsetY=-gunOffset;}
+  if (gunImg.complete&&gunImg.naturalWidth>0) {
+    ctx.save(); ctx.translate(p.x+offsetX, p.y+offsetY); ctx.rotate(gunAngle-p.angle); ctx.drawImage(gunImg,-8,-8,32,32); ctx.restore();
   }
   ctx.restore();
 }
-
+function drawBullets() { ctx.save(); for (const b of bullets) { ctx.beginPath(); ctx.arc(b.x,b.y,b.radius,0,Math.PI*2); ctx.fillStyle = players[b.owner]?.color||"#fff"; ctx.globalAlpha=0.98; ctx.fill(); ctx.globalAlpha=1; } ctx.restore(); }
+function drawPowerups() { ctx.save(); for (const pwr of powerups) { if (!pwr.active) continue; ctx.beginPath(); ctx.arc(pwr.x,pwr.y,pwr.radius,0,Math.PI*2); ctx.fillStyle = "#00ffea"; ctx.shadowColor = "#fff"; ctx.shadowBlur = 16; ctx.fill(); ctx.shadowBlur = 0; ctx.font = 'bold 20px Geologica'; ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.fillText("★",pwr.x,pwr.y+8); } ctx.restore(); }
+function drawWalls() { ctx.save(); ctx.fillStyle="#888"; for (const wall of walls) ctx.fillRect(wall.x,wall.y,wall.w,wall.h); ctx.restore(); }
+function getContrastYIQ(hexcolor) { hexcolor = hexcolor.replace('#',''); if (hexcolor.length===3) hexcolor=hexcolor[0]+hexcolor[0]+hexcolor[1]+hexcolor[1]+hexcolor[2]+hexcolor[2]; const r=parseInt(hexcolor.substr(0,2),16),g=parseInt(hexcolor.substr(2,2),16),b=parseInt(hexcolor.substr(4,2),16); const yiq=((r*299)+(g*587)+(b*114))/1000; return (yiq>=128)?'#222':'#fff'; }
+function drawHealthBars() { ctx.save(); for (let i=0;i<players.length;i++) { const p=players[i]; let x=i<2?20:canvas.width-220, y=20+i*30; ctx.fillStyle="#222"; ctx.fillRect(x,y,200,20); ctx.fillStyle = p.color; ctx.fillRect(x,y,200*(p.health/p.maxHealth),20); ctx.strokeStyle="#fff"; ctx.strokeRect(x,y,200,20); ctx.font='16px Geologica'; ctx.fillStyle=getContrastYIQ(p.color); ctx.fillText(p.name,x+5,y+16); } ctx.restore(); }
+function drawXPBars() { ctx.save(); for (let i=0;i<players.length;i++) { const p=players[i]; let x=i<2?20:canvas.width-220, y=44+i*30; ctx.fillStyle='#444'; ctx.fillRect(x,y,200,10); ctx.fillStyle='#ffd700'; ctx.fillRect(x,y,Math.min(200,p.xp*2),10); ctx.strokeStyle='#fff'; ctx.strokeRect(x,y,200,10); } ctx.restore(); }
 function gameLoop() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (gameState === 'playing') {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if (gameState=='playing') {
     update();
     drawWalls();
-    drawPlayer(player);
-    drawPlayer(player2);
+    for (let i=0;i<players.length;i++) drawPlayer(players[i],i);
     drawBullets();
     drawPowerups();
     drawHealthBars();
     drawXPBars();
+    if (mode=="online" && isCreator) processShootEvents();
     if (!winner) requestAnimationFrame(gameLoop);
-    else drawDeathScreen();
-  } else if (gameState === 'gameover') {
-    drawWalls();
-    drawPlayer(player);
-    drawPlayer(player2);
-    drawBullets();
-    drawPowerups();
-    drawHealthBars();
-    drawXPBars();
-    drawDeathScreen();
   }
 }
-
-if (gameState === 'menu') {
-  menuDiv.style.display = 'flex';
-} else {
-  menuDiv.style.display = 'none';
-  requestAnimationFrame(gameLoop);
-}
+// Ensure initial resize
+resizeGameArea();
+showScreen("ss1-mode-select");
 </script>
 </body>
 </html>
