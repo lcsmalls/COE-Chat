@@ -1199,6 +1199,13 @@
             if (user) {
                 currentUser = user;
                 setupOnlinePresence();
+                // Explicitly set online status after login (fallback)
+                try {
+                    await rtdb.ref('/status/' + currentUser.uid).set({ isOnline: true, last_changed: firebase.database.ServerValue.TIMESTAMP });
+                    console.log('Set own status to online:', currentUser.uid);
+                } catch (err) {
+                    console.error('Error setting online status:', err);
+                }
 
                 if (!userProfileListener) {
                     userProfileListener = db.collection('profiles').doc(currentUser.uid).onSnapshot(async (doc) => {
@@ -1285,8 +1292,40 @@
         });
 
 
+        // --- Typing indicator logic: stricter fix ---
+        // Remove ALL previous typing status logic for messageInput
+
+        let typingActive = false;
+
+        messageInput.addEventListener('focus', () => {
+            if (messageInput.value.trim().length > 0) {
+                setTypingStatus(true);
+                typingActive = true;
+            } else {
+                setTypingStatus(false);
+                typingActive = false;
+            }
+        });
+
+        messageInput.addEventListener('input', () => {
+            if (document.activeElement === messageInput && messageInput.value.trim().length > 0) {
+                if (!typingActive) {
+                    setTypingStatus(true);
+                    typingActive = true;
+                }
+            } else {
+                if (typingActive) {
+                    setTypingStatus(false);
+                    typingActive = false;
+                }
+            }
+        });
+
         messageInput.addEventListener('blur', () => {
-            setTypingStatus(false);
+            if (typingActive) {
+                setTypingStatus(false);
+                typingActive = false;
+            }
         });
 
         showCreateAccountBtn.addEventListener('click', () => {
@@ -1631,7 +1670,7 @@ async function listenForFriendsAndGroups() {
             chatItem.classList.add('user-list-item');
             chatItem.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="online-status" data-uid="${friendId}"></div>
+                    <span class="online-status offline" data-uid="${friendId}"></span>
                     <span class="unread-dot" style="display:none;"></span>
                     <span>${friendData.username}#${friendData.tag}</span>
                 </div>
@@ -1645,25 +1684,39 @@ async function listenForFriendsAndGroups() {
             `;
             friendsList.appendChild(chatItem);
 
-            // Online status
+            // --- Fix online status dot ---
             const statusDot = chatItem.querySelector('.online-status');
             const statusRef = rtdb.ref(`/status/${friendId}`);
+
+            // Remove previous listener for this friend if exists
+            if (chatListeners[chatId]) {
+                chatListeners[chatId].forEach(obj => {
+                    if (obj.ref && obj.callback) obj.ref.off('value', obj.callback);
+                });
+            }
+            chatListeners[chatId] = [];
+
             const statusCallback = (snapshot) => {
-                const status = snapshot.val();
-                if (status && status.isOnline) {
-                    statusDot.classList.add('online');
-                    statusDot.classList.remove('offline');
-                    statusDot.style.backgroundColor = "#4CAF50";
-                    statusDot.title = 'Online';
-                } else {
-                    statusDot.classList.remove('online');
-                    statusDot.classList.add('offline');
-                    statusDot.style.backgroundColor = "grey";
-                    statusDot.title = 'Offline';
+                try {
+                    const status = snapshot.val();
+                    statusDot.className = "online-status";
+                    if (status && status.isOnline) {
+                        statusDot.classList.add('online');
+                        statusDot.title = 'Online';
+                        statusDot.style.backgroundColor = "#4CAF50";
+                    } else {
+                        statusDot.classList.add('offline');
+                        statusDot.title = 'Offline';
+                        statusDot.style.backgroundColor = "grey";
+                    }
+                    console.log(`Friend ${friendId} status:`, status);
+                } catch (err) {
+                    console.error('Error in statusCallback:', err);
                 }
             };
-            statusRef.on('value', statusCallback);
-            if (!chatListeners[chatId]) chatListeners[chatId] = [];
+            statusRef.on('value', statusCallback, (err) => {
+                console.error('RTDB permission error:', err);
+            });
             chatListeners[chatId].push({ ref: statusRef, callback: statusCallback });
 
             // Unread dot
@@ -1791,7 +1844,6 @@ async function listenForFriendsAndGroups() {
                 }
             });
         }
-
         toggleBlockedBtn.addEventListener('click', () => {
             if (blockedUsersList.style.display === 'none' || blockedUsersList.style.display === '') {
                 blockedUsersList.style.display = 'flex';
@@ -1801,7 +1853,6 @@ async function listenForFriendsAndGroups() {
                 toggleBlockedBtn.textContent = "Show Blocked Users";
             }
         });
-
         async function blockUser(userId) {
             try {
                 await db.collection('profiles').doc(currentUser.uid).update({
@@ -1883,7 +1934,7 @@ async function openChat(chatId, type, memberId, name) {
 
     chatMessages.innerHTML = '';
 
-    // Typing Indicator Listener
+    // --- Typing Indicator Listener ---
     const typingRef = rtdb.ref(`/${chatId}/typing`);
     typingIndicatorListener = typingRef.on('value', (snapshot) => {
         const typingUsers = snapshot.val() || {};
@@ -1908,11 +1959,12 @@ async function openChat(chatId, type, memberId, name) {
         }
     });
 
-    // Messages Listener
+    // --- Messages Listener ---
     const chatCollection = db.collection('chats').doc(chatId).collection('messages');
     messagesUnsubscribe = chatCollection.orderBy('timestamp').onSnapshot(snapshot => {
         chatMessages.innerHTML = '';
         snapshot.docs.forEach(doc => displayMessage(doc.data(), doc.id));
+        // --- Auto-scroll after DOM update ---
         setTimeout(() => {
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }, 0);
@@ -2075,13 +2127,29 @@ function displayMessage(data, messageId) {
         bubble.style.backgroundColor = friendsData[data.senderId]?.bubbleColor || 'var(--bubble-bg-received)';
     }
 
+    // --- Show sender info and timestamp (NO online-status dot here) ---
     if (!isSent) {
         const infoDiv = document.createElement('div');
         infoDiv.classList.add('message-info');
         const usernameSpan = document.createElement('span');
         usernameSpan.classList.add('username');
         usernameSpan.textContent = data.senderName;
+
+        // Timestamp formatting (HH:MM)
+        let timeStr = '';
+        if (data.timestamp && typeof data.timestamp.toDate === 'function') {
+            const date = data.timestamp.toDate();
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            timeStr = `${hours}:${minutes}`;
+       
+        }
+        const timestampSpan = document.createElement('span');
+        timestampSpan.classList.add('timestamp');
+        timestampSpan.textContent = timeStr;
+
         infoDiv.appendChild(usernameSpan);
+        infoDiv.appendChild(timestampSpan);
         messageContainer.appendChild(infoDiv);
     }
 
@@ -2192,11 +2260,13 @@ async function openChat(chatId, type, memberId, name) {
     messagesUnsubscribe = chatCollection.orderBy('timestamp').onSnapshot(snapshot => {
         chatMessages.innerHTML = '';
         snapshot.docs.forEach(doc => displayMessage(doc.data(), doc.id));
+        // --- Auto-scroll after DOM update ---
         setTimeout(() => {
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }, 0);
     });
-}        // --- GROUP CHAT LOGIC ---
+}
+        // --- GROUP CHAT LOGIC ---
 
         createGroupBtn.addEventListener('click', async () => {
             createGroupModal.style.display = 'flex';
@@ -2455,78 +2525,78 @@ leaveGroupBtn.addEventListener('click', async () => {
         });
 
     // --- Typing Indicator Fix ---
-async function openChat(chatId, type, memberId, name) {
-    // --- Detach old listeners ---
-    if (messagesUnsubscribe) {
-        messagesUnsubscribe();
-        messagesUnsubscribe = null;
-    }
-    if (typingIndicatorListener) {
-        rtdb.ref(`/${currentChatId}/typing`).off('value', typingIndicatorListener);
-        typingIndicatorListener = null;
-    }
+    async function openChat(chatId, type, memberId, name) {
+        // --- Detach old listeners ---
+        if (messagesUnsubscribe) {
+            messagesUnsubscribe();
+            messagesUnsubscribe = null;
+        }
+        if (typingIndicatorListener) {
+            rtdb.ref(`/${currentChatId}/typing`).off('value', typingIndicatorListener);
+            typingIndicatorListener = null;
+        }
 
-    currentChatId = chatId;
-    currentChatType = type;
-    chatPage.style.display = 'flex';
-    messageInput.disabled = false;
-    sendBtn.disabled = false;
-    messageInput.placeholder = "Type a message...";
+        currentChatId = chatId;
+        currentChatType = type;
+        chatPage.style.display = 'flex';
+        messageInput.disabled = false;
+        sendBtn.disabled = false;
+        messageInput.placeholder = "Type a message...";
 
-    currentChatInfo.textContent = name;
-    leaveGroupBtn.style.display = 'none';
-    groupSettingsBtn.style.display = 'none';
-    currentGroupData = null;
+        currentChatInfo.textContent = name;
+        leaveGroupBtn.style.display = 'none';
+        groupSettingsBtn.style.display = 'none';
+        currentGroupData = null;
 
-    if (type === 'group') {
-        const groupDoc = await db.collection('groups').doc(chatId).get();
-        if (groupDoc.exists) {
-            currentGroupData = groupDoc.data();
-            leaveGroupBtn.style.display = 'block';
-            if (currentGroupData.ownerId === currentUser.uid) {
-                groupSettingsBtn.style.display = 'block';
+        if (type === 'group') {
+            const groupDoc = await db.collection('groups').doc(chatId).get();
+            if (groupDoc.exists) {
+                currentGroupData = groupDoc.data();
+                leaveGroupBtn.style.display = 'block';
+                if (currentGroupData.ownerId === currentUser.uid) {
+                    groupSettingsBtn.style.display = 'block';
+                }
             }
         }
-    }
 
-    chatMessages.innerHTML = '';
-
-    // --- Typing Indicator Listener ---
-    const typingRef = rtdb.ref(`/${chatId}/typing`);
-    typingIndicatorListener = typingRef.on('value', (snapshot) => {
-        const typingUsers = snapshot.val() || {};
-        let validTypingUsers = [];
-        if (type === 'private') {
-            validTypingUsers = Object.keys(typingUsers).filter(uid =>
-                uid !== currentUser.uid && friendsData[uid]
-            );
-        } else if (type === 'group' && currentGroupData) {
-            validTypingUsers = Object.keys(typingUsers).filter(uid =>
-                uid !== currentUser.uid && currentGroupData.members.includes(uid)
-            );
-        }
-        if (validTypingUsers.length > 0) {
-            let typingNames = validTypingUsers.map(uid =>
-                friendsData[uid]?.username || 'Someone'
-            );
-            typingIndicator.textContent = `${typingNames.join(', ')} is typing...`;
-            typingIndicator.style.display = 'block';
-        } else {
-            typingIndicator.style.display = 'none';
-        }
-    });
-
-    // --- Messages Listener ---
-    const chatCollection = db.collection('chats').doc(chatId).collection('messages');
-    messagesUnsubscribe = chatCollection.orderBy('timestamp').onSnapshot(snapshot => {
         chatMessages.innerHTML = '';
-        snapshot.docs.forEach(doc => displayMessage(doc.data(), doc.id));
-        // --- Auto-scroll after DOM update ---
-        setTimeout(() => {
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }, 0);
-    });
-}
+
+        // --- Typing Indicator Listener ---
+        const typingRef = rtdb.ref(`/${chatId}/typing`);
+        typingIndicatorListener = typingRef.on('value', (snapshot) => {
+            const typingUsers = snapshot.val() || {};
+            let validTypingUsers = [];
+            if (type === 'private') {
+                validTypingUsers = Object.keys(typingUsers).filter(uid =>
+                    uid !== currentUser.uid && friendsData[uid]
+                );
+            } else if (type === 'group' && currentGroupData) {
+                validTypingUsers = Object.keys(typingUsers).filter(uid =>
+                    uid !== currentUser.uid && currentGroupData.members.includes(uid)
+                );
+            }
+            if (validTypingUsers.length > 0) {
+                let typingNames = validTypingUsers.map(uid =>
+                    friendsData[uid]?.username || 'Someone'
+                );
+                typingIndicator.textContent = `${typingNames.join(', ')} is typing...`;
+                typingIndicator.style.display = 'block';
+            } else {
+                typingIndicator.style.display = 'none';
+            }
+        });
+
+        // --- Messages Listener ---
+        const chatCollection = db.collection('chats').doc(chatId).collection('messages');
+        messagesUnsubscribe = chatCollection.orderBy('timestamp').onSnapshot(snapshot => {
+            chatMessages.innerHTML = '';
+            snapshot.docs.forEach(doc => displayMessage(doc.data(), doc.id));
+            // --- Auto-scroll after DOM update ---
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 0);
+        });
+    }
     // --- Notification Modal Logic ---
     function showNotification(message) {
         document.getElementById('notification-modal-message').textContent = message;
@@ -2553,9 +2623,11 @@ function setupOnlinePresence() {
     const userStatusDatabaseRef = rtdb.ref('/status/' + uid);
     const connectedRef = rtdb.ref('.info/connected');
     connectedRef.on('value', (snapshot) => {
+        console.log('RTDB .info/connected:', snapshot.val());
         if (snapshot.val() === true) {
             userStatusDatabaseRef.onDisconnect().set({ isOnline: false, last_changed: firebase.database.ServerValue.TIMESTAMP });
             userStatusDatabaseRef.set({ isOnline: true, last_changed: firebase.database.ServerValue.TIMESTAMP });
+            console.log('setupOnlinePresence: set online for', uid);
         }
     });
 }
