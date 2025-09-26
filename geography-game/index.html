@@ -6,9 +6,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
 <link rel="icon" type="image/png" href="https://coe-chat.vercel.app/geography-game/favicon.png">
 <style>
-body { font-family:sans-serif; margin:0; padding:0; text-align:center; background:#121212; color:#eee; }
+body { font-family:sans-serif; margin:0; padding:0; text-align:center; background:#090d50; color:#eee; }
 h1 { margin:1em 0 0.3em; }
-#map { width:100%; height:70vh; border:1px solid #444; background:#1e1e1e; border-radius:12px; }
+#map { width:100%; height:70vh; border:1px solid #444; background:#000234; border-radius:12px; }
 #controls { margin:1em; display:flex; align-items:center; justify-content:center; gap:8px; position:relative; }
 input[type=text] { padding:0.5em; width:250px; border-radius:8px; border:1px solid #555; background:#222; color:#eee; flex-shrink:0; }
 button { width:40px; height:40px; border-radius:50%; border:none; background:#007acc; color:#fff; cursor:pointer; font-family:'Material Symbols Rounded'; font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 48; font-size:20px; display:flex; align-items:center; justify-content:center; padding:0; }
@@ -16,9 +16,22 @@ button:hover { background:#005f99; }
 #autocomplete-list { position:absolute; top:4em; left:0; width:250px; border:1px solid #555; border-radius:8px; background:#222; max-height:150px; overflow-y:auto; z-index:1000; box-shadow:0 2px 6px rgba(0,0,0,0.5); }
 .autocomplete-item { padding:0.3em 0.5em; cursor:pointer; }
 .autocomplete-item:hover { background:#444; }
-.country { fill:none; stroke:#555; stroke-width:0.25px; } /* thinner outline */
-.revealed { stroke:#fff; stroke-width:0.25px; }
-#timer { margin-left:12px; font-weight:bold; }
+.country { fill:none; stroke:#74916f; stroke-width:0.10px; } /* thinner outline */
+.revealed { stroke:#fff; stroke-width:0.15px; }
+.capital-dot { pointer-events:none; }
+.capital-dot-grey { fill:#888; stroke:#222; stroke-width:1px; }
+.capital-dot-red { fill:#e53935; stroke:#fff; stroke-width:1.5px; }
+#main-menu {
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.95); display:flex; flex-direction:column;
+  justify-content:center; align-items:center; z-index:3000; color:#fff;
+  text-align:center;
+}
+#main-menu button {
+  margin:1em; padding:0.7em 2em; font-size:1.2em;
+  border:none; border-radius:12px; cursor:pointer;
+  background:#007acc; color:#fff; font-family:sans-serif;
+}
 #pause-btn { background:#ff9800; }
 #pause-btn:hover { background:#cc7a00; }
 #pause-overlay, #results-screen, #start-screen {
@@ -65,14 +78,22 @@ button:hover { background:#005f99; }
 <svg id="map"></svg>
 <div id="popup-country"></div>
 
-<div id="start-screen">
-  <img src="https://coe-chat.vercel.app/geography-game/favicon.png" alt="Game Logo">
+<div id="main-menu" style="display:flex;">
+  <img src="https://coe-chat.vercel.app/geography-game/favicon.png" alt="Game Logo" style="width:100px;height:100px;margin-bottom:1em;">
   <h1>Geography A to Z</h1>
-  <p>Select a mode to start:</p>
-  <button onclick="startGame('Easy')">Easy</button>
-  <button onclick="startGame('Medium')">Medium</button>
-  <button onclick="startGame('Normal')">Normal</button>
-  <button onclick="startGame('Hard')">Hard</button>
+  <p>Choose a game mode:</p>
+  <button onclick="showStartScreen('countries')">Countries Mode</button>
+  <button onclick="showStartScreen('cities')">Cities Mode</button>
+</div>
+
+<div id="start-screen" style="display:none;">
+  <img src="https://coe-chat.vercel.app/geography-game/favicon.png" alt="Game Logo">
+  <h1 id="start-title">Geography A to Z</h1>
+  <p id="start-desc">Select a mode to start:</p>
+  <button id="easy-btn" onclick="startGame('Easy')">Easy</button>
+  <button id="medium-btn" onclick="startGame('Medium')">Medium</button>
+  <button id="normal-btn" onclick="startGame('Normal')">Normal</button>
+  <button id="hard-btn" onclick="startGame('Hard')">Hard</button>
 </div>
 
 <div id="pause-overlay">
@@ -88,315 +109,376 @@ button:hover { background:#005f99; }
 
 <script>
 let countriesData=[], features=[], projection, path, svg, mapGroup;
-let round=1, currentContinent="", currentLetter="";
+let round=1, currentContinent="", currentLetter="", currentCountry=null;
 let revealedCountries=new Set(), nameIndex=new Map();
 let featureByCCA3=new Map(), featureByName=new Map();
-let wrongGuesses=0, gameMode="Normal";
+let wrongGuesses=0, gameMode="Normal", gameType="countries";
 let startTime=null, elapsed=0, timerInterval=null, paused=false;
 const continentOrder=["Europe","Oceania","Americas","Asia","Africa","Antarctic"];
 let continentIndex=0;
 
+// Cities mode data
+let capitalsData=[], capitalsByCountry=new Map(), revealedCapitals=new Set(), capitalDots=[];
+let capitalsIndex=new Map(), capitalsOrder=[];
+
 // Improved manual mapping for problematic countries
 const manualFeatureMap={
-  northmacedonia:"MKD", southsudan:"SSD", democraticrepublicofthecongo:"COD",
-  centralafricanrepublic:"CAF", republicofthecongo:"COG", unitedstates:"USA",
-  stvincentandthegrenadines:"VCT", bosniaandherzegovina:"BIH", puertorico:"PRI",
-  papuanewguinea:"PNG", libya:"LBY", dominicanrepublic:"DOM",
-  "sãotoméandpríncipe":"STP", "sao tome and principe":"STP", "sao tome":"STP",
-  "são tomé":"STP", "são tomé e príncipe":"STP", "sao tome e principe":"STP",
-  svalbard:"SJM", "ivorycoast":"CIV", "cotedivoire":"CIV", "capeverde":"CPV",
-  "timorleste":"TLS", "easttimor":"TLS", "vaticancity":"VAT", "holysee":"VAT",
-  "eswatini":"SWZ", "swaziland":"SWZ", "burma":"MMR", "myanmar":"MMR",
-  "palestine":"PSE", "palestinianterritory":"PSE", "palestinian territories":"PSE"
+   northmacedonia:"MKD", southsudan:"SSD", democraticrepublicofthecongo:"COD",
+   centralafricanrepublic:"CAF", republicofthecongo:"COG", unitedstates:"USA",
+   stvincentandthegrenadines:"VCT", bosniaandherzegovina:"BIH", puertorico:"PRI",
+   papuanewguinea:"PNG", libya:"LBY", dominicanrepublic:"DOM",
+   "sãotoméandpríncipe":"STP", "sao tome and principe":"STP", "sao tome":"STP",
+   "são tomé":"STP", "são tomé e príncipe":"STP", "sao tome e principe":"STP",
+   svalbard:"SJM", "ivorycoast":"CIV", "cotedivoire":"CIV", "capeverde":"CPV",
+   "timorleste":"TLS", "easttimor":"TLS", "vaticancity":"VAT", "holysee":"VAT",
+   "eswatini":"SWZ", "swaziland":"SWZ", "burma":"MMR", "myanmar":"MMR",
+   "palestine":"PSE", "palestinianterritory":"PSE", "palestinian territories":"PSE"
 };
+
+// NEW: Manual ID map for inconsistent countries in TopoJSON
+const topoIdMap={
+   "COD":"180", // Democratic Republic of the Congo
+   "SSD":"728", // South Sudan
+   "EQG":"226" // Equatorial Guinea
+
+}
 
 function normalizeName(s){ return s.toLowerCase().replace(/[^a-z]+/g,''); }
 
 async function init(){
-  svg=d3.select("#map");
-  projection=d3.geoMercator().scale(120).translate([window.innerWidth/2, window.innerHeight/2.2]);
-  path=d3.geoPath().projection(projection);
-  mapGroup=svg.append("g").attr("class","map-content");
-  svg.call(d3.zoom().scaleExtent([1,16]).on("zoom",event=>{mapGroup.attr("transform",event.transform);})); // increased zoom
+   svg=d3.select("#map");
+   const width = window.innerWidth;
+   const height = window.innerHeight * 0.7; // map height is 70vh
+   svg.attr("width", width).attr("height", height);
 
-  const rc=await fetch('https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,altSpellings').then(r=>r.json());
-  rc.forEach(c=>{
-    const cca3=c.cca3||"", cca2=c.cca2||"", common=c.name.common, region=c.region||"Other";
-    const aliases=new Set([common,c.name.official,...(c.altSpellings||[])]);
-    // Add normalized aliases for edge cases
-    if(common==="São Tomé and Príncipe") aliases.add("Sao Tome and Principe");
-    if(common==="Democratic Republic of the Congo") aliases.add("DR Congo");
-    if(common==="Central African Republic") aliases.add("CAR");
-    if(common==="Dominican Republic") aliases.add("Dom. Rep.");
-    if(common==="Republic of the Congo") aliases.add("Congo");
-    if(common==="Ivory Coast") aliases.add("Côte d'Ivoire");
-    if(common==="East Timor") aliases.add("Timor-Leste");
-    if(common==="Vatican City") aliases.add("Holy See");
-    if(common==="Myanmar") aliases.add("Burma");
-    if(common==="Eswatini") aliases.add("Swaziland");
-    if(common==="Palestine") aliases.add("Palestinian Territories");
-    const rec={name:common,cca2,cca3,region,aliases:[...aliases]};
-    countriesData.push(rec);
-    rec.aliases.forEach(a=>nameIndex.set(normalizeName(a),rec));
-  });
+   projection=d3.geoMercator().fitSize([width, height], {type: "FeatureCollection", features: []});
+   path=d3.geoPath().projection(projection);
+   mapGroup=svg.append("g").attr("class","map-content");
 
-  const topo=await fetch('https://unpkg.com/world-atlas@2/countries-50m.json').then(r=>r.json());
-  const objKey=Object.keys(topo.objects)[0];
-  features=topojson.feature(topo, topo.objects[objKey]).features;
-  features.forEach(f=>{
-    const props=f.properties||{};
-    const iso=props.iso_a3||props.ISO_A3||props.ADM0_A3||"";
-    const pname=props.name||props.NAME||props.ADMIN||"";
-    if(iso) featureByCCA3.set(iso,f);
-    if(pname) featureByName.set(normalizeName(pname),f);
-  });
+svg.call(d3.zoom().scaleExtent([1,500]).on("zoom",event=>{mapGroup.attr("transform",event.transform);}));
 
-  mapGroup.selectAll("path").data(features).join("path").attr("d",path).attr("class","country");
-  document.getElementById("start-screen").style.display="flex";
+   const rc=await fetch('https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,altSpellings').then(r=>r.json());
+   rc.forEach(c=>{
+      const cca3=c.cca3||"", cca2=c.cca2||"", common=c.name.common, region=c.region||"Other";
+      const aliases=new Set([common,c.name.official,...(c.altSpellings||[])]);
+      if(common==="São Tomé and Príncipe") aliases.add("Sao Tome and Principe");
+      if(common==="Democratic Republic of the Congo") aliases.add("DR Congo");
+      if(common==="Central African Republic") aliases.add("CAR");
+      if(common==="Dominican Republic") aliases.add("Dom. Rep.");
+      if(common==="Republic of the Congo") aliases.add("Congo");
+      if(common==="Ivory Coast") aliases.add("Côte d'Ivoire");
+      if(common==="East Timor") aliases.add("Timor-Leste");
+      if(common==="Vatican City") aliases.add("Holy See");
+      if(common==="Myanmar") aliases.add("Burma");
+      if(common==="Eswatini") aliases.add("Swaziland");
+      if(common==="Palestine") aliases.add("Palestinian Territories");
+      const rec={name:common,cca2,cca3,region,aliases:[...aliases]};
+      countriesData.push(rec);
+      rec.aliases.forEach(a=>nameIndex.set(normalizeName(a),rec));
+   });
+
+   const topo=await fetch('https://unpkg.com/world-atlas@2/countries-50m.json').then(r=>r.json());
+   const objKey=Object.keys(topo.objects)[0];
+   features=topojson.feature(topo, topo.objects[objKey]).features;
+   features.forEach(f=>{
+      const props=f.properties||{};
+      const iso=props.iso_a3||props.ISO_A3||props.ADM0_A3||"";
+      const pname=props.name||props.NAME||props.ADMIN||"";
+      if(iso) featureByCCA3.set(iso,f);
+      if(pname) featureByName.set(normalizeName(pname),f);
+   });
+
+   projection.fitSize([width, height], {type: "FeatureCollection", features: features});
+   mapGroup.selectAll("path").data(features).join("path").attr("d",path).attr("class","country");
+   
+   document.getElementById("main-menu").style.display="flex";
+   document.getElementById("start-screen").style.display="none";
+
+   const capitalsRaw=await fetch('https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,capital,capitalInfo').then(r=>r.json());
+   capitalsData=[];
+   capitalsByCountry.clear();
+   capitalsIndex.clear();
+   capitalsOrder=[];
+   capitalsRaw.forEach(c=>{
+      if(!c.capital||!c.capital.length||!c.capitalInfo||!c.capitalInfo.latlng) return;
+      const cca3=c.cca3||"", cca2=c.cca2||"", common=c.name.common, region=c.region||"Other";
+      const capital=c.capital[0], latlng=c.capitalInfo.latlng;
+      const rec={country:common,cca2,cca3,region,capital,latlng};
+      capitalsData.push(rec);
+      capitalsByCountry.set(common,rec);
+      capitalsIndex.set(normalizeName(capital),rec);
+   });
+   capitalsOrder=continentOrder.flatMap(cont=>
+      capitalsData.filter(c=>c.region===cont).sort((a,b)=>a.country.localeCompare(b.country))
+   );
+}
+
+function showStartScreen(type){
+   gameType=type;
+   document.getElementById("main-menu").style.display="none";
+   document.getElementById("start-screen").style.display="flex";
+   document.getElementById("start-title").textContent = type==="countries" ? "Geography A to Z" : "Capitals A to Z";
+   document.getElementById("start-desc").textContent = type==="countries"
+      ? "Select a difficulty for Countries mode:" : "Select a difficulty for Cities mode:";
+   document.getElementById("easy-btn").style.display = "inline-block";
+   document.getElementById("medium-btn").style.display = type==="countries" ? "inline-block" : "none";
+   document.getElementById("normal-btn").style.display = type==="countries" ? "inline-block" : "none";
+   document.getElementById("hard-btn").style.display = "inline-block";
 }
 
 function startGame(mode){
-  gameMode=mode; document.getElementById("start-screen").style.display="none";
-  startTimer(); nextRound();
+   gameMode=mode;
+   document.getElementById("start-screen").style.display="none";
+   round=1; continentIndex=0; wrongGuesses=0; revealedCountries.clear(); revealedCapitals.clear();
+   capitalDots.forEach(dot=>dot.remove()); capitalDots=[];
+   if(gameType==="countries"){
+      startTimer(); nextRound();
+   }else{
+      mapGroup.selectAll("path.country").classed("revealed",true);
+      capitalsOrder.forEach((rec,i)=>{
+         const coords=projection([rec.latlng[1],rec.latlng[0]]);
+         const dot=mapGroup.append("circle")
+            .attr("cx",coords[0]).attr("cy",coords[1])
+            .attr("r",2)
+            .attr("class","capital-dot capital-dot-grey")
+            .attr("data-capital",rec.capital)
+            .attr("data-country",rec.country);
+         capitalDots.push(dot);
+      });
+      startTimer(); nextCitiesRound();
+   }
 }
 
 function getLargestPolygon(feature) {
-  // For MultiPolygon, return the largest polygon by area
-  if (feature.geometry.type === "MultiPolygon") {
-    let maxArea = 0, largest = null;
-    feature.geometry.coordinates.forEach(coords => {
-      const poly = {type: "Polygon", coordinates: coords};
-      const area = d3.geoArea({type: "Feature", geometry: poly});
-      if (area > maxArea) { maxArea = area; largest = poly; }
-    });
-    if (largest) return {type: "Feature", geometry: largest, properties: feature.properties};
-  }
-  return feature;
+   if (feature.geometry.type === "MultiPolygon") {
+      let maxArea = 0, largest = null;
+      feature.geometry.coordinates.forEach(coords => {
+         const poly = {type: "Polygon", coordinates: coords};
+         const area = d3.geoArea({type: "Feature", geometry: poly});
+         if (area > maxArea) { maxArea = area; largest = poly; }
+      });
+      if (largest) return {type: "Feature", geometry: largest, properties: feature.properties};
+   }
+   return feature;
 }
 
 function getAllPolygons(feature) {
-  // Returns an array of features, one for each polygon
-  if (feature.geometry.type === "MultiPolygon") {
-    return feature.geometry.coordinates.map(coords => ({
-      type: "Feature",
-      geometry: {type: "Polygon", coordinates: coords},
-      properties: feature.properties
-    }));
-  }
-  return [feature];
+   if (feature.geometry.type === "MultiPolygon") {
+      return feature.geometry.coordinates.map(coords => ({
+         type: "Feature",
+         geometry: {type: "Polygon", coordinates: coords},
+         properties: feature.properties
+      }));
+   }
+   return [feature];
 }
 
-// Improved feature lookup for problematic countries
 function getFeature(rec){
-  const key=normalizeName(rec.name);
-  // 1) manual mapping
-  if(manualFeatureMap[key] && featureByCCA3.has(manualFeatureMap[key])) return featureByCCA3.get(manualFeatureMap[key]);
-  // 2) direct ISO lookup
-  if(featureByCCA3.has(rec.cca3)) return featureByCCA3.get(rec.cca3);
-  // 3) TopoJSON name lookup
-  if(featureByName.has(key)) return featureByName.get(key);
-  // 4) fallback: aliases
-  for(let alias of rec.aliases){
-    const aliasKey=normalizeName(alias);
-    if(manualFeatureMap[aliasKey] && featureByCCA3.has(manualFeatureMap[aliasKey])) return featureByCCA3.get(manualFeatureMap[aliasKey]);
-    const f=featureByName.get(aliasKey);
-    if(f) return f;
-  }
-  // 5) fallback: partial match (for edge cases)
-  for(let [name, f] of featureByName){
-    if(name.includes(key) || key.includes(name)) return f;
-  }
-  // 6) South Sudan and DR Congo hard fallback
-  if(rec.name === "South Sudan") return featureByCCA3.get("SSD");
-  if(rec.name === "Democratic Republic of the Congo") return featureByCCA3.get("COD");
-  return null;
+   const key=normalizeName(rec.name);
+   // Explicitly check for manual ID map from Restcountries `cca3` to TopoJSON `id`
+   const topoId=topoIdMap[rec.cca3];
+   if(topoId) {
+      const foundFeature = features.find(f => f.id === topoId);
+      if (foundFeature) return foundFeature;
+   }
+   
+   // Check for manual mappings first
+   if(manualFeatureMap[key] && featureByCCA3.has(manualFeatureMap[key])) return featureByCCA3.get(manualFeatureMap[key]);
+   // Then check direct ISO lookup
+   if(featureByCCA3.has(rec.cca3)) return featureByCCA3.get(rec.cca3);
+   // Check TopoJSON name lookup
+   if(featureByName.has(key)) return featureByName.get(key);
+   // Check aliases for name
+   for(let alias of rec.aliases){
+      const aliasKey=normalizeName(alias);
+      if(manualFeatureMap[aliasKey] && featureByCCA3.has(manualFeatureMap[aliasKey])) return featureByCCA3.get(manualFeatureMap[aliasKey]);
+      const f=featureByName.get(aliasKey);
+      if(f) return f;
+   }
+   // General ISO/ADM0_A3 match check
+   for(let f of features) {
+      const props = f.properties || {};
+      if (props.iso_a3 === rec.cca3 || props.ISO_A3 === rec.cca3 || props.ADM0_A3 === rec.cca3) {
+         return f;
+      }
+   }
+   // Fallback: partial match
+   for(let [name, f] of featureByName){
+      if(name.includes(key) || key.includes(name)) return f;
+   }
+   return null;
 }
 
 function computeVisualCenter(feature){
-  // Use d3.geoCentroid for better accuracy
-  try {
-    const centroid = d3.geoCentroid(feature);
-    return projection(centroid);
-  } catch {
-    return path.centroid(feature);
-  }
+   try {
+      const centroid = d3.geoCentroid(feature);
+      return projection(centroid);
+   } catch {
+      return path.centroid(feature);
+   }
 }
 
 function revealCountry(rec){
-  if(revealedCountries.has(rec.name)) return;
-  revealedCountries.add(rec.name);
-  let feature=getFeature(rec); if(!feature) return;
+   if(revealedCountries.has(rec.name)) return;
+   revealedCountries.add(rec.name);
+   let feature=getFeature(rec); if(!feature) return;
 
-  // For USA, DRC, SS: fill all polygons with stretched flag
-  if(rec.cca3==="USA" || rec.cca3==="SSD" || rec.cca3==="COD") {
-    const polygons = getAllPolygons(feature);
-    polygons.forEach((poly, i) => {
-      const clipId = `clip-${rec.cca3}-${i}`;
-      mapGroup.append("clipPath").attr("id",clipId).append("path").attr("d",path(poly));
-      const bbox=path.bounds(poly);
+   // NEW: Unified handling for multi-polygon countries, now including France
+   if(rec.cca3==="USA" || rec.cca3==="SSD" || rec.cca3==="COD" || rec.cca3==="FRA") {
+      const polygons = getAllPolygons(feature);
+      polygons.forEach((poly, i) => {
+         const clipId = `clip-${rec.cca3}-${i}`;
+         mapGroup.append("clipPath").attr("id",clipId).append("path").attr("d",path(poly));
+         const bbox=path.bounds(poly);
+         const boxWidth=bbox[1][0]-bbox[0][0], boxHeight=bbox[1][1]-bbox[0][1];
+         const flagUrl = rec.cca2 ? `https://flagcdn.com/w320/${rec.cca2.toLowerCase()}.png` : "";
+         mapGroup.append("image")
+            .attr("href", flagUrl)
+            .attr("x", bbox[0][0]).attr("y", bbox[0][1])
+            .attr("width", boxWidth).attr("height", boxHeight)
+            .attr("preserveAspectRatio","none")
+            .attr("clip-path", `url(#${clipId})`)
+            .attr("style","pointer-events:none;")
+            .on("error", function() {
+               d3.select(this).remove();
+               mapGroup.append("path")
+                  .attr("d", path(poly))
+                  .attr("clip-path", `url(#${clipId})`)
+                  .attr("fill", "#005f99")
+                  .attr("opacity", 0.7)
+                  .attr("stroke", "#fff").attr("stroke-width", 0.8);
+            });
+      });
+      const iso = rec.cca3;
+      mapGroup.selectAll("path.country")
+         .filter(d => {
+            const props = d.properties || {};
+            return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
+         })
+         .classed("revealed",true)
+         .raise();
+      return;
+   }
+   else {
+      const clipId=`clip-${rec.cca3 || normalizeName(rec.name)}`;
+      mapGroup.append("clipPath").attr("id",clipId).append("path").attr("d",path(feature));
+      const bbox=path.bounds(feature);
       const boxWidth=bbox[1][0]-bbox[0][0], boxHeight=bbox[1][1]-bbox[0][1];
       const flagUrl = rec.cca2 ? `https://flagcdn.com/w320/${rec.cca2.toLowerCase()}.png` : "";
-      mapGroup.append("image")
-        .attr("href", flagUrl)
-        .attr("x", bbox[0][0]).attr("y", bbox[0][1])
-        .attr("width", boxWidth).attr("height", boxHeight)
-        .attr("preserveAspectRatio","none")
-        .attr("clip-path", `url(#${clipId})`)
-        .attr("style","pointer-events:none;")
-        .on("error", function() {
-          d3.select(this).remove();
-          mapGroup.append("path")
-            .attr("d", path(poly))
+      const img = mapGroup.append("image")
+         .attr("href", flagUrl)
+         .attr("x", bbox[0][0]).attr("y", bbox[0][1])
+         .attr("width", boxWidth).attr("height", boxHeight)
+         .attr("preserveAspectRatio","none")
+         .attr("clip-path", `url(#${clipId})`)
+         .attr("style","pointer-events:none;")
+      img.on("error", function() {
+         d3.select(this).remove();
+         mapGroup.append("path")
+            .attr("d", path(feature))
             .attr("clip-path", `url(#${clipId})`)
             .attr("fill", "#005f99")
             .attr("opacity", 0.7)
             .attr("stroke", "#fff").attr("stroke-width", 0.8);
-        });
-    });
-    // Highlight all polygons for these countries by matching all features with the same ISO code
-    const iso = rec.cca3;
-    mapGroup.selectAll("path.country")
-      .filter(d => {
-        const props = d.properties || {};
-        // Some TopoJSON features may have ISO_A3 or ADM0_A3
-        return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
-      })
-      .classed("revealed",true)
-      .raise();
-    return;
-  }
-  // France: shift image left and use fixed aspect ratio to show all three colors
-  else if(rec.cca2==="FR") {
-    const clipId=`clip-${rec.cca3 || normalizeName(rec.name)}`;
-    mapGroup.append("clipPath").attr("id",clipId).append("path").attr("d",path(feature));
-    const bbox=path.bounds(feature);
-    const boxWidth=bbox[1][0]-bbox[0][0], boxHeight=bbox[1][1]-bbox[0][1];
-    // Use flag aspect ratio (3:2), shift left by 1/3 of width to show blue/red
-    const flagWidth = boxHeight * 1.5;
-    const xOffset = bbox[0][0] - (flagWidth - boxWidth) / 2;
-    mapGroup.append("image")
-      .attr("href", "https://flagcdn.com/w320/fr.png")
-      .attr("x", xOffset).attr("y", bbox[0][1])
-      .attr("width", flagWidth).attr("height", boxHeight)
-      .attr("preserveAspectRatio","xMinYMin slice")
-      .attr("clip-path", `url(#${clipId})`)
-      .attr("style","pointer-events:none;")
-      .on("error", function() {
-        d3.select(this).remove();
-        mapGroup.append("path")
-          .attr("d", path(feature))
-          .attr("clip-path", `url(#${clipId})`)
-          .attr("fill", "#005f99")
-          .attr("opacity", 0.7)
-          .attr("stroke", "#fff").attr("stroke-width", 0.8);
       });
-    // Highlight France by matching all features with the same ISO code
-    const iso = rec.cca3;
-    mapGroup.selectAll("path.country")
-      .filter(d => {
-        const props = d.properties || {};
-        return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
-      })
-      .classed("revealed",true)
-      .raise();
-    return;
-  }
-  // All other countries: stretch flag as before
-  else {
-    const clipId=`clip-${rec.cca3 || normalizeName(rec.name)}`;
-    mapGroup.append("clipPath").attr("id",clipId).append("path").attr("d",path(feature));
-    const bbox=path.bounds(feature);
-    const boxWidth=bbox[1][0]-bbox[0][0], boxHeight=bbox[1][1]-bbox[0][1];
-    const flagUrl = rec.cca2 ? `https://flagcdn.com/w320/${rec.cca2.toLowerCase()}.png` : "";
-    const img = mapGroup.append("image")
-      .attr("href", flagUrl)
-      .attr("x", bbox[0][0]).attr("y", bbox[0][1])
-      .attr("width", boxWidth).attr("height", boxHeight)
-      .attr("preserveAspectRatio","none")
-      .attr("clip-path", `url(#${clipId})`)
-      .attr("style","pointer-events:none;")
-    img.on("error", function() {
-      d3.select(this).remove();
-      mapGroup.append("path")
-        .attr("d", path(feature))
-        .attr("clip-path", `url(#${clipId})`)
-        .attr("fill", "#005f99")
-        .attr("opacity", 0.7)
-        .attr("stroke", "#fff").attr("stroke-width", 0.8);
-    });
 
-    // Highlight country by matching all features with the same ISO code
-    const iso = rec.cca3;
-    mapGroup.selectAll("path.country")
-      .filter(d => {
-        const props = d.properties || {};
-        return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
-      })
-      .classed("revealed",true)
-      .raise();
-  }
+      const iso = rec.cca3;
+      mapGroup.selectAll("path.country")
+         .filter(d => {
+            const props = d.properties || {};
+            return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
+         })
+         .classed("revealed",true)
+         .raise();
+   }
 
-  // At the end of each reveal, add mouse events for popup on revealed country
-  setTimeout(() => {
-    const iso = rec.cca3;
-    mapGroup.selectAll("path.country")
-      .filter(d => {
-        const props = d.properties || {};
-        return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
-      })
-      .on("mousemove", function(event, d) {
-        const popup = document.getElementById("popup-country");
-        popup.textContent = rec.name;
-        popup.style.display = "block";
-        popup.style.left = (event.clientX + 12) + "px";
-        popup.style.top = (event.clientY - 10) + "px";
-        popup.style.opacity = "1";
-      })
-      .on("mouseleave", function() {
-        const popup = document.getElementById("popup-country");
-        popup.style.opacity = "0";
-        popup.style.display = "none";
-      });
-  }, 10);
+   setTimeout(() => {
+      const iso = rec.cca3;
+      mapGroup.selectAll("path.country")
+         .filter(d => {
+            const props = d.properties || {};
+            return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
+         })
+         .on("mousemove", function(event, d) {
+            const popup = document.getElementById("popup-country");
+            popup.textContent = rec.name;
+            popup.style.display = "block";
+            popup.style.left = (event.clientX + 12) + "px";
+            popup.style.top = (event.clientY - 10) + "px";
+            popup.style.opacity = "1";
+         })
+         .on("mouseleave", function() {
+            const popup = document.getElementById("popup-country");
+            popup.style.opacity = "0";
+            popup.style.display = "none";
+         });
+   }, 10);
 }
 
-// nextRound, submitAnswer, autocomplete, timer, pause/resume, endGame
-
 function nextRound(){
-  const submitSpan=document.querySelector("#submit-btn span");
-  submitSpan.textContent="arrow_forward_ios"; submitSpan.style.fontSize="24px";
-  let remaining;
-  if(gameMode==="Normal"||gameMode==="Hard"){
-    while(continentIndex<continentOrder.length){
+   const submitSpan=document.querySelector("#submit-btn span");
+   submitSpan.textContent="arrow_forward_ios"; submitSpan.style.fontSize="24px";
+   let remaining;
+   if(gameMode==="Normal"||gameMode==="Hard"){
+      while(continentIndex<continentOrder.length){
+         const cont=continentOrder[continentIndex];
+         remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region===cont);
+         if(remaining.length>0) break;
+         continentIndex++;
+      }
+      if(continentIndex>=continentOrder.length){ endGame(); return; }
+   }else{
+      remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region!=="Antarctic");
+   }
+   if(!remaining || !remaining.length){ endGame(); return; }
+   const rec=remaining[Math.floor(Math.random()*remaining.length)];
+   currentContinent=rec.region; currentLetter=rec.name[0].toUpperCase();
+   let promptText=`Round ${round}: Name a country starting with "${currentLetter}"`;
+   if(gameMode==="Normal"||gameMode==="Hard") promptText=`Round ${round}: Name a country in ${currentContinent} starting with "${currentLetter}"`;
+   document.getElementById("prompt").innerText=promptText;
+}
+
+function nextCitiesRound(){
+   while(continentIndex<continentOrder.length){
       const cont=continentOrder[continentIndex];
-      remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region===cont);
-      if(remaining.length>0) break;
+      const remaining=capitalsOrder.filter(c=>!revealedCapitals.has(c.capital)&&c.region===cont);
+      if(remaining.length>0){
+         currentCountry=remaining[0];
+         currentContinent=cont;
+         break;
+      }
       continentIndex++;
-    }
-    if(continentIndex>=continentOrder.length){ endGame(); return; }
-  }else{
-    remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region!=="Antarctic");
-  }
-  if(!remaining || !remaining.length){ endGame(); return; }
-  const rec=remaining[Math.floor(Math.random()*remaining.length)];
-  currentContinent=rec.region; currentLetter=rec.name[0].toUpperCase();
-  let promptText=`Round ${round}: Name a country starting with "${currentLetter}"`;
-  if(gameMode==="Normal"||gameMode==="Hard") promptText=`Round ${round}: Name a country in ${currentContinent} starting with "${currentLetter}"`;
-  document.getElementById("prompt").innerText=promptText;
+   }
+   if(continentIndex>=continentOrder.length){ endGame(); return; }
+   if(!currentCountry){ endGame(); return; }
+   let promptText=`Round ${round}: What is the capital of ${currentCountry.country}?`;
+   document.getElementById("prompt").innerText=promptText;
 }
 
 const answerInput=document.getElementById("answer"), autocompleteList=document.getElementById("autocomplete-list");
 answerInput.addEventListener("input", function(){
-  if(gameMode==="Hard"||gameMode==="Medium"){ autocompleteList.innerHTML=""; return; }
-  const val=normalizeName(this.value); autocompleteList.innerHTML="";
-  if(!val) return;
-  let matches=countriesData.map(c=>c.name).filter(n=>normalizeName(n).startsWith(val)&&!revealedCountries.has(n));
-  matches.slice(0,10).forEach(name=>{
-    const div=document.createElement("div");
-    div.classList.add("autocomplete-item"); div.textContent=name;
-    div.onclick=()=>{ answerInput.value=name; autocompleteList.innerHTML=""; submitAnswer(); };
-    autocompleteList.appendChild(div);
-  });
+   autocompleteList.innerHTML="";
+   const val=normalizeName(this.value);
+   if(!val) return;
+   if(gameType==="countries"){
+      if(gameMode==="Hard"||gameMode==="Medium"){ return; }
+      let matches=countriesData.map(c=>c.name).filter(n=>normalizeName(n).startsWith(val)&&!revealedCountries.has(n));
+      matches.forEach(name=>{
+         const div=document.createElement("div");
+         div.classList.add("autocomplete-item"); div.textContent=name;
+         div.onclick=()=>{ answerInput.value=name; autocompleteList.innerHTML=""; submitAnswer(); };
+         autocompleteList.appendChild(div);
+      });
+   }else{
+      if(gameMode==="Hard"){ return; }
+      let matches=capitalsOrder.filter(c=>normalizeName(c.capital).startsWith(val)&&!revealedCapitals.has(c.capital));
+      matches.forEach(rec=>{
+         const div=document.createElement("div");
+         div.classList.add("autocomplete-item"); div.textContent=rec.capital;
+         div.onclick=()=>{ answerInput.value=rec.capital; autocompleteList.innerHTML=""; submitAnswer(); };
+         autocompleteList.appendChild(div);
+      });
+   }
 });
 document.addEventListener("click", e=>{ if(e.target!==answerInput) autocompleteList.innerHTML=""; });
 answerInput.addEventListener("keydown", e=>{ if(e.key==="Enter"){ submitAnswer(); autocompleteList.innerHTML=""; } });
@@ -404,26 +486,61 @@ answerInput.addEventListener("keydown", e=>{ if(e.key==="Enter"){ submitAnswer()
 document.getElementById("submit-btn").addEventListener("click", submitAnswer);
 
 function submitAnswer(){
-  if(paused) return;
-  const input=answerInput.value.trim(); answerInput.value=""; autocompleteList.innerHTML="";
-  if(!input) return;
-  if(input==="|re"){ countriesData.forEach(revealCountry); endGame(); return; }
-  const rec=nameIndex.get(normalizeName(input));
-  const submitSpan=document.querySelector("#submit-btn span");
-  if(!rec){ alert(`❌ Invalid input: ${input}`); wrongGuesses++; return; }
-  if((gameMode==="Normal"||gameMode==="Hard") && rec.region!==currentContinent){ alert(`❌ Wrong continent: ${rec.name} is in ${rec.region}`); wrongGuesses++; return; }
-  if(!rec.name.toUpperCase().startsWith(currentLetter)){ alert(`❌ Wrong letter: ${rec.name} does not start with ${currentLetter}`); wrongGuesses++; return; }
-  submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
-  revealCountry(rec); round++; setTimeout(nextRound,500);
+   if(paused) return;
+   const input=answerInput.value.trim(); answerInput.value=""; autocompleteList.innerHTML="";
+   if(!input) return;
+   if(input==="|re"){
+      if(gameType==="countries"){
+         countriesData.forEach(revealCountry);
+      }else{
+         capitalsOrder.forEach(revealCapital);
+      }
+      endGame(); return;
+   }
+   const submitSpan=document.querySelector("#submit-btn span");
+   if(gameType==="countries"){
+      const rec=nameIndex.get(normalizeName(input));
+      if(!rec){ alert(`❌ Invalid input: ${input}`); wrongGuesses++; return; }
+      if((gameMode==="Normal"||gameMode==="Hard") && rec.region!==currentContinent){ alert(`❌ Wrong continent: ${rec.name} is in ${rec.region}`); wrongGuesses++; return; }
+      if(!rec.name.toUpperCase().startsWith(currentLetter)){ alert(`❌ Wrong letter: ${rec.name} does not start with ${currentLetter}`); wrongGuesses++; return; }
+      submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
+      revealCountry(rec); round++; setTimeout(nextRound,500);
+   }else{
+      const rec=capitalsIndex.get(normalizeName(input));
+      if(!rec){ alert(`❌ Invalid input: ${input}`); wrongGuesses++; return; }
+      if(rec.country!==currentCountry.country){
+         alert(`❌ Wrong country: ${rec.capital} is the capital of ${rec.country}`); wrongGuesses++; return;
+      }
+      submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
+      revealCapital(rec); round++; setTimeout(nextCitiesRound,500);
+   }
+}
+
+function revealCapital(rec){
+   if(revealedCapitals.has(rec.capital)) return;
+   revealedCapitals.add(rec.capital);
+   capitalDots.forEach(dot=>{
+      if(dot.attr("data-capital")===rec.capital){
+         dot.classed("capital-dot-grey",false).classed("capital-dot-red",true);
+      }
+   });
 }
 
 function startTimer(){ startTime=Date.now()-elapsed; timerInterval=setInterval(updateTimer,1000); }
 function updateTimer(){ elapsed=Date.now()-startTime; const totalSec=Math.floor(elapsed/1000); const min=Math.floor(totalSec/60), sec=totalSec%60; document.getElementById("timer").textContent=`${min}:${sec.toString().padStart(2,"0")}`; }
 function pauseTimer(){ clearInterval(timerInterval); paused=true; document.getElementById("pause-overlay").style.display="flex"; }
 function resumeTimer(){ startTimer(); paused=false; document.getElementById("pause-overlay").style.display="none"; }
-function endGame(){ clearInterval(timerInterval); const totalSec=Math.floor(elapsed/1000); const min=Math.floor(totalSec/60), sec=totalSec%60; const correct=round-1; const total=correct+wrongGuesses; const percent= total>0 ? ((correct/total)*100).toFixed(1) : 100;
-document.getElementById("results-text").innerHTML=`<div>Game Over! (${gameMode} Mode)</div><div>Time: ${min}:${sec.toString().padStart(2,"0")}</div><div>Wrong Attempts: ${wrongGuesses}</div><div>Accuracy: ${percent}%</div>`;
-document.getElementById("results-screen").style.display="flex"; }
+function endGame(){
+   clearInterval(timerInterval);
+   const totalSec=Math.floor(elapsed/1000); const min=Math.floor(totalSec/60), sec=totalSec%60;
+   const correct=round-1; const total=correct+wrongGuesses; const percent= total>0 ? ((correct/total)*100).toFixed(1) : 100;
+   document.getElementById("results-text").innerHTML=`
+      <div>Game Over! (${gameType==="countries"?gameMode+" Countries":"Cities "+gameMode} Mode)</div>
+      <div>Time: ${min}:${sec.toString().padStart(2,"0")}</div>
+         <div>Wrong Attempts: ${wrongGuesses}</div>
+         <div>Accuracy: ${percent}%</div>`;
+   document.getElementById("results-screen").style.display="flex";
+}
 
 document.getElementById("pause-btn").addEventListener("click", ()=>{ if(!paused) pauseTimer(); });
 document.getElementById("resume-btn").addEventListener("click", resumeTimer);
