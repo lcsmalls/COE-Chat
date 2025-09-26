@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Geography A to Z</title>
+<title>Teorainneacha</title>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
 <link rel="icon" type="image/png" href="https://coe-chat.vercel.app/geography-game/favicon.png">
 <style>
@@ -66,7 +66,7 @@ button:hover { background:#005f99; }
 <script src="https://unpkg.com/topojson-client@3"></script>
 </head>
 <body>
-<h1>Geography A to Z</h1>
+<h1>Teorainneacha</h1>
 <div id="controls">
   <div id="prompt">Loading game...</div>
   <input id="answer" type="text" placeholder="Type country name" autocomplete="off">
@@ -80,7 +80,7 @@ button:hover { background:#005f99; }
 
 <div id="main-menu" style="display:flex;">
   <img src="https://coe-chat.vercel.app/geography-game/favicon.png" alt="Game Logo" style="width:100px;height:100px;margin-bottom:1em;">
-  <h1>Geography A to Z</h1>
+  <h1>Teorainneacha</h1>
   <p>Choose a game mode:</p>
   <button onclick="showStartScreen('countries')">Countries Mode</button>
   <button onclick="showStartScreen('cities')">Cities Mode</button>
@@ -88,7 +88,7 @@ button:hover { background:#005f99; }
 
 <div id="start-screen" style="display:none;">
   <img src="https://coe-chat.vercel.app/geography-game/favicon.png" alt="Game Logo">
-  <h1 id="start-title">Geography A to Z</h1>
+  <h1 id="start-title">Teorainneacha</h1>
   <p id="start-desc">Select a mode to start:</p>
   <button id="easy-btn" onclick="startGame('Easy')">Easy</button>
   <button id="medium-btn" onclick="startGame('Medium')">Medium</button>
@@ -217,7 +217,7 @@ function showStartScreen(type){
    gameType=type;
    document.getElementById("main-menu").style.display="none";
    document.getElementById("start-screen").style.display="flex";
-   document.getElementById("start-title").textContent = type==="countries" ? "Geography A to Z" : "Capitals A to Z";
+   document.getElementById("start-title").textContent = type==="countries" ? "Teorainneacha" : "Capitals A to Z";
    document.getElementById("start-desc").textContent = type==="countries"
       ? "Select a difficulty for Countries mode:" : "Select a difficulty for Cities mode:";
    document.getElementById("easy-btn").style.display = "inline-block";
