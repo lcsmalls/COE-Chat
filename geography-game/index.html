@@ -21,6 +21,7 @@ button:hover { background:#005f99; }
 .capital-dot { pointer-events:none; }
 .capital-dot-grey { fill:#888; stroke:#222; stroke-width:1px; }
 .capital-dot-red { fill:#e53935; stroke:#fff; stroke-width:1.5px; }
+
 #main-menu {
   position:fixed; top:0; left:0; width:100%; height:100%;
   background:rgba(0,0,0,0.95); display:flex; flex-direction:column;
@@ -34,13 +35,13 @@ button:hover { background:#005f99; }
 }
 #pause-btn { background:#ff9800; }
 #pause-btn:hover { background:#cc7a00; }
-#pause-overlay, #results-screen, #start-screen {
+#pause-overlay, #results-screen, #start-screen, #instructions-overlay, #credits-overlay {
   position:fixed; top:0; left:0; width:100%; height:100%;
   background:rgba(0,0,0,0.9); display:flex; flex-direction:column;
   justify-content:center; align-items:center; z-index:2000; color:#fff;
   text-align:center; display:none;
 }
-#pause-overlay button, #results-screen button, #start-screen button {
+#pause-overlay button, #results-screen button, #start-screen button, #instructions-overlay button, #credits-overlay button {
   margin-top:1em; padding:0.7em 1em; font-size:1.5em;
   border:none; border-radius:35px; cursor:pointer;
   background:#007acc; color:#fff; width:auto; height:auto;
@@ -74,6 +75,36 @@ button:hover { background:#005f99; }
   display:none;
   transition:opacity 0.15s;
 }
+
+/* Message modal (flash modal for wrong answers / typo corrections) */
+#message-modal {
+  position:fixed;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  background:rgba(20,20,20,0.98);
+  color:#fff;
+  padding:0.8em 1.2em;
+  border-radius:10px;
+  font-size:1.05em;
+  z-index:4000;
+  display:none;
+  align-items:center;
+  gap:0.6em;
+  box-shadow:0 6px 20px rgba(0,0,0,0.6);
+  transition:opacity 0.18s;
+  pointer-events:none;
+}
+#message-modal .material-symbols-rounded { font-variation-settings:'FILL' 1; font-size:24px; vertical-align:middle; }
+
+/* Instructions / credits content layout */
+#instructions-content, #credits-content { max-width:700px; text-align:left; overflow:auto; padding:1em; }
+#instructions-content h3, #credits-content h3 { margin-top:0; }
+#credits-content ul { margin-left:1.2em; }
+
+/* Small helper to make overlays scrollable on mobile */
+@media (max-height:700px){
+  #instructions-content, #credits-content { max-height:70vh; }
+}
 </style>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://unpkg.com/topojson-client@3"></script>
@@ -95,8 +126,14 @@ button:hover { background:#005f99; }
   <img src="https://coe-chat.vercel.app/geography-game/favicon.png" alt="Game Logo" style="width:100px;height:100px;margin-bottom:1em;">
   <h1>Teorainneacha</h1>
   <p>Choose a game mode:</p>
-  <button onclick="showStartScreen('countries')">Countries</button>
-  <button onclick="showStartScreen('cities')">Cities</button>
+  <div>
+    <button onclick="showStartScreen('countries')">Countries</button>
+    <button onclick="showStartScreen('cities')">Cities</button>
+  </div>
+  <div>
+    <button onclick="showInstructions()">Instructions</button>
+    <button onclick="showCredits()">Credits</button>
+  </div>
 </div>
 
 <div id="start-screen" style="display:none;">
@@ -112,13 +149,64 @@ button:hover { background:#005f99; }
 <div id="pause-overlay">
   <div>Game Paused</div>
   <button id="resume-btn">Resume</button>
+  <button id="pause-mainmenu-btn">Main Menu</button>
 </div>
+
 
 <div id="results-screen">
   <div id="results-text"></div>
   <button onclick="location.reload()">Play Again</button>
+  <button id="results-mainmenu-btn">Main Menu</button>
   <button id="close-results-btn">Close</button>
 </div>
+
+
+<!-- Instructions overlay -->
+<div id="instructions-overlay">
+  <div id="instructions-content">
+    <h2>How to play</h2>
+    <h3>Countries mode</h3>
+    <p>Each round you will be prompted for a country. Type the country's name and press Enter or the blue arrow to submit. The game will reveal the country on the map if you're correct.</p>
+    <h3>Capitals mode</h3>
+    <p>Each round you will be asked for the capital of a country. Type the capital and submit. Capitals already revealed show as red dots.</p>
+    <h3>Autocomplete and forgiving spelling</h3>
+    <p>If you type only the start of a country/capital and the autocomplete shows exactly one suggestion, pressing Enter will accept that suggestion. If your input has a small typo (up to two letters different), the game will automatically accept the best match and flash the correct spelling for two seconds.</p>
+    <button onclick="closeInstructions()">Close</button>
+  </div>
+</div>
+
+<!-- Credits overlay -->
+<div id="credits-overlay">
+  <div id="credits-content">
+    <h2>Credits</h2>
+
+    <h3>Authors</h3>
+    <p><strong>Developed by:</strong> Liam Smalley</p>
+    <p><strong>Game concept by:</strong> Raymond Carson and Liam Smalley</p>
+
+    <h3>Data and assets</h3>
+    <ul>
+      <li><strong>Country shapes:</strong> Natural Earth / World Atlas TopoJSON</li>
+      <li><strong>Country and city names:</strong> RestCountries API</li>
+      <li><strong>Flag images:</strong> FlagCDN</li>
+      <li><strong>Libraries:</strong> D3.js (map rendering and projections), TopoJSON client</li>
+    </ul>
+
+    <h3>Rights notice</h3>
+    <p>
+      <strong>Teorainneacha</strong> is the personal creation and property of <strong>Liam Smalley</strong>.  
+      This project is not formally licensed for redistribution; all rights are reserved by the author.  
+      You may not reproduce, redistribute, publish, or adapt this game without the express permission of the author.
+    </p>
+    <p>If you would like to request permission to use any part of this project, please contact the author directly.</p>
+
+    <button onclick="closeCredits()">Close</button>
+  </div>
+</div>
+
+
+<!-- Flash message modal (used for wrong answers and typo corrections) -->
+<div id="message-modal" aria-hidden="true"></div>
 
 <script>
 let countriesData=[], features=[], projection, path, svg, mapGroup;
@@ -153,11 +241,49 @@ const topoIdMap={
    "COD":"180", // Democratic Republic of the Congo
    "SSD":"728", // South Sudan
    "EQG":"226" // Equatorial Guinea
-
 }
 
-function normalizeName(s){ return s.toLowerCase().replace(/[^a-z]+/g,''); }
+function normalizeName(s){ return (s||"").toLowerCase().replace(/[^a-z]+/g,''); }
 
+/* ---- Flash modal (self-dismissing) ---- */
+function showMessage(text, icon='info'){
+  const modal = document.getElementById("message-modal");
+  modal.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${text}</span>`;
+  modal.style.opacity = "1";
+  modal.style.display = "flex";
+  modal.setAttribute('aria-hidden','false');
+  // Clear any previous timeout
+  if(modal._hideTimeout) clearTimeout(modal._hideTimeout);
+  modal._hideTimeout = setTimeout(()=>{
+    modal.style.opacity = "0";
+    // small delay to allow opacity transition then hide
+    setTimeout(()=>{ modal.style.display = "none"; modal.setAttribute('aria-hidden','true'); }, 200);
+  }, 2000);
+}
+
+/* ---- Levenshtein distance (for fuzzy matching, allowed difference <=2) ---- */
+function levenshtein(a,b){
+  a = a||''; b = b||'';
+  const n=a.length, m=b.length;
+  if(n===0) return m;
+  if(m===0) return n;
+  // use two-row DP to save memory
+  let prev = new Array(m+1);
+  let cur = new Array(m+1);
+  for(let j=0;j<=m;j++) prev[j] = j;
+  for(let i=1;i<=n;i++){
+    cur[0]=i;
+    const ai = a.charAt(i-1);
+    for(let j=1;j<=m;j++){
+      const cost = ai === b.charAt(j-1) ? 0 : 1;
+      cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + cost);
+    }
+    const tmp = prev; prev = cur; cur = tmp;
+  }
+  return prev[m];
+}
+
+/* ---- Init, map, data loading (preserved from your version) ---- */
 async function init(){
    svg=d3.select("#map");
    const width = window.innerWidth;
@@ -168,7 +294,7 @@ async function init(){
    path=d3.geoPath().projection(projection);
    mapGroup=svg.append("g").attr("class","map-content");
 
-svg.call(d3.zoom().scaleExtent([1,500]).on("zoom",event=>{mapGroup.attr("transform",event.transform);}));
+   svg.call(d3.zoom().scaleExtent([1,500]).on("zoom",event=>{mapGroup.attr("transform",event.transform);})); 
 
    const rc=await fetch('https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,altSpellings').then(r=>r.json());
    rc.forEach(c=>{
@@ -226,11 +352,12 @@ svg.call(d3.zoom().scaleExtent([1,500]).on("zoom",event=>{mapGroup.attr("transfo
    );
 }
 
+/* ---- UI overlays control ---- */
 function showStartScreen(type){
    gameType=type;
    document.getElementById("main-menu").style.display="none";
    document.getElementById("start-screen").style.display="flex";
-   document.getElementById("start-title").textContent = type==="countries" ? "Teorainneacha" : "Capitals A to Z";
+   document.getElementById("start-title").textContent = type==="countries" ? "Teorainneacha" : "Capitals";
    document.getElementById("start-desc").textContent = type==="countries"
       ? "Select a difficulty for Countries mode:" : "Select a difficulty for Cities mode:";
    document.getElementById("easy-btn").style.display = "inline-block";
@@ -238,7 +365,55 @@ function showStartScreen(type){
    document.getElementById("normal-btn").style.display = type==="countries" ? "inline-block" : "none";
    document.getElementById("hard-btn").style.display = "inline-block";
 }
+function showInstructions(){ document.getElementById("main-menu").style.display="none"; document.getElementById("instructions-overlay").style.display="flex"; }
+function closeInstructions(){ document.getElementById("instructions-overlay").style.display="none"; document.getElementById("main-menu").style.display="flex"; }
+function showCredits(){ document.getElementById("main-menu").style.display="none"; document.getElementById("credits-overlay").style.display="flex"; }
+function closeCredits(){ document.getElementById("credits-overlay").style.display="none"; document.getElementById("main-menu").style.display="flex"; }
+document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
+  clearInterval(timerInterval);
+  paused = false;
+  elapsed = 0;
+  round = 1;
+  continentIndex = 0;
+  wrongGuesses = 0;
+  revealedCountries.clear();
+  revealedCapitals.clear();
 
+  // NEW: reset visuals
+  mapGroup.selectAll("image").remove();
+  mapGroup.selectAll("path.country").classed("revealed", false).attr("fill", null);
+  capitalDots.forEach(dot => dot.remove());
+  capitalDots = [];
+
+  document.getElementById("pause-overlay").style.display = "none";
+  document.getElementById("results-screen").style.display = "none";
+  document.getElementById("start-screen").style.display = "none";
+  document.getElementById("main-menu").style.display = "flex";
+});
+
+document.getElementById("results-mainmenu-btn").addEventListener("click", () => {
+  clearInterval(timerInterval);
+  paused = false;
+  elapsed = 0;
+  round = 1;
+  continentIndex = 0;
+  wrongGuesses = 0;
+  revealedCountries.clear();
+  revealedCapitals.clear();
+
+  // NEW: reset visuals
+  mapGroup.selectAll("image").remove();
+  mapGroup.selectAll("path.country").classed("revealed", false).attr("fill", null);
+  capitalDots.forEach(dot => dot.remove());
+  capitalDots = [];
+
+  document.getElementById("pause-overlay").style.display = "none";
+  document.getElementById("results-screen").style.display = "none";
+  document.getElementById("start-screen").style.display = "none";
+  document.getElementById("main-menu").style.display = "flex";
+});
+
+/* ---- game start / flow ---- */
 function startGame(mode){
    gameMode=mode;
    document.getElementById("start-screen").style.display="none";
@@ -468,11 +643,14 @@ function nextCitiesRound(){
    document.getElementById("prompt").innerText=promptText;
 }
 
+/* ---- DOM refs and autocomplete behaviour ---- */
 const answerInput=document.getElementById("answer"), autocompleteList=document.getElementById("autocomplete-list");
 answerInput.addEventListener("input", function(){
    autocompleteList.innerHTML="";
    const val=normalizeName(this.value);
    if(!val) return;
+   // Don't let cheat code pipe be affected
+   if(this.value.trim()==="|re") return;
    if(gameType==="countries"){
       if(gameMode==="Hard"||gameMode==="Medium"){ return; }
       let matches=countriesData.map(c=>c.name).filter(n=>normalizeName(n).startsWith(val)&&!revealedCountries.has(n));
@@ -494,15 +672,38 @@ answerInput.addEventListener("input", function(){
    }
 });
 document.addEventListener("click", e=>{ if(e.target!==answerInput) autocompleteList.innerHTML=""; });
-answerInput.addEventListener("keydown", e=>{ if(e.key==="Enter"){ submitAnswer(); autocompleteList.innerHTML=""; } });
 
+/* ---- Enter behaviour: autofill single suggestion (but do not override |re) ---- */
+answerInput.addEventListener("keydown", function(e){
+  if(e.key==="Enter"){
+    const raw = this.value.trim();
+    if(raw === "|re"){ // cheat unaffected by autocomplete
+      submitAnswer();
+      autocompleteList.innerHTML="";
+      e.preventDefault();
+      return;
+    }
+    const items = Array.from(autocompleteList.children || []);
+    if(items.length === 1){
+      // autofill single suggestion and let submitAnswer handle it
+      this.value = items[0].textContent;
+    }
+    submitAnswer();
+    autocompleteList.innerHTML="";
+    e.preventDefault();
+  }
+});
+
+/* ---- Submit button click ---- */
 document.getElementById("submit-btn").addEventListener("click", submitAnswer);
 
+/* ---- Core answer submission: replaced alerts with showMessage and added fuzzy matching ----- */
 function submitAnswer(){
    if(paused) return;
-   const input=answerInput.value.trim(); answerInput.value=""; autocompleteList.innerHTML="";
-   if(!input) return;
-   if(input==="|re"){
+   const rawInput = answerInput.value.trim();
+   answerInput.value=""; autocompleteList.innerHTML="";
+   if(!rawInput) return;
+   if(rawInput==="|re"){
       if(gameType==="countries"){
          countriesData.forEach(revealCountry);
       }else{
@@ -512,23 +713,81 @@ function submitAnswer(){
    }
    const submitSpan=document.querySelector("#submit-btn span");
    if(gameType==="countries"){
-      const rec=nameIndex.get(normalizeName(input));
-      if(!rec){ alert(`❌ Invalid input: ${input}`); wrongGuesses++; return; }
-      if((gameMode==="Normal"||gameMode==="Hard") && rec.region!==currentContinent){ alert(`❌ Wrong continent: ${rec.name} is in ${rec.region}`); wrongGuesses++; return; }
-      if(!rec.name.toUpperCase().startsWith(currentLetter)){ alert(`❌ Wrong letter: ${rec.name} does not start with ${currentLetter}`); wrongGuesses++; return; }
+      let rec = nameIndex.get(normalizeName(rawInput));
+      let usedFuzzy=false;
+
+      // If not found, attempt fuzzy correction (find best alias match)
+      if(!rec){
+        let best=null, bestDist=999;
+        // iterate nameIndex keys for best match
+        for(const [norm, val] of nameIndex){
+          const d = levenshtein(normalizeName(rawInput), norm);
+          if(d < bestDist){
+            bestDist = d;
+            best = val;
+          }
+        }
+        if(best && bestDist <= 2){
+          rec = best;
+          usedFuzzy = true;
+          // show corrected spelling briefly while proceeding
+          showMessage(`Correct spelling: ${best.name}`, 'spellcheck');
+        }
+      }
+
+      if(!rec){
+         showMessage(`Invalid input: ${rawInput}`, 'error');
+         wrongGuesses++;
+         return;
+      }
+      if((gameMode==="Normal"||gameMode==="Hard") && rec.region!==currentContinent){
+         showMessage(`Wrong continent: ${rec.name} is in ${rec.region}`, 'public');
+         wrongGuesses++;
+         return;
+      }
+      if(!rec.name.toUpperCase().startsWith(currentLetter)){
+         showMessage(`Wrong letter: ${rec.name} does not start with ${currentLetter}`, 'warning');
+         wrongGuesses++;
+         return;
+      }
       submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
       revealCountry(rec); round++; setTimeout(nextRound,500);
    }else{
-      const rec=capitalsIndex.get(normalizeName(input));
-      if(!rec){ alert(`❌ Invalid input: ${input}`); wrongGuesses++; return; }
+      let rec = capitalsIndex.get(normalizeName(rawInput));
+      let usedFuzzy=false;
+
+      if(!rec){
+        let best=null, bestDist=999;
+        for(const [norm, val] of capitalsIndex){
+          const d = levenshtein(normalizeName(rawInput), norm);
+          if(d < bestDist){
+            bestDist = d;
+            best = val;
+          }
+        }
+        if(best && bestDist <= 2){
+          rec = best;
+          usedFuzzy = true;
+          showMessage(`Correct spelling: ${best.capital}`, 'spellcheck');
+        }
+      }
+
+      if(!rec){
+         showMessage(`Invalid input: ${rawInput}`, 'error');
+         wrongGuesses++;
+         return;
+      }
       if(rec.country!==currentCountry.country){
-         alert(`❌ Wrong country: ${rec.capital} is the capital of ${rec.country}`); wrongGuesses++; return;
+         showMessage(`Wrong country: ${rec.capital} is the capital of ${rec.country}`, 'public');
+         wrongGuesses++;
+         return;
       }
       submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
       revealCapital(rec); round++; setTimeout(nextCitiesRound,500);
    }
 }
 
+/* ---- revealCapital unchanged ---- */
 function revealCapital(rec){
    if(revealedCapitals.has(rec.capital)) return;
    revealedCapitals.add(rec.capital);
@@ -539,6 +798,7 @@ function revealCapital(rec){
    });
 }
 
+/* ---- Timer and end game UI ---- */
 function startTimer(){ startTime=Date.now()-elapsed; timerInterval=setInterval(updateTimer,1000); }
 function updateTimer(){ elapsed=Date.now()-startTime; const totalSec=Math.floor(elapsed/1000); const min=Math.floor(totalSec/60), sec=totalSec%60; document.getElementById("timer").textContent=`${min}:${sec.toString().padStart(2,"0")}`; }
 function pauseTimer(){ clearInterval(timerInterval); paused=true; document.getElementById("pause-overlay").style.display="flex"; }
@@ -555,10 +815,12 @@ function endGame(){
    document.getElementById("results-screen").style.display="flex";
 }
 
+/* ---- event wiring for pause / resume / close results ---- */
 document.getElementById("pause-btn").addEventListener("click", ()=>{ if(!paused) pauseTimer(); });
 document.getElementById("resume-btn").addEventListener("click", resumeTimer);
 document.getElementById("close-results-btn").addEventListener("click", ()=>{ document.getElementById("results-screen").style.display="none"; });
 
+/* ---- start ---- */
 init();
 </script>
 </body>
