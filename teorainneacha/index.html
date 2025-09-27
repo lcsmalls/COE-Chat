@@ -678,6 +678,22 @@ document.getElementById("pause-btn").addEventListener("click", ()=>{ if(!paused)
 document.getElementById("resume-btn").addEventListener("click", resumeTimer);
 document.getElementById("close-results-btn").addEventListener("click", ()=>{ document.getElementById("results-screen").style.display="none"; });
 
+document.addEventListener("keydown", function(e) {
+  const answerInput = document.getElementById("answer");
+  // Always pause on 'x' (case-insensitive)
+  if (e.key.toLowerCase() === "x") {
+    if (!paused) pauseTimer();
+    e.preventDefault();
+    return;
+  }
+  // If textbox is NOT focused and key is not 'x' or 'Enter', focus it
+  if (document.activeElement !== answerInput && e.key !== "Enter" && e.key.toLowerCase() !== "x") {
+    answerInput.focus();
+    e.preventDefault();
+  }
+});
+
+
 init();
 </script>
 </body>
