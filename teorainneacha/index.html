@@ -16,12 +16,12 @@ button:hover { background:#005f99; }
 #autocomplete-list { position:absolute; top:4em; left:0; width:250px; border:1px solid #555; border-radius:8px; background:#222; max-height:150px; overflow-y:auto; z-index:1000; box-shadow:0 2px 6px rgba(0,0,0,0.5); }
 .autocomplete-item { padding:0.3em 0.5em; cursor:pointer; }
 .autocomplete-item:hover { background:#444; }
-.country { fill:#13385e; stroke:#95abc2; stroke-width:0.15px; } /* thinner outline */
+.autocomplete-item.highlighted { background:#007acc; color:#fff; }
+.country { fill:#13385e; stroke:#95abc2; stroke-width:0.15px; }
 .revealed { stroke:#fff; stroke-width:0.15px; }
 .capital-dot { pointer-events:none; }
 .capital-dot-grey { fill:#888; stroke:#222; stroke-width:1px; }
 .capital-dot-red { fill:#e53935; stroke:#fff; stroke-width:1.5px; }
-
 #main-menu {
   position:fixed; top:0; left:0; width:100%; height:100%;
   background:rgba(0,0,0,0.95); display:flex; flex-direction:column;
@@ -50,18 +50,16 @@ button:hover { background:#005f99; }
 #start-screen img{ width:200px; height:200px; margin-bottom:1em; }
 #main-menu img{ width:200px!important; height:200px!important; margin-bottom:1em; }
 #start-screen h1 { margin-bottom:0.5em; }
-  
-  #start-screen button {
+#start-screen button {
   margin-top:1em;
   padding:1em 1em;
   font-size:1.5em;
   border:none;
-  border-radius:35px;   /* ← this controls roundness */
+  border-radius:35px;
   cursor:pointer;
   background:#007acc;
   color:#fff;
 }
-
 #popup-country {
   position:fixed;
   pointer-events:none;
@@ -75,8 +73,6 @@ button:hover { background:#005f99; }
   display:none;
   transition:opacity 0.15s;
 }
-
-/* Message modal (flash modal for wrong answers / typo corrections) */
 #message-modal {
   position:fixed;
   top:50%; left:50%;
@@ -95,13 +91,9 @@ button:hover { background:#005f99; }
   pointer-events:none;
 }
 #message-modal .material-symbols-rounded { font-variation-settings:'FILL' 1; font-size:24px; vertical-align:middle; }
-
-/* Instructions / credits content layout */
 #instructions-content, #credits-content { max-width:700px; text-align:left; overflow:auto; padding:1em; }
 #instructions-content h3, #credits-content h3 { margin-top:0; }
 #credits-content ul { margin-left:1.2em; }
-
-/* Small helper to make overlays scrollable on mobile */
 @media (max-height:700px){
   #instructions-content, #credits-content { max-height:70vh; }
 }
@@ -152,7 +144,6 @@ button:hover { background:#005f99; }
   <button id="pause-mainmenu-btn">Main Menu</button>
 </div>
 
-
 <div id="results-screen">
   <div id="results-text"></div>
   <button onclick="location.reload()">Play Again</button>
@@ -160,8 +151,6 @@ button:hover { background:#005f99; }
   <button id="close-results-btn">Close</button>
 </div>
 
-
-<!-- Instructions overlay -->
 <div id="instructions-overlay">
   <div id="instructions-content">
     <h2>How to play</h2>
@@ -175,15 +164,12 @@ button:hover { background:#005f99; }
   </div>
 </div>
 
-<!-- Credits overlay -->
 <div id="credits-overlay">
   <div id="credits-content">
     <h2>Credits</h2>
-
     <h3>Authors</h3>
     <p><strong>Developed by:</strong> Liam Smalley</p>
     <p><strong>Game concept by:</strong> Raymond Carson and Liam Smalley</p>
-
     <h3>Data and assets</h3>
     <ul>
       <li><strong>Country shapes:</strong> Natural Earth / World Atlas TopoJSON</li>
@@ -191,7 +177,6 @@ button:hover { background:#005f99; }
       <li><strong>Flag images:</strong> FlagCDN</li>
       <li><strong>Libraries:</strong> D3.js (map rendering and projections), TopoJSON client</li>
     </ul>
-
     <h3>Rights notice</h3>
     <p>
       <strong>Teorainneacha</strong> is the personal creation and property of <strong>Liam Smalley</strong>.  
@@ -199,13 +184,10 @@ button:hover { background:#005f99; }
       You may not reproduce, redistribute, publish, or adapt this game without the express permission of the author.
     </p>
     <p>If you would like to request permission to use any part of this project, please contact the author directly.</p>
-
     <button onclick="closeCredits()">Close</button>
   </div>
 </div>
 
-
-<!-- Flash message modal (used for wrong answers and typo corrections) -->
 <div id="message-modal" aria-hidden="true"></div>
 
 <script>
@@ -235,39 +217,30 @@ const manualFeatureMap={
    "eswatini":"SWZ", "swaziland":"SWZ", "burma":"MMR", "myanmar":"MMR",
    "palestine":"PSE", "palestinianterritory":"PSE", "palestinian territories":"PSE"
 };
-
-// NEW: Manual ID map for inconsistent countries in TopoJSON
 const topoIdMap={
-   "COD":"180", // Democratic Republic of the Congo
-   "SSD":"728", // South Sudan
-   "EQG":"226" // Equatorial Guinea
+   "COD":"180", "SSD":"728", "EQG":"226"
 }
 
 function normalizeName(s){ return (s||"").toLowerCase().replace(/[^a-z]+/g,''); }
 
-/* ---- Flash modal (self-dismissing) ---- */
 function showMessage(text, icon='info'){
   const modal = document.getElementById("message-modal");
   modal.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${text}</span>`;
   modal.style.opacity = "1";
   modal.style.display = "flex";
   modal.setAttribute('aria-hidden','false');
-  // Clear any previous timeout
   if(modal._hideTimeout) clearTimeout(modal._hideTimeout);
   modal._hideTimeout = setTimeout(()=>{
     modal.style.opacity = "0";
-    // small delay to allow opacity transition then hide
     setTimeout(()=>{ modal.style.display = "none"; modal.setAttribute('aria-hidden','true'); }, 200);
   }, 2000);
 }
 
-/* ---- Levenshtein distance (for fuzzy matching, allowed difference <=2) ---- */
 function levenshtein(a,b){
   a = a||''; b = b||'';
   const n=a.length, m=b.length;
   if(n===0) return m;
   if(m===0) return n;
-  // use two-row DP to save memory
   let prev = new Array(m+1);
   let cur = new Array(m+1);
   for(let j=0;j<=m;j++) prev[j] = j;
@@ -283,11 +256,10 @@ function levenshtein(a,b){
   return prev[m];
 }
 
-/* ---- Init, map, data loading (preserved from your version) ---- */
 async function init(){
    svg=d3.select("#map");
    const width = window.innerWidth;
-   const height = window.innerHeight * 0.7; // map height is 70vh
+   const height = window.innerHeight * 0.7;
    svg.attr("width", width).attr("height", height);
 
    projection=d3.geoMercator().fitSize([width, height], {type: "FeatureCollection", features: []});
@@ -352,7 +324,6 @@ async function init(){
    );
 }
 
-/* ---- UI overlays control ---- */
 function showStartScreen(type){
    gameType=type;
    document.getElementById("main-menu").style.display="none";
@@ -365,10 +336,12 @@ function showStartScreen(type){
    document.getElementById("normal-btn").style.display = type==="countries" ? "inline-block" : "none";
    document.getElementById("hard-btn").style.display = "inline-block";
 }
+
 function showInstructions(){ document.getElementById("main-menu").style.display="none"; document.getElementById("instructions-overlay").style.display="flex"; }
 function closeInstructions(){ document.getElementById("instructions-overlay").style.display="none"; document.getElementById("main-menu").style.display="flex"; }
 function showCredits(){ document.getElementById("main-menu").style.display="none"; document.getElementById("credits-overlay").style.display="flex"; }
 function closeCredits(){ document.getElementById("credits-overlay").style.display="none"; document.getElementById("main-menu").style.display="flex"; }
+
 document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
   clearInterval(timerInterval);
   paused = false;
@@ -378,13 +351,10 @@ document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
   wrongGuesses = 0;
   revealedCountries.clear();
   revealedCapitals.clear();
-
-  // NEW: reset visuals
   mapGroup.selectAll("image").remove();
   mapGroup.selectAll("path.country").classed("revealed", false).attr("fill", null);
   capitalDots.forEach(dot => dot.remove());
   capitalDots = [];
-
   document.getElementById("pause-overlay").style.display = "none";
   document.getElementById("results-screen").style.display = "none";
   document.getElementById("start-screen").style.display = "none";
@@ -400,20 +370,16 @@ document.getElementById("results-mainmenu-btn").addEventListener("click", () => 
   wrongGuesses = 0;
   revealedCountries.clear();
   revealedCapitals.clear();
-
-  // NEW: reset visuals
   mapGroup.selectAll("image").remove();
   mapGroup.selectAll("path.country").classed("revealed", false).attr("fill", null);
   capitalDots.forEach(dot => dot.remove());
   capitalDots = [];
-
   document.getElementById("pause-overlay").style.display = "none";
   document.getElementById("results-screen").style.display = "none";
   document.getElementById("start-screen").style.display = "none";
   document.getElementById("main-menu").style.display = "flex";
 });
 
-/* ---- game start / flow ---- */
 function startGame(mode){
    gameMode=mode;
    document.getElementById("start-screen").style.display="none";
@@ -437,170 +403,67 @@ function startGame(mode){
    }
 }
 
-function getLargestPolygon(feature) {
-   if (feature.geometry.type === "MultiPolygon") {
-      let maxArea = 0, largest = null;
-      feature.geometry.coordinates.forEach(coords => {
-         const poly = {type: "Polygon", coordinates: coords};
-         const area = d3.geoArea({type: "Feature", geometry: poly});
-         if (area > maxArea) { maxArea = area; largest = poly; }
-      });
-      if (largest) return {type: "Feature", geometry: largest, properties: feature.properties};
-   }
-   return feature;
-}
-
-function getAllPolygons(feature) {
-   if (feature.geometry.type === "MultiPolygon") {
-      return feature.geometry.coordinates.map(coords => ({
-         type: "Feature",
-         geometry: {type: "Polygon", coordinates: coords},
-         properties: feature.properties
-      }));
-   }
-   return [feature];
-}
-
 function getFeature(rec){
    const key=normalizeName(rec.name);
-   // Explicitly check for manual ID map from Restcountries `cca3` to TopoJSON `id`
    const topoId=topoIdMap[rec.cca3];
    if(topoId) {
       const foundFeature = features.find(f => f.id === topoId);
       if (foundFeature) return foundFeature;
    }
-   
-   // Check for manual mappings first
    if(manualFeatureMap[key] && featureByCCA3.has(manualFeatureMap[key])) return featureByCCA3.get(manualFeatureMap[key]);
-   // Then check direct ISO lookup
    if(featureByCCA3.has(rec.cca3)) return featureByCCA3.get(rec.cca3);
-   // Check TopoJSON name lookup
    if(featureByName.has(key)) return featureByName.get(key);
-   // Check aliases for name
    for(let alias of rec.aliases){
       const aliasKey=normalizeName(alias);
       if(manualFeatureMap[aliasKey] && featureByCCA3.has(manualFeatureMap[aliasKey])) return featureByCCA3.get(manualFeatureMap[aliasKey]);
       const f=featureByName.get(aliasKey);
       if(f) return f;
    }
-   // General ISO/ADM0_A3 match check
    for(let f of features) {
       const props = f.properties || {};
       if (props.iso_a3 === rec.cca3 || props.ISO_A3 === rec.cca3 || props.ADM0_A3 === rec.cca3) {
          return f;
       }
    }
-   // Fallback: partial match
    for(let [name, f] of featureByName){
       if(name.includes(key) || key.includes(name)) return f;
    }
    return null;
 }
 
-function computeVisualCenter(feature){
-   try {
-      const centroid = d3.geoCentroid(feature);
-      return projection(centroid);
-   } catch {
-      return path.centroid(feature);
-   }
-}
-
 function revealCountry(rec){
    if(revealedCountries.has(rec.name)) return;
    revealedCountries.add(rec.name);
    let feature=getFeature(rec); if(!feature) return;
-
-   // NEW: Unified handling for multi-polygon countries, now including France
-   if(rec.cca3==="USA" || rec.cca3==="SSD" || rec.cca3==="COD" || rec.cca3==="FRA") {
-      const polygons = getAllPolygons(feature);
-      polygons.forEach((poly, i) => {
-         const clipId = `clip-${rec.cca3}-${i}`;
-         mapGroup.append("clipPath").attr("id",clipId).append("path").attr("d",path(poly));
-         const bbox=path.bounds(poly);
-         const boxWidth=bbox[1][0]-bbox[0][0], boxHeight=bbox[1][1]-bbox[0][1];
-         const flagUrl = rec.cca2 ? `https://flagcdn.com/w320/${rec.cca2.toLowerCase()}.png` : "";
-         mapGroup.append("image")
-            .attr("href", flagUrl)
-            .attr("x", bbox[0][0]).attr("y", bbox[0][1])
-            .attr("width", boxWidth).attr("height", boxHeight)
-            .attr("preserveAspectRatio","none")
-            .attr("clip-path", `url(#${clipId})`)
-            .attr("style","pointer-events:none;")
-            .on("error", function() {
-               d3.select(this).remove();
-               mapGroup.append("path")
-                  .attr("d", path(poly))
-                  .attr("clip-path", `url(#${clipId})`)
-                  .attr("fill", "#005f99")
-                  .attr("opacity", 0.7)
-                  .attr("stroke", "#fff").attr("stroke-width", 0.8);
-            });
-      });
-      const iso = rec.cca3;
-      mapGroup.selectAll("path.country")
-         .filter(d => {
-            const props = d.properties || {};
-            return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
-         })
-         .classed("revealed",true)
-         .raise();
-      return;
-   }
-   else {
-      const clipId=`clip-${rec.cca3 || normalizeName(rec.name)}`;
-      mapGroup.append("clipPath").attr("id",clipId).append("path").attr("d",path(feature));
-      const bbox=path.bounds(feature);
-      const boxWidth=bbox[1][0]-bbox[0][0], boxHeight=bbox[1][1]-bbox[0][1];
-      const flagUrl = rec.cca2 ? `https://flagcdn.com/w320/${rec.cca2.toLowerCase()}.png` : "";
-      const img = mapGroup.append("image")
-         .attr("href", flagUrl)
-         .attr("x", bbox[0][0]).attr("y", bbox[0][1])
-         .attr("width", boxWidth).attr("height", boxHeight)
-         .attr("preserveAspectRatio","none")
+   const clipId=`clip-${rec.cca3 || normalizeName(rec.name)}`;
+   mapGroup.append("clipPath").attr("id",clipId).append("path").attr("d",path(feature));
+   const bbox=path.bounds(feature);
+   const boxWidth=bbox[1][0]-bbox[0][0], boxHeight=bbox[1][1]-bbox[0][1];
+   const flagUrl = rec.cca2 ? `https://flagcdn.com/w320/${rec.cca2.toLowerCase()}.png` : "";
+   const img = mapGroup.append("image")
+      .attr("href", flagUrl)
+      .attr("x", bbox[0][0]).attr("y", bbox[0][1])
+      .attr("width", boxWidth).attr("height", boxHeight)
+      .attr("preserveAspectRatio","none")
+      .attr("clip-path", `url(#${clipId})`)
+      .attr("style","pointer-events:none;");
+   img.on("error", function() {
+      d3.select(this).remove();
+      mapGroup.append("path")
+         .attr("d", path(feature))
          .attr("clip-path", `url(#${clipId})`)
-         .attr("style","pointer-events:none;")
-      img.on("error", function() {
-         d3.select(this).remove();
-         mapGroup.append("path")
-            .attr("d", path(feature))
-            .attr("clip-path", `url(#${clipId})`)
-            .attr("fill", "#005f99")
-            .attr("opacity", 0.7)
-            .attr("stroke", "#fff").attr("stroke-width", 0.8);
-      });
-
-      const iso = rec.cca3;
-      mapGroup.selectAll("path.country")
-         .filter(d => {
-            const props = d.properties || {};
-            return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
-         })
-         .classed("revealed",true)
-         .raise();
-   }
-
-   setTimeout(() => {
-      const iso = rec.cca3;
-      mapGroup.selectAll("path.country")
-         .filter(d => {
-            const props = d.properties || {};
-            return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
-         })
-         .on("mousemove", function(event, d) {
-            const popup = document.getElementById("popup-country");
-            popup.textContent = rec.name;
-            popup.style.display = "block";
-            popup.style.left = (event.clientX + 12) + "px";
-            popup.style.top = (event.clientY - 10) + "px";
-            popup.style.opacity = "1";
-         })
-         .on("mouseleave", function() {
-            const popup = document.getElementById("popup-country");
-            popup.style.opacity = "0";
-            popup.style.display = "none";
-         });
-   }, 10);
+         .attr("fill", "#005f99")
+         .attr("opacity", 0.7)
+         .attr("stroke", "#fff").attr("stroke-width", 0.8);
+   });
+   const iso = rec.cca3;
+   mapGroup.selectAll("path.country")
+      .filter(d => {
+         const props = d.properties || {};
+         return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
+      })
+      .classed("revealed",true)
+      .raise();
 }
 
 function nextRound(){
@@ -643,50 +506,55 @@ function nextCitiesRound(){
    document.getElementById("prompt").innerText=promptText;
 }
 
-/* ---- DOM refs and autocomplete behaviour ---- */
 const answerInput=document.getElementById("answer"), autocompleteList=document.getElementById("autocomplete-list");
+
+let autocompleteHighlightIndex = 0;
+
 answerInput.addEventListener("input", function(){
    autocompleteList.innerHTML="";
    const val=normalizeName(this.value);
    if(!val) return;
-   // Don't let cheat code pipe be affected
    if(this.value.trim()==="|re") return;
+   let matches=[];
    if(gameType==="countries"){
       if(gameMode==="Hard"||gameMode==="Medium"){ return; }
-      let matches=countriesData.map(c=>c.name).filter(n=>normalizeName(n).startsWith(val)&&!revealedCountries.has(n));
-      matches.forEach(name=>{
-         const div=document.createElement("div");
-         div.classList.add("autocomplete-item"); div.textContent=name;
-         div.onclick=()=>{ answerInput.value=name; autocompleteList.innerHTML=""; submitAnswer(); };
-         autocompleteList.appendChild(div);
-      });
+      matches=countriesData.map(c=>c.name).filter(n=>normalizeName(n).startsWith(val)&&!revealedCountries.has(n));
    }else{
       if(gameMode==="Hard"){ return; }
-      let matches=capitalsOrder.filter(c=>normalizeName(c.capital).startsWith(val)&&!revealedCapitals.has(c.capital));
-      matches.forEach(rec=>{
-         const div=document.createElement("div");
-         div.classList.add("autocomplete-item"); div.textContent=rec.capital;
-         div.onclick=()=>{ answerInput.value=rec.capital; autocompleteList.innerHTML=""; submitAnswer(); };
-         autocompleteList.appendChild(div);
-      });
+      matches=capitalsOrder.filter(c=>normalizeName(c.capital).startsWith(val)&&!revealedCapitals.has(c.capital)).map(c=>c.capital);
    }
+   autocompleteHighlightIndex = 0;
+   matches.forEach((name,i)=>{
+      const div=document.createElement("div");
+      div.classList.add("autocomplete-item");
+      div.textContent=name;
+      if(i===autocompleteHighlightIndex) div.classList.add("highlighted");
+      div.onclick=()=>{ answerInput.value=name; autocompleteList.innerHTML=""; submitAnswer(); };
+      autocompleteList.appendChild(div);
+   });
 });
-document.addEventListener("click", e=>{ if(e.target!==answerInput) autocompleteList.innerHTML=""; });
 
-/* ---- Enter behaviour: autofill single suggestion (but do not override |re) ---- */
 answerInput.addEventListener("keydown", function(e){
+  const items = Array.from(autocompleteList.children || []);
+  if(e.key==="ArrowDown" && items.length){
+    autocompleteHighlightIndex = Math.min(autocompleteHighlightIndex + 1, items.length - 1);
+    items.forEach((item, i) => item.classList.toggle("highlighted", i === autocompleteHighlightIndex));
+    e.preventDefault();
+  }
+  if(e.key==="ArrowUp" && items.length){
+    autocompleteHighlightIndex = Math.max(autocompleteHighlightIndex - 1, 0);
+    items.forEach((item, i) => item.classList.toggle("highlighted", i === autocompleteHighlightIndex));
+    e.preventDefault();
+  }
   if(e.key==="Enter"){
-    const raw = this.value.trim();
-    if(raw === "|re"){ // cheat unaffected by autocomplete
+    if(this.value.trim() === "|re"){
       submitAnswer();
       autocompleteList.innerHTML="";
       e.preventDefault();
       return;
     }
-    const items = Array.from(autocompleteList.children || []);
-    if(items.length === 1){
-      // autofill single suggestion and let submitAnswer handle it
-      this.value = items[0].textContent;
+    if(items.length){
+      this.value = items[autocompleteHighlightIndex].textContent;
     }
     submitAnswer();
     autocompleteList.innerHTML="";
@@ -694,10 +562,10 @@ answerInput.addEventListener("keydown", function(e){
   }
 });
 
-/* ---- Submit button click ---- */
+document.addEventListener("click", e=>{ if(e.target!==answerInput) autocompleteList.innerHTML=""; });
+
 document.getElementById("submit-btn").addEventListener("click", submitAnswer);
 
-/* ---- Core answer submission: replaced alerts with showMessage and added fuzzy matching ----- */
 function submitAnswer(){
    if(paused) return;
    const rawInput = answerInput.value.trim();
@@ -715,11 +583,8 @@ function submitAnswer(){
    if(gameType==="countries"){
       let rec = nameIndex.get(normalizeName(rawInput));
       let usedFuzzy=false;
-
-      // If not found, attempt fuzzy correction (find best alias match)
       if(!rec){
         let best=null, bestDist=999;
-        // iterate nameIndex keys for best match
         for(const [norm, val] of nameIndex){
           const d = levenshtein(normalizeName(rawInput), norm);
           if(d < bestDist){
@@ -730,11 +595,9 @@ function submitAnswer(){
         if(best && bestDist <= 2){
           rec = best;
           usedFuzzy = true;
-          // show corrected spelling briefly while proceeding
           showMessage(`Correct spelling: ${best.name}`, 'spellcheck');
         }
       }
-
       if(!rec){
          showMessage(`Invalid input: ${rawInput}`, 'error');
          wrongGuesses++;
@@ -755,7 +618,6 @@ function submitAnswer(){
    }else{
       let rec = capitalsIndex.get(normalizeName(rawInput));
       let usedFuzzy=false;
-
       if(!rec){
         let best=null, bestDist=999;
         for(const [norm, val] of capitalsIndex){
@@ -771,7 +633,6 @@ function submitAnswer(){
           showMessage(`Correct spelling: ${best.capital}`, 'spellcheck');
         }
       }
-
       if(!rec){
          showMessage(`Invalid input: ${rawInput}`, 'error');
          wrongGuesses++;
@@ -787,7 +648,6 @@ function submitAnswer(){
    }
 }
 
-/* ---- revealCapital unchanged ---- */
 function revealCapital(rec){
    if(revealedCapitals.has(rec.capital)) return;
    revealedCapitals.add(rec.capital);
@@ -798,7 +658,6 @@ function revealCapital(rec){
    });
 }
 
-/* ---- Timer and end game UI ---- */
 function startTimer(){ startTime=Date.now()-elapsed; timerInterval=setInterval(updateTimer,1000); }
 function updateTimer(){ elapsed=Date.now()-startTime; const totalSec=Math.floor(elapsed/1000); const min=Math.floor(totalSec/60), sec=totalSec%60; document.getElementById("timer").textContent=`${min}:${sec.toString().padStart(2,"0")}`; }
 function pauseTimer(){ clearInterval(timerInterval); paused=true; document.getElementById("pause-overlay").style.display="flex"; }
@@ -815,12 +674,10 @@ function endGame(){
    document.getElementById("results-screen").style.display="flex";
 }
 
-/* ---- event wiring for pause / resume / close results ---- */
 document.getElementById("pause-btn").addEventListener("click", ()=>{ if(!paused) pauseTimer(); });
 document.getElementById("resume-btn").addEventListener("click", resumeTimer);
 document.getElementById("close-results-btn").addEventListener("click", ()=>{ document.getElementById("results-screen").style.display="none"; });
 
-/* ---- start ---- */
 init();
 </script>
 </body>
