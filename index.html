@@ -78,12 +78,16 @@
             overflow-y: auto;
             min-width: 250px;
             max-width: 400px;
+            max-height: 100vh;
+            min-height: auto;
             background-color: var(--sidebar-bg);
         }
 
         .sidebar-top {
             display: flex;
             flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
             gap: 1rem;
         }
 
@@ -465,12 +469,17 @@
         }
 
         #user-info-bottom {
+            position: sticky;
+            flex-shrink: 0;
+            bottom: 0;
+            background: var(--sidebar-color);
             margin-top: auto;
             border-top: 1px solid var(--border-color);
             padding-top: 1rem;
             display: flex;
             flex-direction: column;
             gap: 10px;
+            z-index: 2;
         }
 
         /* NEW STYLES for friend/user actions */
