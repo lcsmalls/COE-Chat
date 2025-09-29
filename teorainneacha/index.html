@@ -17,7 +17,7 @@ button:hover { background:#005f99; }
 .autocomplete-item { padding:0.3em 0.5em; cursor:pointer; }
 .autocomplete-item:hover { background:#444; }
 .autocomplete-item.highlighted { background:#007acc; color:#fff; }
-.country { fill:#13385e; stroke:#95abc2; stroke-width:0.15px; }
+.country { fill:#13385e; stroke:#95abc2; stroke-width:0.075px; }
 .revealed { stroke:#fff; stroke-width:0.15px; }
 .capital-dot { pointer-events:none; }
 .capital-dot-grey { fill:#888; stroke:#222; stroke-width:1px; }
@@ -99,6 +99,7 @@ button:hover { background:#005f99; }
 }
 </style>
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
 <script src="https://unpkg.com/topojson-client@3"></script>
 </head>
 <body>
@@ -194,6 +195,7 @@ button:hover { background:#005f99; }
 let countriesData=[], features=[], projection, path, svg, mapGroup;
 let round=1, currentContinent="", currentLetter="", currentCountry=null;
 let revealedCountries=new Set(), nameIndex=new Map();
+let lastPromptLetter = null;
 let featureByCCA3=new Map(), featureByName=new Map();
 let wrongGuesses=0, gameMode="Normal", gameType="countries";
 let startTime=null, elapsed=0, timerInterval=null, paused=false;
@@ -224,16 +226,27 @@ const topoIdMap={
 function normalizeName(s){ return (s||"").toLowerCase().replace(/[^a-z]+/g,''); }
 
 function showMessage(text, icon='info'){
-  const modal = document.getElementById("message-modal");
-  modal.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${text}</span>`;
-  modal.style.opacity = "1";
-  modal.style.display = "flex";
-  modal.setAttribute('aria-hidden','false');
-  if(modal._hideTimeout) clearTimeout(modal._hideTimeout);
-  modal._hideTimeout = setTimeout(()=>{
-    modal.style.opacity = "0";
-    setTimeout(()=>{ modal.style.display = "none"; modal.setAttribute('aria-hidden','true'); }, 200);
-  }, 2000);
+   const modal = document.getElementById("message-modal");
+   modal.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${text}</span>`;
+   modal.style.opacity = "1";
+   modal.style.display = "flex";
+   modal.setAttribute('aria-hidden','false');
+   let color = '';
+   let duration = 2000;
+   if (icon === 'correct') {
+      color = '#0f992f';
+      duration = 1000;
+   } else if (icon === 'continent') {
+      color = '#0f992f';
+      duration = 3000;
+   }
+   if (color) modal.style.background = color;
+   else modal.style.background = 'rgba(20,20,20,0.98)';
+   if(modal._hideTimeout) clearTimeout(modal._hideTimeout);
+   modal._hideTimeout = setTimeout(()=>{
+      modal.style.opacity = "0";
+      setTimeout(()=>{ modal.style.display = "none"; modal.setAttribute('aria-hidden','true'); modal.style.background = 'rgba(20,20,20,0.98)'; }, 200);
+   }, duration);
 }
 
 function levenshtein(a,b){
@@ -262,11 +275,15 @@ async function init(){
    const height = window.innerHeight * 0.7;
    svg.attr("width", width).attr("height", height);
 
-   projection=d3.geoMercator().fitSize([width, height], {type: "FeatureCollection", features: []});
-   path=d3.geoPath().projection(projection);
+    // Use Winkel Tripel projection
+    projection = d3.geoWinkel3()
+       .scale(Math.min(width/6, height/3.2))
+       .translate([width/2, height/2])
+       .precision(0.1);
+    path = d3.geoPath().projection(projection);
    mapGroup=svg.append("g").attr("class","map-content");
 
-   svg.call(d3.zoom().scaleExtent([1,500]).on("zoom",event=>{mapGroup.attr("transform",event.transform);})); 
+   svg.call(d3.zoom().scaleExtent([1,4000]).on("zoom",event=>{mapGroup.attr("transform",event.transform);})); 
 
    const rc=await fetch('https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,altSpellings').then(r=>r.json());
    rc.forEach(c=>{
@@ -434,47 +451,84 @@ function getFeature(rec){
 function revealCountry(rec){
    if(revealedCountries.has(rec.name)) return;
    revealedCountries.add(rec.name);
-   let feature=getFeature(rec); if(!feature) return;
-   const clipId=`clip-${rec.cca3 || normalizeName(rec.name)}`;
-   mapGroup.append("clipPath").attr("id",clipId).append("path").attr("d",path(feature));
-   const bbox=path.bounds(feature);
-   const boxWidth=bbox[1][0]-bbox[0][0], boxHeight=bbox[1][1]-bbox[0][1];
-   const flagUrl = rec.cca2 ? `https://flagcdn.com/w320/${rec.cca2.toLowerCase()}.png` : "";
-   const img = mapGroup.append("image")
-      .attr("href", flagUrl)
-      .attr("x", bbox[0][0]).attr("y", bbox[0][1])
-      .attr("width", boxWidth).attr("height", boxHeight)
-      .attr("preserveAspectRatio","none")
-      .attr("clip-path", `url(#${clipId})`)
-      .attr("style","pointer-events:none;");
-   img.on("error", function() {
-      d3.select(this).remove();
-      mapGroup.append("path")
-         .attr("d", path(feature))
-         .attr("clip-path", `url(#${clipId})`)
-         .attr("fill", "#005f99")
-         .attr("opacity", 0.7)
-         .attr("stroke", "#fff").attr("stroke-width", 0.8);
-   });
-   const iso = rec.cca3;
-   mapGroup.selectAll("path.country")
-      .filter(d => {
-         const props = d.properties || {};
-         return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
-      })
-      .classed("revealed",true)
-      .raise();
+    let feature = getFeature(rec); if (!feature) return;
+    const flagUrl = rec.cca2 ? `https://flagcdn.com/w320/${rec.cca2.toLowerCase()}.png` : "";
+    // For France and USA, place a flag for each island/geometry part
+    if (["FRA", "USA"].includes(rec.cca3) && feature.geometry && feature.geometry.type === "MultiPolygon") {
+       feature.geometry.coordinates.forEach((poly, idx) => {
+          const singleFeature = {
+             type: "Feature",
+             geometry: { type: "Polygon", coordinates: poly },
+             properties: feature.properties
+          };
+          const clipId = `clip-${rec.cca3}-part${idx}`;
+          mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(singleFeature));
+          const bbox = path.bounds(singleFeature);
+          const boxWidth = bbox[1][0] - bbox[0][0], boxHeight = bbox[1][1] - bbox[0][1];
+          const img = mapGroup.append("image")
+             .attr("href", flagUrl)
+             .attr("x", bbox[0][0]).attr("y", bbox[0][1])
+             .attr("width", boxWidth).attr("height", boxHeight)
+             .attr("preserveAspectRatio", "none")
+             .attr("clip-path", `url(#${clipId})`)
+             .attr("style", "pointer-events:none;");
+          img.on("error", function() {
+             d3.select(this).remove();
+             mapGroup.append("path")
+                .attr("d", path(singleFeature))
+                .attr("clip-path", `url(#${clipId})`)
+                .attr("fill", "#005f99")
+                .attr("opacity", 0.7)
+                .attr("stroke", "#fff").attr("stroke-width", 0.8);
+          });
+       });
+    } else {
+       // Default: one flag for the whole country
+       const clipId = `clip-${rec.cca3 || normalizeName(rec.name)}`;
+       mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
+       const bbox = path.bounds(feature);
+       const boxWidth = bbox[1][0] - bbox[0][0], boxHeight = bbox[1][1] - bbox[0][1];
+       const img = mapGroup.append("image")
+          .attr("href", flagUrl)
+          .attr("x", bbox[0][0]).attr("y", bbox[0][1])
+          .attr("width", boxWidth).attr("height", boxHeight)
+          .attr("preserveAspectRatio", "none")
+          .attr("clip-path", `url(#${clipId})`)
+          .attr("style", "pointer-events:none;");
+       img.on("error", function() {
+          d3.select(this).remove();
+          mapGroup.append("path")
+             .attr("d", path(feature))
+             .attr("clip-path", `url(#${clipId})`)
+             .attr("fill", "#005f99")
+             .attr("opacity", 0.7)
+             .attr("stroke", "#fff").attr("stroke-width", 0.8);
+       });
+    }
+    const iso = rec.cca3;
+    mapGroup.selectAll("path.country")
+       .filter(d => {
+          const props = d.properties || {};
+          return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
+       })
+       .classed("revealed", true)
+       .raise();
 }
 
 function nextRound(){
    const submitSpan=document.querySelector("#submit-btn span");
    submitSpan.textContent="arrow_forward_ios"; submitSpan.style.fontSize="24px";
    let remaining;
+   let continentCompleted = false;
+   let completedContinentName = null;
    if(gameMode==="Normal"||gameMode==="Hard"){
       while(continentIndex<continentOrder.length){
          const cont=continentOrder[continentIndex];
          remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region===cont);
          if(remaining.length>0) break;
+         // Mark continent as completed
+         continentCompleted = true;
+         completedContinentName = continentOrder[continentIndex];
          continentIndex++;
       }
       if(continentIndex>=continentOrder.length){ endGame(); return; }
@@ -482,28 +536,47 @@ function nextRound(){
       remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region!=="Antarctic");
    }
    if(!remaining || !remaining.length){ endGame(); return; }
-   const rec=remaining[Math.floor(Math.random()*remaining.length)];
+   // Pick a country such that the first letter is not the same as lastPromptLetter
+   let rec;
+   let tries = 0;
+   do {
+     rec = remaining[Math.floor(Math.random()*remaining.length)];
+     tries++;
+   } while (remaining.length > 1 && rec.name[0].toUpperCase() === lastPromptLetter && tries < 20);
    currentContinent=rec.region; currentLetter=rec.name[0].toUpperCase();
+   lastPromptLetter = currentLetter;
    let promptText=`Round ${round}: Name a country starting with "${currentLetter}"`;
    if(gameMode==="Normal"||gameMode==="Hard") promptText=`Round ${round}: Name a country in ${currentContinent} starting with "${currentLetter}"`;
    document.getElementById("prompt").innerText=promptText;
+   if (continentCompleted && completedContinentName) {
+      showMessage(`Continent completed! moving on to ${continentOrder[continentIndex]||'End'}`, 'continent');
+   }
 }
 
 function nextCitiesRound(){
+   let continentCompleted = false;
+   let completedContinentName = null;
    while(continentIndex<continentOrder.length){
       const cont=continentOrder[continentIndex];
       const remaining=capitalsOrder.filter(c=>!revealedCapitals.has(c.capital)&&c.region===cont);
       if(remaining.length>0){
-         currentCountry=remaining[0];
+         // Pick a random country from the remaining in this continent
+         currentCountry=remaining[Math.floor(Math.random()*remaining.length)];
          currentContinent=cont;
          break;
       }
+      // Mark continent as completed
+      continentCompleted = true;
+      completedContinentName = continentOrder[continentIndex];
       continentIndex++;
    }
    if(continentIndex>=continentOrder.length){ endGame(); return; }
    if(!currentCountry){ endGame(); return; }
    let promptText=`Round ${round}: What is the capital of ${currentCountry.country}?`;
    document.getElementById("prompt").innerText=promptText;
+   if (continentCompleted && completedContinentName) {
+      showMessage(`Continent completed! moving on to ${continentOrder[continentIndex]||'End'}`, 'continent');
+   }
 }
 
 const answerInput=document.getElementById("answer"), autocompleteList=document.getElementById("autocomplete-list");
@@ -614,7 +687,9 @@ function submitAnswer(){
          return;
       }
       submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
-      revealCountry(rec); round++; setTimeout(nextRound,500);
+         submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
+         showMessage('Correct!', 'correct');
+         revealCountry(rec); round++; setTimeout(nextRound,500);
    }else{
       let rec = capitalsIndex.get(normalizeName(rawInput));
       let usedFuzzy=false;
@@ -644,7 +719,9 @@ function submitAnswer(){
          return;
       }
       submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
-      revealCapital(rec); round++; setTimeout(nextCitiesRound,500);
+         submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
+         showMessage('Correct!', 'correct');
+         revealCapital(rec); round++; setTimeout(nextCitiesRound,500);
    }
 }
 
