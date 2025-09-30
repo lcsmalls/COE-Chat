@@ -452,7 +452,8 @@ function revealCountry(rec){
    if(revealedCountries.has(rec.name)) return;
    revealedCountries.add(rec.name);
     let feature = getFeature(rec); if (!feature) return;
-    const flagUrl = rec.cca2 ? `https://flagcdn.com/w320/${rec.cca2.toLowerCase()}.png` : "";
+
+    const flagUrl = rec.name ? `https://coe-chat.vercel.app/teorainneacha/bratai/${rec.name.toLowerCase().replace(/\s+/g, '-')}.svg` : "";
     // For France and USA, place a flag for each island/geometry part
     if (["FRA", "USA"].includes(rec.cca3) && feature.geometry && feature.geometry.type === "MultiPolygon") {
        feature.geometry.coordinates.forEach((poly, idx) => {
