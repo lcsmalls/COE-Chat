@@ -219,9 +219,16 @@ const manualFeatureMap={
    "eswatini":"SWZ", "swaziland":"SWZ", "burma":"MMR", "myanmar":"MMR",
    "palestine":"PSE", "palestinianterritory":"PSE", "palestinian territories":"PSE"
 };
-const topoIdMap={
-   "COD":"180", "SSD":"728", "EQG":"226"
+  
+  // Attempt, though unsuccessfully for EQG and STP, to get proper topoJSON for broken countries using topoJSON 3 digit country code
+const topoIdMap = {
+   "COD":"180",
+   "SSD":"728",
+   "EQG":"226",
+   "ESH":"732",
+   "STP":"678"
 }
+
 
 function normalizeName(s){ return (s||"").toLowerCase().replace(/[^a-z]+/g,''); }
 
@@ -423,7 +430,11 @@ function startGame(mode){
 function getFeature(rec){
    const key=normalizeName(rec.name);
    const topoId=topoIdMap[rec.cca3];
-   if(topoId) {
+
+  if (topoId) {
+   const foundFeature = features.find(f => String(f.id) === topoId);
+   if (foundFeature) return foundFeature;
+}    if(topoId) {
       const foundFeature = features.find(f => f.id === topoId);
       if (foundFeature) return foundFeature;
    }
@@ -447,74 +458,101 @@ function getFeature(rec){
    }
    return null;
 }
+  
+  const flagCache = new Map();
 
-function revealCountry(rec){
-   if(revealedCountries.has(rec.name)) return;
-   revealedCountries.add(rec.name);
-    let feature = getFeature(rec); if (!feature) return;
+countriesData.forEach(c => {
+    const img = new Image();
+    img.src = `https://flagcdn.com/w640/${c.cca2.toLowerCase()}.png`;
+    flagCache.set(c.cca2, img);
+});
 
-    const flagUrl = rec.name ? `https://coe-chat.vercel.app/teorainneacha/bratai/${rec.name.toLowerCase().replace(/\s+/g, '-')}.svg` : "";
-    // For France and USA, place a flag for each island/geometry part
-    if (["FRA", "USA"].includes(rec.cca3) && feature.geometry && feature.geometry.type === "MultiPolygon") {
-       feature.geometry.coordinates.forEach((poly, idx) => {
-          const singleFeature = {
-             type: "Feature",
-             geometry: { type: "Polygon", coordinates: poly },
-             properties: feature.properties
-          };
-          const clipId = `clip-${rec.cca3}-part${idx}`;
-          mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(singleFeature));
-          const bbox = path.bounds(singleFeature);
-          const boxWidth = bbox[1][0] - bbox[0][0], boxHeight = bbox[1][1] - bbox[0][1];
-          const img = mapGroup.append("image")
-             .attr("href", flagUrl)
-             .attr("x", bbox[0][0]).attr("y", bbox[0][1])
-             .attr("width", boxWidth).attr("height", boxHeight)
-             .attr("preserveAspectRatio", "none")
-             .attr("clip-path", `url(#${clipId})`)
-             .attr("style", "pointer-events:none;");
-          img.on("error", function() {
-             d3.select(this).remove();
-             mapGroup.append("path")
-                .attr("d", path(singleFeature))
-                .attr("clip-path", `url(#${clipId})`)
-                .attr("fill", "#005f99")
-                .attr("opacity", 0.7)
-                .attr("stroke", "#fff").attr("stroke-width", 0.8);
-          });
-       });
-    } else {
-       // Default: one flag for the whole country
-       const clipId = `clip-${rec.cca3 || normalizeName(rec.name)}`;
-       mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
-       const bbox = path.bounds(feature);
-       const boxWidth = bbox[1][0] - bbox[0][0], boxHeight = bbox[1][1] - bbox[0][1];
-       const img = mapGroup.append("image")
-          .attr("href", flagUrl)
-          .attr("x", bbox[0][0]).attr("y", bbox[0][1])
-          .attr("width", boxWidth).attr("height", boxHeight)
-          .attr("preserveAspectRatio", "none")
-          .attr("clip-path", `url(#${clipId})`)
-          .attr("style", "pointer-events:none;");
-       img.on("error", function() {
-          d3.select(this).remove();
-          mapGroup.append("path")
-             .attr("d", path(feature))
-             .attr("clip-path", `url(#${clipId})`)
-             .attr("fill", "#005f99")
-             .attr("opacity", 0.7)
-             .attr("stroke", "#fff").attr("stroke-width", 0.8);
-       });
+function revealCountry(rec) {
+    if (revealedCountries.has(rec.name)) return;
+    revealedCountries.add(rec.name);
+
+    const feature = getFeature(rec);
+    if (!feature) return;
+
+    // Get preloaded image or fallback to creating a new one
+    let flagImg = flagCache.get(rec.cca2);
+    if (!flagImg) {
+        flagImg = new Image();
+        flagImg.src = `https://flagcdn.com/w640/${rec.cca2.toLowerCase()}.png`;
     }
+
+    // Handle multipolygon countries (USA, FRA)
+    if (["USA","FRA"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") {
+        feature.geometry.coordinates.forEach((poly, idx) => {
+            const singleFeature = { type: "Feature", geometry: { type: "Polygon", coordinates: poly }, properties: feature.properties };
+            const clipId = `clip-${rec.cca3}-part${idx}`;
+            mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(singleFeature));
+
+            const bounds = path.bounds(singleFeature);
+            const w = bounds[1][0] - bounds[0][0];
+            const h = bounds[1][1] - bounds[0][1];
+
+            mapGroup.append("image")
+                .attr("href", flagImg.src)
+                .attr("x", bounds[0][0])
+                .attr("y", bounds[0][1])
+                .attr("width", w)
+                .attr("height", h)
+                .attr("preserveAspectRatio", "none")
+                .attr("clip-path", `url(#${clipId})`)
+                .attr("style", "pointer-events:none;")
+                .on("error", function() {
+                    d3.select(this).remove();
+                    mapGroup.append("path")
+                        .attr("d", path(singleFeature))
+                        .attr("clip-path", `url(#${clipId})`)
+                        .attr("fill", "#005f99")
+                        .attr("opacity", 0.7)
+                        .attr("stroke", "#fff")
+                        .attr("stroke-width", 0.8);
+                });
+        });
+    } else {
+        // Single polygon countries
+        const clipId = `clip-${rec.cca3 || normalizeName(rec.name)}`;
+        mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
+
+        const bounds = path.bounds(feature);
+        const w = bounds[1][0] - bounds[0][0];
+        const h = bounds[1][1] - bounds[0][1];
+
+        mapGroup.append("image")
+            .attr("href", flagImg.src)
+            .attr("x", bounds[0][0])
+            .attr("y", bounds[0][1])
+            .attr("width", w)
+            .attr("height", h)
+            .attr("preserveAspectRatio", "none")
+            .attr("clip-path", `url(#${clipId})`)
+            .attr("style", "pointer-events:none;")
+            .on("error", function() {
+                d3.select(this).remove();
+                mapGroup.append("path")
+                    .attr("d", path(feature))
+                    .attr("clip-path", `url(#${clipId})`)
+                    .attr("fill", "#005f99")
+                    .attr("opacity", 0.7)
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", 0.8);
+            });
+    }
+
+    // Mark SVG path as revealed
     const iso = rec.cca3;
     mapGroup.selectAll("path.country")
-       .filter(d => {
-          const props = d.properties || {};
-          return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
-       })
-       .classed("revealed", true)
-       .raise();
+        .filter(d => {
+            const props = d.properties || {};
+            return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
+        })
+        .classed("revealed", true)
+        .raise();
 }
+
 
 function nextRound(){
    const submitSpan=document.querySelector("#submit-btn span");
