@@ -57,6 +57,7 @@
   ],
   "asia": [
     "afghanistan",
+    "armenia",
     "azerbaijan",
     "bahrain",
     "bangladesh",
@@ -67,6 +68,7 @@
     "china",
     "christmas-island",
     "cocos-(keeling)-islands",
+    "georgia",
     "hong-kong",
     "india",
     "indonesia",
@@ -75,7 +77,6 @@
     "israel",
     "japan",
     "kazakhstan",
-    "kiribati",
     "kuwait",
     "kyrgyzstan",
     "laos",
@@ -112,7 +113,6 @@
     "åland-islands",
     "albania",
     "andorra",
-    "armenia",
     "austria",
     "belarus",
     "belgium",
@@ -126,7 +126,6 @@
     "faroe-islands",
     "finland",
     "france",
-    "georgia",
     "germany",
     "gibraltar",
     "greece",
@@ -166,6 +165,7 @@
     "vatican-city"
   ],
   "north-america": [
+    "american-samoa",
     "anguilla",
     "antigua-and-barbuda",
     "aruba",
@@ -229,11 +229,11 @@
     "venezuela"
   ],
   "oceania": [
-    "american-samoa",
     "australia",
     "cook-islands",
     "fiji",
     "french-polynesia",
+    "marshall-islands",
     "micronesia",
     "nauru",
     "new-caledonia",
