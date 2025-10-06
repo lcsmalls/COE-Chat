@@ -797,7 +797,7 @@ document.getElementById("close-results-btn").addEventListener("click", ()=>{ doc
 document.addEventListener("keydown", function(e) {
   const answerInput = document.getElementById("answer");
   // Always pause on 'x' (case-insensitive)
-  if (e.key.toLowerCase() === "x") {
+  if (e.key.toLowerCase() === "") {
     if (!paused) pauseTimer();
     e.preventDefault();
     return;
