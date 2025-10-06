@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brataí</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+        .container { max-width: 500px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 24px; }
+        h1, h2 { text-align: center; }
+        .menu-btn, .option-btn { display: block; width: 100%; margin: 12px 0; padding: 12px; font-size: 1.1em; border-radius: 6px; border: none; background: #0078d7; color: #fff; cursor: pointer; transition: background 0.2s; }
+        .menu-btn:hover, .option-btn:hover { background: #005fa3; }
+        .flag-img { width: 80px; height: 50px; object-fit: contain; border: 1px solid #ccc; border-radius: 4px; background: #eee; }
+        .options { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 24px; }
+        .option-btn img { vertical-align: middle; margin-right: 8px; }
+        .hidden { display: none; }
+        .result { text-align: center; margin-top: 24px; }
+    .highlight { border: 2px solid #28a745 !important; background: #28a745 !important; color: #fff !important; }
+    .wrong { border: 2px solid #dc3545 !important; background: #dc3545 !important; color: #fff !important; }
+    </style>
+</head>
+<body>
+    <div class="container" id="main-menu">
+        <h1>Brataí</h1>
+        <button class="menu-btn" id="mode-country-to-flag">Which is the flag of [Country]?</button>
+        <button class="menu-btn" id="mode-flag-to-country">Which country does this flag belong to?</button>
+    </div>
+    <div class="container hidden" id="continent-menu">
+        <h2>Choose a Continent</h2>
+        <div id="continent-buttons"></div>
+        <button class="menu-btn" id="continent-all">All Continents</button>
+    </div>
+    <div class="container hidden" id="game-area">
+        <div id="game-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <span id="timer" style="font-weight:bold;"></span>
+            <button class="menu-btn" id="pause-btn" style="width:auto;padding:6px 18px;font-size:1em;">Pause</button>
+        </div>
+        <div id="game-content"></div>
+    </div>
+    <div class="container hidden" id="pause-menu" style="text-align:center;">
+        <h2>Game Paused</h2>
+        <button class="menu-btn" id="resume-btn">Resume</button>
+        <button class="menu-btn" id="pause-main-menu-btn">Main Menu</button>
+    </div>
+    <div class="container hidden" id="end-screen"></div>
+    <script>
+    // Utility functions
+    function formatCountryName(name) {
+        return name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
+    // State
+    let countriesByContinent = {};
+    let allCountries = [];
+    let continents = [];
+    let gameMode = null;
+    let chosenContinent = null;
+    let gameCountries = [];
+    let currentIndex = 0;
+    let correctCount = 0;
+    let startTime = null;
+    let wrongAnswers = [];
+    let timerInterval = null;
+    let elapsedSeconds = 0;
+    let paused = false;
+    // Fetch countries and setup continent menu
+    fetch('https://coe-chat.vercel.app/teorainneacha/bratai/countries.json')
+        .then(r => {
+            if (!r.ok) throw new Error('Network response was not ok');
+            return r.json();
+        })
+        .then(data => {
+            countriesByContinent = data;
+            continents = Object.keys(data);
+            // Build allCountries as array of { name, continent }
+            allCountries = [];
+            continents.forEach(cont => {
+                data[cont].forEach(country => {
+                    allCountries.push({ name: country, continent: cont });
+                });
+            });
+            // Setup continent buttons
+            const contDiv = document.getElementById('continent-buttons');
+            continents.forEach(cont => {
+                const btn = document.createElement('button');
+                btn.className = 'menu-btn';
+                btn.textContent = cont.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                btn.onclick = () => selectContinent(cont);
+                contDiv.appendChild(btn);
+            });
+        })
+        .catch(err => {
+            document.getElementById('main-menu').innerHTML = `<h1>Flag Guessing Game</h1><div style='color:red;text-align:center;'>Failed to load country data.<br>${err.message}</div>`;
+        });
+    // Main menu event listeners
+    document.getElementById('mode-country-to-flag').onclick = () => {
+        gameMode = 'country-to-flag';
+        showContinentMenu();
+    };
+    document.getElementById('mode-flag-to-country').onclick = () => {
+        gameMode = 'flag-to-country';
+        showContinentMenu();
+    };
+    document.getElementById('continent-all').onclick = () => selectContinent('all');
+    function showContinentMenu() {
+        document.getElementById('main-menu').classList.add('hidden');
+        document.getElementById('continent-menu').classList.remove('hidden');
+    }
+    function selectContinent(continent) {
+        chosenContinent = continent;
+        document.getElementById('continent-menu').classList.add('hidden');
+        startGame();
+    }
+    function startGame() {
+        // Filter countries by continent
+        if (chosenContinent === 'all') {
+            gameCountries = allCountries.slice();
+        } else {
+            gameCountries = allCountries.filter(c => c.continent === chosenContinent);
+        }
+        // Shuffle countries
+        gameCountries = shuffle(gameCountries);
+        currentIndex = 0;
+        correctCount = 0;
+        wrongAnswers = [];
+        startTime = Date.now();
+        elapsedSeconds = 0;
+        paused = false;
+        document.getElementById('game-area').classList.remove('hidden');
+        document.getElementById('end-screen').classList.add('hidden');
+        document.getElementById('pause-menu').classList.add('hidden');
+        updateTimerDisplay();
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (!paused) {
+                elapsedSeconds++;
+                updateTimerDisplay();
+            }
+        }, 1000);
+        nextQuestion();
+    }
+    function updateTimerDisplay() {
+        const timerSpan = document.getElementById('timer');
+        if (timerSpan) {
+            timerSpan.textContent = `Time: ${formatTime(elapsedSeconds)}`;
+        }
+    }
+    function formatTime(sec) {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+    function shuffle(arr) {
+        return arr.map(a => [Math.random(), a]).sort((a, b) => a[0] - b[0]).map(a => a[1]);
+    }
+    function nextQuestion() {
+        if (currentIndex >= gameCountries.length) {
+            endGame();
+            return;
+        }
+        const country = gameCountries[currentIndex];
+        // Render game content in #game-content
+        const gameContent = document.getElementById('game-content');
+        if (gameMode === 'country-to-flag') {
+            showCountryToFlag(country, gameContent);
+        } else {
+            showFlagToCountry(country, gameContent);
+        }
+    }
+    function showCountryToFlag(country, container) {
+        container.innerHTML = `<h2>Which is the flag of ${formatCountryName(country.name)}?</h2><div class="options" id="flag-options"></div><div id="feedback"></div>`;
+        // Pick 3 random other countries
+        let options = [country];
+        let others = shuffle(gameCountries.filter(c => c.name !== country.name));
+        options = options.concat(others.slice(0, 3));
+        options = shuffle(options);
+        const optsDiv = document.getElementById('flag-options');
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerHTML = `<img class='flag-img' src='https://coe-chat.vercel.app/teorainneacha/bratai/${opt.name}.svg' alt='${opt.name}'>`;
+            btn.onclick = () => handleCountryToFlagAnswer(opt, country, options);
+            optsDiv.appendChild(btn);
+        });
+    }
+    function handleCountryToFlagAnswer(selected, correct, options) {
+        const feedback = document.getElementById('feedback');
+        if (selected.name === correct.name) {
+            correctCount++;
+            feedback.innerHTML = '<span style="color:green;font-weight:bold;">Correct!</span>';
+            setTimeout(() => { currentIndex++; nextQuestion(); }, 900);
+        } else {
+            wrongAnswers.push({question: correct, picked: selected});
+            feedback.innerHTML = `<span style='color:red;font-weight:bold;'>Wrong!</span><br>The flag you picked is the flag of ${formatCountryName(selected.name)}.<br>The correct flag is highlighted.`;
+            // Highlight correct and wrong
+            const btns = document.querySelectorAll('#flag-options .option-btn');
+            options.forEach((opt, i) => {
+                if (opt.name === correct.name) btns[i].classList.add('highlight');
+                if (opt.name === selected.name) btns[i].classList.add('wrong');
+            });
+            setTimeout(() => { currentIndex++; nextQuestion(); }, 1800);
+        }
+    }
+    function showFlagToCountry(country, container) {
+        container.innerHTML = `<h2>Which country does this flag belong to?</h2><img class='flag-img' src='https://coe-chat.vercel.app/teorainneacha/bratai/${country.name}.svg' alt='${country.name}' style='display:block;margin:0 auto 24px auto;'> <div class="options" id="country-options"></div><div id="feedback"></div>`;
+        // Pick 3 random other countries
+        let options = [country];
+        let others = shuffle(gameCountries.filter(c => c.name !== country.name));
+        options = options.concat(others.slice(0, 3));
+        options = shuffle(options);
+        const optsDiv = document.getElementById('country-options');
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.textContent = formatCountryName(opt.name);
+            btn.onclick = () => handleFlagToCountryAnswer(opt, country, options);
+            optsDiv.appendChild(btn);
+        });
+    }
+    function handleFlagToCountryAnswer(selected, correct, options) {
+        const feedback = document.getElementById('feedback');
+        if (selected.name === correct.name) {
+            correctCount++;
+            feedback.innerHTML = '<span style="color:green;font-weight:bold;">Correct!</span>';
+            setTimeout(() => { currentIndex++; nextQuestion(); }, 900);
+        } else {
+            wrongAnswers.push({question: correct, picked: selected});
+            feedback.innerHTML = `<span style='color:red;font-weight:bold;'>Wrong!</span><br>The flag you picked is the flag of ${formatCountryName(selected.name)}.<br>The correct answer is highlighted.`;
+            // Highlight correct and wrong
+            const btns = document.querySelectorAll('#country-options .option-btn');
+            options.forEach((opt, i) => {
+                if (opt.name === correct.name) btns[i].classList.add('highlight');
+                if (opt.name === selected.name) btns[i].classList.add('wrong');
+            });
+            setTimeout(() => { currentIndex++; nextQuestion(); }, 1800);
+        }
+    }
+    function endGame() {
+        document.getElementById('game-area').classList.add('hidden');
+        if (timerInterval) clearInterval(timerInterval);
+        const percent = Math.round((correctCount / gameCountries.length) * 100);
+        const timeTaken = elapsedSeconds;
+        const endDiv = document.getElementById('end-screen');
+        endDiv.innerHTML = `<h2>Game Over!</h2><div class='result'>Accuracy: <b>${percent}%</b><br>Time taken: <b>${formatTime(timeTaken)}</b><br><button class='menu-btn' id='replay-btn'>Replay</button><button class='menu-btn' id='main-menu-btn'>Main Menu</button></div>`;
+        endDiv.classList.remove('hidden');
+        document.getElementById('replay-btn').onclick = () => startGame();
+        document.getElementById('main-menu-btn').onclick = () => {
+            endDiv.classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
+        };
+    }
+    // Pause functionality
+    window.addEventListener('load', function() {
+        const pauseBtn = document.getElementById('pause-btn');
+        if (pauseBtn) {
+            pauseBtn.onclick = () => {
+                paused = true;
+                document.getElementById('game-area').classList.add('hidden');
+                document.getElementById('pause-menu').classList.remove('hidden');
+            };
+        }
+        document.getElementById('resume-btn').onclick = () => {
+            paused = false;
+            document.getElementById('pause-menu').classList.add('hidden');
+            document.getElementById('game-area').classList.remove('hidden');
+        };
+        document.getElementById('pause-main-menu-btn').onclick = () => {
+            if (timerInterval) clearInterval(timerInterval);
+            document.getElementById('pause-menu').classList.add('hidden');
+            document.getElementById('game-area').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
+        };
+    });
+    </script>
+</body>
+</html>
