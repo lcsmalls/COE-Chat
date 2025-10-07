@@ -939,7 +939,7 @@ answerInput.addEventListener("input", function(){
    autocompleteList.innerHTML="";
    const val=normalizeName(this.value);
    if(!val) return;
-   if(this.value.trim()==="|re") return;
+   if(this.value.trim()==="|ra") return;
    let matches=[];
    if(gameType==="countries"){
       if(gameMode==="Hard"||gameMode==="Medium"){ return; }
@@ -972,7 +972,7 @@ answerInput.addEventListener("keydown", function(e){
     e.preventDefault();
   }
   if(e.key==="Enter"){
-    if(this.value.trim() === "|re"){
+    if(this.value.trim() === "|ra"){
       submitAnswer();
       autocompleteList.innerHTML="";
       e.preventDefault();
@@ -996,7 +996,7 @@ function submitAnswer(){
    const rawInput = answerInput.value.trim();
    answerInput.value=""; autocompleteList.innerHTML="";
    if(!rawInput) return;
-   if(rawInput==="|re"){
+   if(rawInput==="|ra"){
       if(gameType==="countries"){
          countriesData.forEach(revealCountry);
       }else{
