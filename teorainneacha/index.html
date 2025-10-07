@@ -35,20 +35,58 @@ button:hover { background:#005f99; }
 }
 #pause-btn { background:#ff9800; }
 #pause-btn:hover { background:#cc7a00; }
-#pause-overlay, #results-screen, #start-screen, #instructions-overlay, #credits-overlay {
-  position:fixed; top:0; left:0; width:100%; height:100%;
-  background:rgba(0,0,0,0.9); display:flex; flex-direction:column;
-  justify-content:center; align-items:center; z-index:2000; color:#fff;
-  text-align:center; display:none;
+#pause-overlay, #results-screen, #start-screen, #instructions-overlay, #credits-overlay, #flags-start-screen, #flags-continent-screen, #flags-game-screen {
+   position:fixed; top:0; left:0; width:100%; height:100%;
+   background:rgba(0,0,0,0.9); display:flex; flex-direction:column;
+   justify-content:center; align-items:center; z-index:2000; color:#fff;
+   text-align:center; display:none;
 }
-#pause-overlay button, #results-screen button, #start-screen button, #instructions-overlay button, #credits-overlay button {
-  margin-top:1em; padding:0.7em 1em; font-size:1.5em;
-  border:none; border-radius:35px; cursor:pointer;
-  background:#007acc; color:#fff; width:auto; height:auto;
-  font-family:sans-serif;
+#pause-overlay button, #results-screen button, #start-screen button, #instructions-overlay button, #credits-overlay button, #flags-start-screen button, #flags-continent-screen button, #flags-game-screen button {
+   margin-top:1em; padding:0.7em 1em; font-size:1.5em;
+   border:none; border-radius:35px; cursor:pointer;
+   background:#007acc; color:#fff; width:auto; height:auto;
+   font-family:sans-serif;
 }
+
+/* Flags game option buttons: rectangular, override global circular button base */
+#flags-options button {
+   width: auto !important;
+   height: auto !important;
+   min-width: 160px;
+   min-height: 60px;
+   border-radius: 12px !important;
+   padding: 8px !important;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   background: #007acc !important;
+   color: #fff !important;
+   border: none !important;
+   cursor: pointer;
+   font-family: sans-serif !important; /* prevent Material Symbols font for option buttons */
+}
+
+/* Make sure next/end buttons in flags game are visible */
+#flags-next-btn { margin-right:8px; }
 #start-screen img{ width:200px; height:200px; margin-bottom:1em; }
 #main-menu img{ width:200px!important; height:200px!important; margin-bottom:1em; }
+/* Flags screens smaller logo */
+/* Flags screens smaller logo */
+#flags-start-screen img, #flags-continent-screen img { width:90px; height:90px; margin-bottom:1em; }
+
+/* Force readable font inside Flags screens so buttons show text (not Material Symbols) */
+#flags-start-screen, #flags-continent-screen, #flags-game-screen { font-family: sans-serif !important; }
+#flags-start-screen *, #flags-continent-screen *, #flags-game-screen * { font-family: sans-serif !important; font-variation-settings: normal !important; }
+/* Center continent buttons and reduce vertical spacing */
+#flags-continent-buttons { display:flex; flex-direction:column; gap:12px; align-items:center; }
+#flags-continent-buttons button { margin:6px 0; padding:0.9em 1.6em; border-radius:30px; min-width:200px; }
+/* slightly smaller font and reduced gap for tighter vertical spacing */
+#flags-continent-buttons { gap:8px; }
+#flags-continent-buttons button { font-size:1.05rem; }
+
+/* fallback text when a flag SVG fails to load */
+#flags-options .flag-fallback { display:none; color:#fff; margin-left:8px; font-size:1rem; }
+#flags-options img { display:block; }
 #start-screen h1 { margin-bottom:0.5em; }
 #start-screen button {
   margin-top:1em;
@@ -97,6 +135,14 @@ button:hover { background:#005f99; }
 @media (max-height:700px){
   #instructions-content, #credits-content { max-height:70vh; }
 }
+
+/* Make the flags pause button match the main pause button style */
+#flags-pause-btn {
+   width:40px; height:40px; border-radius:50%; border:none; background:#ff9800; color:#fff; cursor:pointer;
+   display:flex; align-items:center; justify-content:center; padding:0;
+   font-family:'Material Symbols Rounded' !important; font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 48 !important; font-size:20px;
+}
+#flags-pause-btn:hover{ background:#cc7a00; }
 </style>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
@@ -120,8 +166,9 @@ button:hover { background:#005f99; }
   <h1>Teorainneacha</h1>
   <p>Choose a game mode:</p>
   <div>
-    <button onclick="showStartScreen('countries')">Countries</button>
-    <button onclick="showStartScreen('cities')">Cities</button>
+      <button onclick="showStartScreen('countries')">Countries</button>
+      <button onclick="showStartScreen('cities')">Cities</button>
+      <button onclick="showFlagsStart()">Flags</button>
   </div>
   <div>
     <button onclick="showInstructions()">Instructions</button>
@@ -137,6 +184,39 @@ button:hover { background:#005f99; }
   <button id="medium-btn" onclick="startGame('Medium')">Medium</button>
   <button id="normal-btn" onclick="startGame('Normal')">Normal</button>
   <button id="hard-btn" onclick="startGame('Hard')">Hard</button>
+</div>
+
+<!-- Flags start and selection screens -->
+<div id="flags-start-screen" style="display:none;">
+   <img src="https://coe-chat.vercel.app/teorainneacha/favicon.png" alt="Game Logo">
+   <h1>Flags</h1>
+   <p>Choose a flags sub-mode:</p>
+   <button onclick="showFlagsContinentSelect('flag-to-country')">Assign flag to country</button>
+   <button onclick="showFlagsContinentSelect('country-to-flag')">Assign country to flag</button>
+   <button onclick="backToMainFromFlags()">Back</button>
+</div>
+
+<div id="flags-continent-screen" style="display:none;">
+   <img src="https://coe-chat.vercel.app/teorainneacha/favicon.png" alt="Game Logo">
+   <h1 id="flags-subtitle">Flags</h1>
+   <p>Select a continent (or All):</p>
+   <div id="flags-continent-buttons"></div>
+   <button onclick="backToFlagsStart()">Back</button>
+</div>
+
+<div id="flags-game-screen" style="display:none; padding:1em; text-align:center;">
+   <div id="flags-header" style="display:flex;gap:12px;align-items:center;justify-content:center;margin-bottom:12px;">
+   <button id="flags-pause-btn" title="Pause">&#10073;&#10073;</button>
+      <div id="flags-timer">0:00</div>
+      <div id="flags-round">Round 0/0</div>
+   </div>
+   <h2 id="flags-prompt"></h2>
+   <div id="flags-visual" style="margin:1em auto;"></div>
+   <div id="flags-options" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:800px;margin:0 auto;"></div>
+   <div style="margin-top:1em;">
+      <button id="flags-next-btn" style="display:none;" onclick="nextFlagQuestion()">Next</button>
+      <button onclick="endFlagsGame()">End</button>
+   </div>
 </div>
 
 <div id="pause-overlay">
@@ -205,6 +285,15 @@ let continentIndex=0;
 // Cities mode data
 let capitalsData=[], capitalsByCountry=new Map(), revealedCapitals=new Set(), capitalDots=[];
 let capitalsIndex=new Map(), capitalsOrder=[];
+
+// Flags game data and state
+let flagsDataByContinent = {};
+let flagsAllList = [];
+let flagsGameMode = null; // 'flag-to-country' or 'country-to-flag'
+let flagsContinent = 'all';
+let flagsQuestionIndex = 0;
+let flagsQuestionList = [];
+let flagsCurrentQuestion = null;
 
 // Improved manual mapping for problematic countries
 const manualFeatureMap={
@@ -366,6 +455,224 @@ function closeInstructions(){ document.getElementById("instructions-overlay").st
 function showCredits(){ document.getElementById("main-menu").style.display="none"; document.getElementById("credits-overlay").style.display="flex"; }
 function closeCredits(){ document.getElementById("credits-overlay").style.display="none"; document.getElementById("main-menu").style.display="flex"; }
 
+// Flags mode UI helpers
+function showFlagsStart(){
+   document.getElementById('main-menu').style.display='none';
+   document.getElementById('flags-start-screen').style.display='flex';
+   // hide map and controls while in flags UI
+   document.getElementById('map').style.display = 'none';
+   document.getElementById('controls').style.display = 'none';
+}
+function backToMainFromFlags(){
+   document.getElementById('flags-start-screen').style.display='none';
+   document.getElementById('main-menu').style.display='flex';
+   // restore map and controls
+   document.getElementById('map').style.display = '';
+   document.getElementById('controls').style.display = '';
+}
+function backToFlagsStart(){ document.getElementById('flags-continent-screen').style.display='none'; document.getElementById('flags-start-screen').style.display='flex'; }
+
+function showFlagsContinentSelect(mode){
+   flagsGameMode = mode;
+   document.getElementById('flags-start-screen').style.display='none';
+   document.getElementById('flags-continent-screen').style.display='flex';
+   document.getElementById('flags-subtitle').textContent = mode === 'flag-to-country' ? 'Assign flag to country' : 'Assign country to flag';
+   // build continent buttons
+   const container = document.getElementById('flags-continent-buttons');
+   container.innerHTML='';
+   const continents = ['all','africa','asia','europe','north-america','south-america','oceania','antarctica'];
+   continents.forEach(c=>{
+      const btn = document.createElement('button');
+      btn.textContent = c === 'all' ? 'All' : capitalizeWords(c.replace(/-/g,' '));
+      btn.onclick = ()=>{ startFlagsGame(c); };
+      container.appendChild(btn);
+   });
+}
+
+// Unicode-aware capitalize: handles characters like Å correctly
+function capitalizeWords(s){
+   if(!s) return '';
+   return s.split(' ').map(w => {
+      if(!w) return w;
+      return w.charAt(0).toLocaleUpperCase() + w.slice(1).toLocaleLowerCase();
+   }).join(' ');
+}
+
+async function ensureFlagsData(){
+   if(flagsAllList.length) return;
+   try{
+      const resp = await fetch('https://coe-chat.vercel.app/teorainneacha/bratai/countries.json');
+      const json = await resp.json();
+      flagsDataByContinent = json;
+      flagsAllList = Object.values(json).flat();
+   }catch(err){ console.error('Failed to load flags dataset',err); showMessage('Failed to load flags data','error'); }
+}
+
+function startFlagsGame(continent){
+   flagsContinent = continent;
+   document.getElementById('flags-continent-screen').style.display='none';
+   document.getElementById('flags-game-screen').style.display='block';
+   // ensure map/controls are hidden
+   document.getElementById('map').style.display = 'none';
+   document.getElementById('controls').style.display = 'none';
+   document.getElementById('flags-visual').innerHTML='';
+   document.getElementById('flags-options').innerHTML='';
+   flagsQuestionIndex = 0;
+   flagsQuestionList = [];
+   flagsCorrect = 0; flagsWrong = 0; flagsElapsed = 0;
+   ensureFlagsData().then(()=>{
+      let pool = flagsContinent === 'all' ? flagsAllList.slice() : (flagsDataByContinent[flagsContinent]||[]).slice();
+      // normalize pool to unique entries
+      pool = pool.filter(Boolean);
+      // Build questions as array of country keys
+      flagsQuestionList = shuffle(pool.slice());
+      // update round display
+      document.getElementById('flags-round').textContent = `Round 0/${flagsQuestionList.length}`;
+      // start flags timer
+      startFlagsTimer();
+      nextFlagQuestion();
+   });
+}
+
+function endFlagsGame(){
+   document.getElementById('flags-game-screen').style.display='none';
+   document.getElementById('main-menu').style.display='flex';
+   // restore map and controls
+   document.getElementById('map').style.display = '';
+   document.getElementById('controls').style.display = '';
+   // stop flags timer
+   if(flagsTimerInterval) { clearInterval(flagsTimerInterval); flagsTimerInterval = null; }
+   // show results in the results screen
+   const total = (flagsCorrect || 0) + (flagsWrong || 0);
+   const percent = total>0 ? (((flagsCorrect||0)/total)*100).toFixed(1) : 100;
+   const minutes = Math.floor((flagsElapsed||0)/60000);
+   const seconds = Math.floor(((flagsElapsed||0)/1000)%60).toString().padStart(2,'0');
+   document.getElementById('results-text').innerHTML = `
+      <div>Flags Game Over (${flagsGameMode === 'flag-to-country' ? 'Assign flag to country' : 'Assign country to flag'})</div>
+      <div>Time: ${minutes}:${seconds}</div>
+      <div>Wrong Attempts: ${flagsWrong||0}</div>
+      <div>Accuracy: ${percent}%</div>`;
+   document.getElementById('results-screen').style.display='flex';
+}
+
+function nextFlagQuestion(){
+   document.getElementById('flags-next-btn').style.display='none';
+   document.getElementById('flags-options').innerHTML='';
+   if(flagsQuestionIndex >= flagsQuestionList.length){
+      showMessage('Flags game completed!','correct');
+      endFlagsGame();
+      return;
+   }
+   const key = flagsQuestionList[flagsQuestionIndex];
+   flagsCurrentQuestion = key;
+   const pretty = capitalizeWords(key.replace(/-/g,' '));
+   // update round display
+   document.getElementById('flags-round').textContent = `Round ${Math.min(flagsQuestionIndex+1, flagsQuestionList.length)}/${flagsQuestionList.length}`;
+   if(flagsGameMode === 'flag-to-country'){
+      document.getElementById('flags-prompt').textContent = 'Which country does this flag belong to?';
+      // show flag image
+      const img = document.createElement('img');
+      img.src = `https://coe-chat.vercel.app/teorainneacha/bratai/${key}.svg`;
+      img.alt = pretty + ' flag';
+      img.style.width='240px'; img.style.height='160px'; img.style.objectFit='contain';
+      const visual = document.getElementById('flags-visual'); visual.innerHTML=''; visual.appendChild(img);
+      // options: one correct country name + 3 random wrong names
+      const pool = (flagsContinent==='all' ? flagsAllList : (flagsDataByContinent[flagsContinent]||[])).filter(k=>k!==key);
+      const wrong = sample(pool,3).map(k=>capitalizeWords(k.replace(/-/g,' ')));
+      const options = shuffle([capitalizeWords(key.replace(/-/g,' ')), ...wrong]);
+      renderFlagOptions(options, 'text', key);
+   }else{
+      // country-to-flag
+      document.getElementById('flags-prompt').textContent = `What is the flag of ${pretty}?`;
+      const visual = document.getElementById('flags-visual'); visual.innerHTML = '';
+      // options: one correct flag + 3 wrong flags
+      const pool = (flagsContinent==='all' ? flagsAllList : (flagsDataByContinent[flagsContinent]||[])).filter(k=>k!==key);
+      const wrong = sample(pool,3);
+      const options = shuffle([key, ...wrong]);
+      renderFlagOptions(options, 'image', key);
+   }
+}
+
+function renderFlagOptions(options, mode, correctKey){
+   const container = document.getElementById('flags-options');
+   options.forEach(opt=>{
+      const btn = document.createElement('button');
+      btn.style.width='auto'; btn.style.height='auto'; btn.style.minWidth='160px'; btn.style.minHeight='60px'; btn.style.padding='8px';
+      btn.style.borderRadius='8px'; btn.style.cursor='pointer';
+      btn.setAttribute('data-opt',opt);
+      if(mode==='text'){
+         btn.textContent = opt;
+      }else{
+         const img = document.createElement('img');
+         img.src = `https://coe-chat.vercel.app/teorainneacha/bratai/${opt}.svg`;
+         img.alt = opt; img.style.width='120px'; img.style.height='80px'; img.style.objectFit='contain';
+         // on error, remove the broken image and show the prettified country name as fallback
+         img.onerror = function(){
+            img.remove();
+            const fallback = document.createElement('div');
+            fallback.className = 'flag-fallback';
+            fallback.textContent = capitalizeWords(opt.replace(/-/g,' '));
+            fallback.style.display = 'block';
+            btn.appendChild(fallback);
+         };
+         btn.appendChild(img);
+      }
+      btn.onclick = ()=>{ handleFlagSelection(btn, opt, correctKey, mode); };
+      container.appendChild(btn);
+   });
+}
+
+function handleFlagSelection(btn, opt, correctKey, mode){
+   // If game is paused (either global or flags), ignore input
+   if(paused || flagsPaused) return;
+   // Disable further clicks for this question
+   Array.from(document.getElementById('flags-options').children).forEach(b=>b.disabled=true);
+   const pickedKey = mode==='text' ? opt.replace(/\b\w/g,ch=>ch.toLowerCase()) : opt; // for image mode opt is key
+   const correctPretty = capitalizeWords(correctKey.replace(/-/g,' '));
+   if((mode==='text' && opt.toLowerCase() === capitalizeWords(correctKey.replace(/-/g,' ')).toLowerCase()) || opt === correctKey){
+      // correct
+      btn.style.outline = '4px solid #0f992f';
+      showMessage('Correct!', 'check');
+      // update counters if flags mode
+      flagsCorrect = (typeof flagsCorrect === 'number') ? flagsCorrect + 1 : 1;
+      // auto-advance after a short delay
+      setTimeout(()=>{ nextFlagQuestion(); }, 700);
+   }else{
+      // wrong: highlight picked red and highlight correct green
+      btn.style.outline = '4px solid #e53935';
+      // find correct button
+      const children = Array.from(document.getElementById('flags-options').children);
+      children.forEach(b=>{
+         const data = b.getAttribute('data-opt');
+         if(mode==='text'){
+            if(data.toLowerCase() === capitalizeWords(correctKey.replace(/-/g,' ')).toLowerCase()){
+               b.style.outline = '4px solid #0f992f';
+            }
+         }else{
+            if(data === correctKey) b.style.outline = '4px solid #0f992f';
+         }
+      });
+      // Learning message: tell user what their picked flag/country actually is
+      if(mode==='text'){
+         // They clicked a country name; show which country that name is
+         const pickedPretty = opt;
+         showMessage(`The answer you picked is the country: ${pickedPretty}. Correct answer: ${correctPretty}`, 'error');
+      }else{
+         // They clicked a flag; say which country that flag belongs to
+         const pickedKeyNorm = opt;
+         const pickedPretty = capitalizeWords(pickedKeyNorm.replace(/-/g,' '));
+         showMessage(`The answer you picked is the flag of ${pickedPretty}. Correct answer: ${correctPretty}`, 'error');
+      }
+      document.getElementById('flags-next-btn').style.display='inline-block';
+      flagsWrong = (typeof flagsWrong === 'number') ? flagsWrong + 1 : 1;
+   }
+   flagsQuestionIndex++;
+}
+
+// small helpers
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+function sample(arr,n){ const copy=arr.slice(); shuffle(copy); return copy.slice(0,n); }
+
 document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
   clearInterval(timerInterval);
   paused = false;
@@ -379,6 +686,12 @@ document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
   mapGroup.selectAll("path.country").classed("revealed", false).attr("fill", null);
   capitalDots.forEach(dot => dot.remove());
   capitalDots = [];
+   // flags cleanup if necessary
+   if(flagsTimerInterval) { clearInterval(flagsTimerInterval); flagsTimerInterval = null; }
+   flagsPaused = false; flagsQuestionIndex = 0; flagsQuestionList = [];
+   document.getElementById('flags-game-screen').style.display = 'none';
+   document.getElementById('flags-continent-screen').style.display = 'none';
+   document.getElementById('flags-start-screen').style.display = 'none';
   document.getElementById("pause-overlay").style.display = "none";
   document.getElementById("results-screen").style.display = "none";
   document.getElementById("start-screen").style.display = "none";
@@ -693,23 +1006,24 @@ function submitAnswer(){
    }
    const submitSpan=document.querySelector("#submit-btn span");
    if(gameType==="countries"){
-      let rec = nameIndex.get(normalizeName(rawInput));
-      let usedFuzzy=false;
-      if(!rec){
-        let best=null, bestDist=999;
-        for(const [norm, val] of nameIndex){
-          const d = levenshtein(normalizeName(rawInput), norm);
-          if(d < bestDist){
-            bestDist = d;
-            best = val;
-          }
-        }
-        if(best && bestDist <= 2){
-          rec = best;
-          usedFuzzy = true;
-          showMessage(`Correct spelling: ${best.name}`, 'spellcheck');
-        }
-      }
+         let rec = nameIndex.get(normalizeName(rawInput));
+         let usedFuzzy=false;
+         if(!rec){
+            let best=null, bestDist=999;
+            for(const [norm, val] of nameIndex){
+               const d = levenshtein(normalizeName(rawInput), norm);
+               if(d < bestDist){
+                  bestDist = d;
+                  best = val;
+               }
+            }
+            if(best && bestDist <= 2){
+               rec = best;
+               usedFuzzy = true;
+               // show only the spelling-correction message for fuzzy matches — do not show the generic "Correct!" popup below
+               showMessage(`Correct spelling: ${best.name}`, 'spellcheck');
+            }
+         }
       if(!rec){
          showMessage(`Invalid input: ${rawInput}`, 'error');
          wrongGuesses++;
@@ -725,28 +1039,29 @@ function submitAnswer(){
          wrongGuesses++;
          return;
       }
-      submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
          submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
-         showMessage('Correct!', 'check');
+         // If we used a fuzzy match, we already showed the spelling message above. Only show the generic "Correct!" popup for exact matches.
+         if(!usedFuzzy) showMessage('Correct!', 'check');
          revealCountry(rec); round++; setTimeout(nextRound,500);
    }else{
-      let rec = capitalsIndex.get(normalizeName(rawInput));
-      let usedFuzzy=false;
-      if(!rec){
-        let best=null, bestDist=999;
-        for(const [norm, val] of capitalsIndex){
-          const d = levenshtein(normalizeName(rawInput), norm);
-          if(d < bestDist){
-            bestDist = d;
-            best = val;
-          }
-        }
-        if(best && bestDist <= 2){
-          rec = best;
-          usedFuzzy = true;
-          showMessage(`Correct spelling: ${best.capital}`, 'spellcheck');
-        }
-      }
+         let rec = capitalsIndex.get(normalizeName(rawInput));
+         let usedFuzzy=false;
+         if(!rec){
+            let best=null, bestDist=999;
+            for(const [norm, val] of capitalsIndex){
+               const d = levenshtein(normalizeName(rawInput), norm);
+               if(d < bestDist){
+                  bestDist = d;
+                  best = val;
+               }
+            }
+            if(best && bestDist <= 2){
+               rec = best;
+               usedFuzzy = true;
+               // show spelling correction only
+               showMessage(`Correct spelling: ${best.capital}`, 'spellcheck');
+            }
+         }
       if(!rec){
          showMessage(`Invalid input: ${rawInput}`, 'error');
          wrongGuesses++;
@@ -757,9 +1072,8 @@ function submitAnswer(){
          wrongGuesses++;
          return;
       }
-      submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
          submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
-         showMessage('Correct!', 'correct');
+         if(!usedFuzzy) showMessage('Correct!', 'check');
          revealCapital(rec); round++; setTimeout(nextCitiesRound,500);
    }
 }
@@ -778,6 +1092,29 @@ function startTimer(){ startTime=Date.now()-elapsed; timerInterval=setInterval(u
 function updateTimer(){ elapsed=Date.now()-startTime; const totalSec=Math.floor(elapsed/1000); const min=Math.floor(totalSec/60), sec=totalSec%60; document.getElementById("timer").textContent=`${min}:${sec.toString().padStart(2,"0")}`; }
 function pauseTimer(){ clearInterval(timerInterval); paused=true; document.getElementById("pause-overlay").style.display="flex"; }
 function resumeTimer(){ startTimer(); paused=false; document.getElementById("pause-overlay").style.display="none"; }
+// Flags timer (separate so we can pause/resume independently)
+let flagsStartTime = null, flagsElapsed = 0, flagsTimerInterval = null, flagsPaused = false;
+function startFlagsTimer(){ flagsStartTime = Date.now() - flagsElapsed; if(flagsTimerInterval) clearInterval(flagsTimerInterval); flagsTimerInterval = setInterval(()=>{
+   flagsElapsed = Date.now() - flagsStartTime; const s = Math.floor(flagsElapsed/1000); const m=Math.floor(s/60), sec=s%60; document.getElementById('flags-timer').textContent = `${m}:${sec.toString().padStart(2,'0')}`;
+},1000); }
+function pauseFlagsTimer(){ if(flagsTimerInterval) clearInterval(flagsTimerInterval); flagsPaused = true; }
+function resumeFlagsTimer(){ if(flagsPaused){ startFlagsTimer(); flagsPaused = false; } }
+
+document.addEventListener('click', function(e){
+   if(e.target && e.target.id === 'flags-pause-btn'){
+      if(!flagsPaused){
+         // pause flags game: show overlay and pause timer
+         pauseFlagsTimer(); flagsPaused = true;
+         document.getElementById('flags-pause-btn').textContent = '▶';
+         document.getElementById('pause-overlay').style.display = 'flex';
+      } else {
+         // resume flags game
+         resumeFlagsTimer(); flagsPaused = false;
+         document.getElementById('flags-pause-btn').textContent = '⏸';
+         document.getElementById('pause-overlay').style.display = 'none';
+      }
+   }
+});
 function endGame(){
    clearInterval(timerInterval);
    const totalSec=Math.floor(elapsed/1000); const min=Math.floor(totalSec/60), sec=totalSec%60;
@@ -791,7 +1128,12 @@ function endGame(){
 }
 
 document.getElementById("pause-btn").addEventListener("click", ()=>{ if(!paused) pauseTimer(); });
-document.getElementById("resume-btn").addEventListener("click", resumeTimer);
+document.getElementById("resume-btn").addEventListener("click", ()=>{
+   // resume global timer
+   resumeTimer();
+   // also resume flags timer if we were in flags mode
+   if(flagsPaused){ resumeFlagsTimer(); flagsPaused = false; document.getElementById('flags-pause-btn').textContent = '⏸'; }
+});
 document.getElementById("close-results-btn").addEventListener("click", ()=>{ document.getElementById("results-screen").style.display="none"; });
 
 document.addEventListener("keydown", function(e) {
