@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Teorainneacha</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
+<link rel="icon" type="image/png" href="https://coe-chat.vercel.app/teorainneacha/icon.png">
+<style>
+body { font-family:sans-serif; margin:0; padding:0; text-align:center; background:#265788; color:#eee; }
+h1 { margin:1em 0 0.3em; }
+#map { width:100%; height:70vh; border:1px solid #444; background:#042342; border-radius:12px; }
+#controls { margin:1em; display:flex; align-items:center; justify-content:center; gap:8px; position:relative; }
+input[type=text] { padding:0.5em; width:250px; border-radius:8px; border:1px solid #555; background:#222; color:#eee; flex-shrink:0; }
+button { width:40px; height:40px; border-radius:50%; border:none; background:#007acc; color:#fff; cursor:pointer; font-family:'Material Symbols Rounded'; font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 48; font-size:20px; display:flex; align-items:center; justify-content:center; padding:0; }
+button:hover { background:#005f99; }
+#autocomplete-list { position:absolute; top:4em; left:0; width:250px; border:1px solid #555; border-radius:8px; background:#222; max-height:150px; overflow-y:auto; z-index:1000; box-shadow:0 2px 6px rgba(0,0,0,0.5); }
+.autocomplete-item { padding:0.3em 0.5em; cursor:pointer; }
+.autocomplete-item:hover { background:#444; }
+.autocomplete-item.highlighted { background:#007acc; color:#fff; }
+.country { fill:#13385e; stroke:#95abc2; stroke-width:0.075px; }
+.revealed { stroke:#fff; stroke-width:0.15px; }
+.capital-dot { pointer-events:none; }
+.capital-dot-grey { fill:#888; stroke:#222; stroke-width:1px; }
+.capital-dot-red { fill:#e53935; stroke:#fff; stroke-width:1.5px; }
+#map .country.highlighted {
+   fill: #ff9800 !important;
+   stroke: #fff !important;
+   stroke-width: 0.25px !important;
+   opacity: 0.95;
+}
+#main-menu {
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.95); display:flex; flex-direction:column;
+  justify-content:center; align-items:center; z-index:3000; color:#fff;
+  text-align:center;
+}
+#main-menu button {
+  margin:1em; padding:1.5em 3em; font-size:1.5em;
+  border:none; border-radius:35px; cursor:pointer;
+  background:#007acc; color:#fff; font-family:sans-serif;
+}
+#pause-btn { background:#ff9800; }
+#pause-btn:hover { background:#cc7a00; }
+#pause-overlay, #results-screen, #start-screen, #instructions-overlay, #credits-overlay, #flags-start-screen, #flags-continent-screen, #flags-game-screen {
+   position:fixed; top:0; left:0; width:100%; height:100%;
+   background:rgba(0,0,0,0.9); display:flex; flex-direction:column;
+   justify-content:center; align-items:center; z-index:2000; color:#fff;
+   text-align:center; display:none;
+}
+#pause-overlay button, #results-screen button, #start-screen button, #instructions-overlay button, #credits-overlay button, #flags-start-screen button, #flags-continent-screen button, #flags-game-screen button {
+   margin-top:1em; padding:0.7em 1em; font-size:1.5em;
+   border:none; border-radius:35px; cursor:pointer;
+   background:#007acc; color:#fff; width:auto; height:auto;
+   font-family:sans-serif;
+}
+
+/* Flags game option buttons: rectangular, override global circular button base */
+#flags-options button {
+   width: auto !important;
+   height: auto !important;
+   min-width: 160px;
+   min-height: 60px;
+   border-radius: 12px !important;
+   padding: 8px !important;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   background: #007acc !important;
+   color: #fff !important;
+   border: none !important;
+   cursor: pointer;
+   font-family: sans-serif !important; /* prevent Material Symbols font for option buttons */
+}
+
+/* Make sure next/end buttons in flags game are visible */
+#flags-next-btn { margin-right:8px; }
+#start-screen img{ width:200px; height:200px; margin-bottom:1em; }
+#main-menu img{ width:200px!important; height:200px!important; margin-bottom:1em; }
+/* Flags screens smaller logo */
+/* Flags screens smaller logo */
+#flags-start-screen img, #flags-continent-screen img { width:90px; height:90px; margin-bottom:1em; }
+
+/* Force readable font inside Flags screens so buttons show text (not Material Symbols) */
+#flags-start-screen, #flags-continent-screen, #flags-game-screen { font-family: sans-serif !important; }
+#flags-start-screen *, #flags-continent-screen *, #flags-game-screen * { font-family: sans-serif !important; font-variation-settings: normal !important; }
+/* Center continent buttons and reduce vertical spacing */
+#flags-continent-buttons { display:flex; flex-direction:column; gap:12px; align-items:center; }
+#flags-continent-buttons button { margin:6px 0; padding:0.9em 1.6em; border-radius:30px; min-width:200px; }
+/* slightly smaller font and reduced gap for tighter vertical spacing */
+#flags-continent-buttons { gap:8px; }
+#flags-continent-buttons button { font-size:1.05rem; }
+
+/* fallback text when a flag SVG fails to load */
+#flags-options .flag-fallback { display:none; color:#fff; margin-left:8px; font-size:1rem; }
+#flags-options img { display:block; }
+#start-screen h1 { margin-bottom:0.5em; }
+#start-screen button {
+  margin-top:1em;
+  padding:1em 1em;
+  font-size:1.5em;
+  border:none;
+  border-radius:35px;
+  cursor:pointer;
+  background:#007acc;
+  color:#fff;
+}
+#popup-country {
+  position:fixed;
+  pointer-events:none;
+  background:rgba(30,30,30,0.95);
+  color:#fff;
+  padding:0.4em 0.8em;
+  border-radius:8px;
+  font-size:1em;
+  z-index:3000;
+  box-shadow:0 2px 8px rgba(0,0,0,0.5);
+  display:none;
+  transition:opacity 0.15s;
+}
+#message-modal {
+  position:fixed;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  background:rgba(20,20,20,0.98);
+  color:#fff;
+  padding:0.8em 1.2em;
+  border-radius:10px;
+  font-size:1.05em;
+  z-index:4000;
+  display:none;
+  align-items:center;
+  gap:0.6em;
+  box-shadow:0 6px 20px rgba(0,0,0,0.6);
+  transition:opacity 0.18s;
+  pointer-events:none;
+}
+#message-modal .material-symbols-rounded { font-variation-settings:'FILL' 1; font-size:24px; vertical-align:middle; }
+#instructions-content, #credits-content { max-width:700px; text-align:left; overflow:auto; padding:1em; }
+#instructions-content h3, #credits-content h3 { margin-top:0; }
+#credits-content ul { margin-left:1.2em; }
+@media (max-height:700px){
+  #instructions-content, #credits-content { max-height:70vh; }
+}
+
+/* Make the flags pause button match the main pause button style */
+#flags-pause-btn {
+   width:40px; height:40px; border-radius:50%; border:none; background:#ff9800; color:#fff; cursor:pointer;
+   display:flex; align-items:center; justify-content:center; padding:0;
+   font-family:'Material Symbols Rounded' !important; font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 48 !important; font-size:20px;
+}
+#flags-pause-btn:hover{ background:#cc7a00; }
+</style>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+<script src="https://unpkg.com/topojson-client@3"></script>
+</head>
+<body>
+<h1>Teorainneacha</h1>
+<div id="controls">
+  <div id="prompt">Loading game...</div>
+  <input id="answer" type="text" placeholder="Type country name" autocomplete="off">
+  <div id="autocomplete-list"></div>
+  <button id="submit-btn"><span class="material-symbols-rounded" style="font-variation-settings:'FILL' 1;font-size:24px;">arrow_forward_ios</span></button>
+  <button id="pause-btn" title="Pause">&#10073;&#10073;</button>
+  <div id="timer">0:00</div>
+</div>
+<svg id="map"></svg>
+<div id="popup-country"></div>
+
+<div id="main-menu" style="display:flex;">
+  <img src="https://coe-chat.vercel.app/teorainneacha/icon.png" alt="Game Logo" style="width:100px;height:100px;margin-bottom:1em;">
+  <h1>Teorainneacha</h1>
+  <p>Choose a game mode:</p>
+  <div>
+   <button onclick="showStartScreen('countries')">Countries</button>
+   <button onclick="showStartScreen('cities')">Cities</button>
+   <button onclick="showFlagsStart()">Flags</button>
+   <button onclick="showStartScreen('highlight')">Country Highlight</button>
+  </div>
+  <div>
+    <button onclick="showInstructions()">Instructions</button>
+    <button onclick="showCredits()">Credits</button>
+  </div>
+</div>
+
+<div id="start-screen" style="display:none;">
+  <img src="https://coe-chat.vercel.app/teorainneacha/icon.png" alt="Game Logo">
+  <h1 id="start-title">Teorainneacha</h1>
+  <p id="start-desc">Select a mode to start:</p>
+  <button id="easy-btn" onclick="startGame('Easy')">Easy</button>
+  <button id="medium-btn" onclick="startGame('Medium')">Medium</button>
+  <button id="normal-btn" onclick="startGame('Normal')">Normal</button>
+  <button id="hard-btn" onclick="startGame('Hard')">Hard</button>
+</div>
+
+<!-- Flags start and selection screens -->
+<div id="flags-start-screen" style="display:none;">
+   <img src="https://coe-chat.vercel.app/teorainneacha/icon.png" alt="Game Logo">
+   <h1>Flags</h1>
+   <p>Choose a flags sub-mode:</p>
+   <button onclick="showFlagsContinentSelect('flag-to-country')">Assign flag to country</button>
+   <button onclick="showFlagsContinentSelect('country-to-flag')">Assign country to flag</button>
+   <button onclick="backToMainFromFlags()">Back</button>
+</div>
+
+<div id="flags-continent-screen" style="display:none;">
+   <img src="https://coe-chat.vercel.app/teorainneacha/icon.png" alt="Game Logo">
+   <h1 id="flags-subtitle">Flags</h1>
+   <p>Select a continent (or All):</p>
+   <div id="flags-continent-buttons"></div>
+   <button onclick="backToFlagsStart()">Back</button>
+</div>
+
+<div id="flags-game-screen" style="display:none; padding:1em; text-align:center;">
+   <div id="flags-header" style="display:flex;gap:12px;align-items:center;justify-content:center;margin-bottom:12px;">
+   <button id="flags-pause-btn" title="Pause">&#10073;&#10073;</button>
+      <div id="flags-timer">0:00</div>
+      <div id="flags-round">Round 0/0</div>
+   </div>
+   <h2 id="flags-prompt"></h2>
+   <div id="flags-visual" style="margin:1em auto;"></div>
+   <div id="flags-options" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:800px;margin:0 auto;"></div>
+   <div style="margin-top:1em;">
+      <button id="flags-next-btn" style="display:none;" onclick="nextFlagQuestion()">Next</button>
+      <button onclick="endFlagsGame()">End</button>
+   </div>
+</div>
+
+<div id="pause-overlay">
+  <div>Game Paused</div>
+  <button id="resume-btn">Resume</button>
+  <button id="pause-mainmenu-btn">Main Menu</button>
+</div>
+
+<div id="results-screen">
+  <div id="results-text"></div>
+  <button onclick="location.reload()">Play Again</button>
+  <button id="results-mainmenu-btn">Main Menu</button>
+  <button id="close-results-btn">Close</button>
+</div>
+
+<div id="instructions-overlay">
+  <div id="instructions-content">
+    <h2>How to play</h2>
+    <h3>Countries mode</h3>
+    <p>Each round you will be prompted for a country. Type the country's name and press Enter or the blue arrow to submit. The game will reveal the country on the map if you're correct.</p>
+    <h3>Capitals mode</h3>
+    <p>Each round you will be asked for the capital of a country. Type the capital and submit. Capitals already revealed show as red dots.</p>
+    <h3>Autocomplete and forgiving spelling</h3>
+    <p>If you type only the start of a country/capital and the autocomplete shows exactly one suggestion, pressing Enter will accept that suggestion. If your input has a small typo (up to two letters different), the game will automatically accept the best match and flash the correct spelling for two seconds.</p>
+    <button onclick="closeInstructions()">Close</button>
+  </div>
+</div>
+
+<div id="credits-overlay">
+  <div id="credits-content">
+    <h2>Credits</h2>
+    <h3>Authors</h3>
+    <p><strong>Developed by:</strong> Liam Smalley</p>
+    <p><strong>Game concept by:</strong> Raymond Carson and Liam Smalley</p>
+    <h3>Data and assets</h3>
+    <ul>
+      <li><strong>Country shapes:</strong> Natural Earth / World Atlas TopoJSON</li>
+      <li><strong>Country and city names:</strong> RestCountries API</li>
+      <li><strong>Flag images:</strong> FlagCDN</li>
+      <li><strong>Libraries:</strong> D3.js (map rendering and projections), TopoJSON client</li>
+    </ul>
+    <h3>Rights notice</h3>
+    <p>
+      <strong>Teorainneacha</strong> is the personal creation and property of <strong>Liam Smalley</strong>.  
+      This project is not formally licensed for redistribution; all rights are reserved by the author.  
+      You may not reproduce, redistribute, publish, or adapt this game without the express permission of the author.
+    </p>
+    <p>If you would like to request permission to use any part of this project, please contact the author directly.</p>
+    <button onclick="closeCredits()">Close</button>
+  </div>
+</div>
+
+<div id="message-modal" aria-hidden="true"></div>
+
+<script>
+let countriesData=[], features=[], projection, path, svg, mapGroup;
+let round=1, currentContinent="", currentLetter="", currentCountry=null;
+let revealedCountries=new Set(), nameIndex=new Map();
+let lastPromptLetter = null;
+let featureByCCA3=new Map(), featureByName=new Map();
+let wrongGuesses=0, gameMode="Normal", gameType="countries";
+let startTime=null, elapsed=0, timerInterval=null, paused=false;
+const continentOrder=["Europe","Oceania","Americas","Asia","Africa","Antarctic"];
+let continentIndex=0;
+
+// Cities mode data
+// Highlight mode logic
+let highlightCurrentCountry = null;
+function nextHighlightRound(){
+   let continentCompleted = false;
+   let completedContinentName = null;
+   while(continentIndex < continentOrder.length){
+      const cont = continentOrder[continentIndex];
+      const remaining = countriesData.filter(c => !revealedCountries.has(c.name) && c.region === cont);
+      if(remaining.length > 0){
+         // Pick a random country from the remaining in this continent
+         highlightCurrentCountry = remaining[Math.floor(Math.random() * remaining.length)];
+         currentContinent = cont;
+         break;
+      }
+      // Mark continent as completed
+      continentCompleted = true;
+      completedContinentName = continentOrder[continentIndex];
+      continentIndex++;
+   }
+   if(continentIndex >= continentOrder.length){ endGame(); return; }
+   if(!highlightCurrentCountry){ endGame(); return; }
+   // Remove any previous highlight dots
+   mapGroup.selectAll('.highlight-dot').remove();
+   // Highlight the country on the map
+   mapGroup.selectAll("path.country").classed("highlighted", false);
+   const feature = getFeature(highlightCurrentCountry);
+   let centroid = null;
+   if(feature){
+      mapGroup.selectAll("path.country")
+         .filter(d => {
+            const props = d.properties || {};
+            return (props.iso_a3 === highlightCurrentCountry.cca3 || props.ISO_A3 === highlightCurrentCountry.cca3 || props.ADM0_A3 === highlightCurrentCountry.cca3);
+         })
+         .classed("highlighted", true)
+         .raise();
+      // Compute centroid for the red dot
+      try {
+         centroid = path.centroid(feature);
+      } catch (e) {
+         centroid = null;
+      }
+      if (centroid && Array.isArray(centroid) && centroid.length === 2 && isFinite(centroid[0]) && isFinite(centroid[1])) {
+         mapGroup.append('circle')
+            .attr('cx', centroid[0])
+            .attr('cy', centroid[1])
+            .attr('r', 4)
+            .attr('class', 'highlight-dot')
+            .attr('fill', '#e53935')
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 1.5)
+            .attr('opacity', 0.95);
+      }
+   }
+   let promptText = `Round ${round}: Type the name of the highlighted country in ${currentContinent}`;
+   document.getElementById("prompt").innerText = promptText;
+   if (continentCompleted && completedContinentName) {
+      showMessage(`Continent completed! moving on to ${continentOrder[continentIndex]||'End'}`, 'continent');
+   }
+}
+let capitalsData=[], capitalsByCountry=new Map(), revealedCapitals=new Set(), capitalDots=[];
+let capitalsIndex=new Map(), capitalsOrder=[];
+
+// Flags game data and state
+let flagsDataByContinent = {};
+let flagsAllList = [];
+let flagsGameMode = null; // 'flag-to-country' or 'country-to-flag'
+let flagsContinent = 'all';
+let flagsQuestionIndex = 0;
+let flagsQuestionList = [];
+let flagsCurrentQuestion = null;
+
+// Improved manual mapping for problematic countries
+const manualFeatureMap={
+   northmacedonia:"MKD", southsudan:"SSD", democraticrepublicofthecongo:"COD",
+   centralafricanrepublic:"CAF", republicofthecongo:"COG", unitedstates:"USA",
+   stvincentandthegrenadines:"VCT", bosniaandherzegovina:"BIH", puertorico:"PRI",
+   papuanewguinea:"PNG", libya:"LBY", dominicanrepublic:"DOM",
+   "sãotoméandpríncipe":"STP", "sao tome and principe":"STP", "sao tome":"STP",
+   "são tomé":"STP", "são tomé e príncipe":"STP", "sao tome e principe":"STP",
+   svalbard:"SJM", "ivorycoast":"CIV", "cotedivoire":"CIV", "capeverde":"CPV",
+   "timorleste":"TLS", "easttimor":"TLS", "vaticancity":"VAT", "holysee":"VAT",
+   "eswatini":"SWZ", "swaziland":"SWZ", "burma":"MMR", "myanmar":"MMR",
+   "palestine":"PSE", "palestinianterritory":"PSE", "palestinian territories":"PSE"
+};
+  
+  // Attempt, though unsuccessfully for EQG and STP, to get proper topoJSON for broken countries using topoJSON 3 digit country code
+const topoIdMap = {
+   "COD":"180",
+   "SSD":"728",
+   "EQG":"226",
+   "ESH":"732",
+   "STP":"678"
+}
+
+
+function normalizeName(s){ return (s||"").toLowerCase().replace(/[^a-z]+/g,''); }
+
+function showMessage(text, icon='info'){
+   const modal = document.getElementById("message-modal");
+   modal.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${text}</span>`;
+   modal.style.opacity = "1";
+   modal.style.display = "flex";
+   modal.setAttribute('aria-hidden','false');
+   let color = '';
+   let duration = 2000;
+   if (icon === 'correct') {
+      color = '#0f992f';
+      duration = 1000;
+   } else if (icon === 'continent') {
+      color = '#0f992f';
+      duration = 3000;
+   }
+   if (color) modal.style.background = color;
+   else modal.style.background = 'rgba(20,20,20,0.98)';
+   if(modal._hideTimeout) clearTimeout(modal._hideTimeout);
+   modal._hideTimeout = setTimeout(()=>{
+      modal.style.opacity = "0";
+      setTimeout(()=>{ modal.style.display = "none"; modal.setAttribute('aria-hidden','true'); modal.style.background = 'rgba(20,20,20,0.98)'; }, 200);
+   }, duration);
+}
+
+function levenshtein(a,b){
+  a = a||''; b = b||'';
+  const n=a.length, m=b.length;
+  if(n===0) return m;
+  if(m===0) return n;
+  let prev = new Array(m+1);
+  let cur = new Array(m+1);
+  for(let j=0;j<=m;j++) prev[j] = j;
+  for(let i=1;i<=n;i++){
+    cur[0]=i;
+    const ai = a.charAt(i-1);
+    for(let j=1;j<=m;j++){
+      const cost = ai === b.charAt(j-1) ? 0 : 1;
+      cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + cost);
+    }
+    const tmp = prev; prev = cur; cur = tmp;
+  }
+  return prev[m];
+}
+
+async function init(){
+   svg=d3.select("#map");
+   const width = window.innerWidth;
+   const height = window.innerHeight * 0.7;
+   svg.attr("width", width).attr("height", height);
+
+    // Use Winkel Tripel projection
+    projection = d3.geoWinkel3()
+       .scale(Math.min(width/6, height/3.2))
+       .translate([width/2, height/2])
+       .precision(0.1);
+    path = d3.geoPath().projection(projection);
+   mapGroup=svg.append("g").attr("class","map-content");
+
+   svg.call(d3.zoom().scaleExtent([1,4000]).on("zoom",event=>{mapGroup.attr("transform",event.transform);})); 
+
+   const rc=await fetch('https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,altSpellings').then(r=>r.json());
+   rc.forEach(c=>{
+      const cca3=c.cca3||"", cca2=c.cca2||"", common=c.name.common, region=c.region||"Other";
+      const aliases=new Set([common,c.name.official,...(c.altSpellings||[])]);
+      if(common==="São Tomé and Príncipe") aliases.add("Sao Tome and Principe");
+      if(common==="Democratic Republic of the Congo") aliases.add("DR Congo");
+      if(common==="Central African Republic") aliases.add("CAR");
+      if(common==="Dominican Republic") aliases.add("Dom. Rep.");
+      if(common==="Republic of the Congo") aliases.add("Congo");
+      if(common==="Ivory Coast") aliases.add("Côte d'Ivoire");
+      if(common==="East Timor") aliases.add("Timor-Leste");
+      if(common==="Vatican City") aliases.add("Holy See");
+      if(common==="Myanmar") aliases.add("Burma");
+      if(common==="Eswatini") aliases.add("Swaziland");
+      if(common==="Palestine") aliases.add("Palestinian Territories");
+      const rec={name:common,cca2,cca3,region,aliases:[...aliases]};
+      countriesData.push(rec);
+      rec.aliases.forEach(a=>nameIndex.set(normalizeName(a),rec));
+   });
+
+   const topo=await fetch('https://unpkg.com/world-atlas@2/countries-50m.json').then(r=>r.json());
+   const objKey=Object.keys(topo.objects)[0];
+   features=topojson.feature(topo, topo.objects[objKey]).features;
+   features.forEach(f=>{
+      const props=f.properties||{};
+      const iso=props.iso_a3||props.ISO_A3||props.ADM0_A3||"";
+      const pname=props.name||props.NAME||props.ADMIN||"";
+      if(iso) featureByCCA3.set(iso,f);
+      if(pname) featureByName.set(normalizeName(pname),f);
+   });
+
+   projection.fitSize([width, height], {type: "FeatureCollection", features: features});
+   mapGroup.selectAll("path").data(features).join("path").attr("d",path).attr("class","country");
+   
+   document.getElementById("main-menu").style.display="flex";
+   document.getElementById("start-screen").style.display="none";
+
+   const capitalsRaw=await fetch('https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,capital,capitalInfo').then(r=>r.json());
+   capitalsData=[];
+   capitalsByCountry.clear();
+   capitalsIndex.clear();
+   capitalsOrder=[];
+   capitalsRaw.forEach(c=>{
+      if(!c.capital||!c.capital.length||!c.capitalInfo||!c.capitalInfo.latlng) return;
+      const cca3=c.cca3||"", cca2=c.cca2||"", common=c.name.common, region=c.region||"Other";
+      const capital=c.capital[0], latlng=c.capitalInfo.latlng;
+      const rec={country:common,cca2,cca3,region,capital,latlng};
+      capitalsData.push(rec);
+      capitalsByCountry.set(common,rec);
+      capitalsIndex.set(normalizeName(capital),rec);
+   });
+   capitalsOrder=continentOrder.flatMap(cont=>
+      capitalsData.filter(c=>c.region===cont).sort((a,b)=>a.country.localeCompare(b.country))
+   );
+}
+
+function showStartScreen(type){
+   gameType=type;
+   document.getElementById("main-menu").style.display="none";
+   document.getElementById("start-screen").style.display="flex";
+   if(type==="countries"){
+      document.getElementById("start-title").textContent = "Teorainneacha";
+      document.getElementById("start-desc").textContent = "Select a difficulty for Countries mode:";
+      document.getElementById("easy-btn").style.display = "inline-block";
+      document.getElementById("medium-btn").style.display = "inline-block";
+      document.getElementById("normal-btn").style.display = "inline-block";
+      document.getElementById("hard-btn").style.display = "inline-block";
+   }else if(type==="cities"){
+      document.getElementById("start-title").textContent = "Capitals";
+      document.getElementById("start-desc").textContent = "Select a difficulty for Cities mode:";
+      document.getElementById("easy-btn").style.display = "inline-block";
+      document.getElementById("medium-btn").style.display = "none";
+      document.getElementById("normal-btn").style.display = "none";
+      document.getElementById("hard-btn").style.display = "inline-block";
+   }else if(type==="highlight"){
+      document.getElementById("start-title").textContent = "Country Highlight";
+      document.getElementById("start-desc").textContent = "Select a difficulty for Highlight mode:";
+      document.getElementById("easy-btn").style.display = "inline-block";
+      document.getElementById("medium-btn").style.display = "none";
+      document.getElementById("normal-btn").style.display = "none";
+      document.getElementById("hard-btn").style.display = "inline-block";
+   }
+}
+
+function showInstructions(){ document.getElementById("main-menu").style.display="none"; document.getElementById("instructions-overlay").style.display="flex"; }
+function closeInstructions(){ document.getElementById("instructions-overlay").style.display="none"; document.getElementById("main-menu").style.display="flex"; }
+function showCredits(){ document.getElementById("main-menu").style.display="none"; document.getElementById("credits-overlay").style.display="flex"; }
+function closeCredits(){ document.getElementById("credits-overlay").style.display="none"; document.getElementById("main-menu").style.display="flex"; }
+
+// Flags mode UI helpers
+function showFlagsStart(){
+   document.getElementById('main-menu').style.display='none';
+   document.getElementById('flags-start-screen').style.display='flex';
+   // hide map and controls while in flags UI
+   document.getElementById('map').style.display = 'none';
+   document.getElementById('controls').style.display = 'none';
+}
+function backToMainFromFlags(){
+   document.getElementById('flags-start-screen').style.display='none';
+   document.getElementById('main-menu').style.display='flex';
+   // restore map and controls
+   document.getElementById('map').style.display = '';
+   document.getElementById('controls').style.display = '';
+}
+function backToFlagsStart(){ document.getElementById('flags-continent-screen').style.display='none'; document.getElementById('flags-start-screen').style.display='flex'; }
+
+function showFlagsContinentSelect(mode){
+   flagsGameMode = mode;
+   document.getElementById('flags-start-screen').style.display='none';
+   document.getElementById('flags-continent-screen').style.display='flex';
+   document.getElementById('flags-subtitle').textContent = mode === 'flag-to-country' ? 'Assign flag to country' : 'Assign country to flag';
+   // build continent buttons
+   const container = document.getElementById('flags-continent-buttons');
+   container.innerHTML='';
+   const continents = ['all','africa','asia','europe','north-america','south-america','oceania','antarctica'];
+   continents.forEach(c=>{
+      const btn = document.createElement('button');
+      btn.textContent = c === 'all' ? 'All' : capitalizeWords(c.replace(/-/g,' '));
+      btn.onclick = ()=>{ startFlagsGame(c); };
+      container.appendChild(btn);
+   });
+}
+
+// Unicode-aware capitalize: handles characters like Å correctly
+function capitalizeWords(s){
+   if(!s) return '';
+   return s.split(' ').map(w => {
+      if(!w) return w;
+      return w.charAt(0).toLocaleUpperCase() + w.slice(1).toLocaleLowerCase();
+   }).join(' ');
+}
+
+async function ensureFlagsData(){
+   if(flagsAllList.length) return;
+   try{
+      const resp = await fetch('https://coe-chat.vercel.app/teorainneacha/bratai/countries.json');
+      const json = await resp.json();
+      flagsDataByContinent = json;
+      flagsAllList = Object.values(json).flat();
+   }catch(err){ console.error('Failed to load flags dataset',err); showMessage('Failed to load flags data','error'); }
+}
+
+function startFlagsGame(continent){
+   flagsContinent = continent;
+   document.getElementById('flags-continent-screen').style.display='none';
+   document.getElementById('flags-game-screen').style.display='block';
+   // ensure map/controls are hidden
+   document.getElementById('map').style.display = 'none';
+   document.getElementById('controls').style.display = 'none';
+   document.getElementById('flags-visual').innerHTML='';
+   document.getElementById('flags-options').innerHTML='';
+   flagsQuestionIndex = 0;
+   flagsQuestionList = [];
+   flagsCorrect = 0; flagsWrong = 0; flagsElapsed = 0;
+   ensureFlagsData().then(()=>{
+      let pool = flagsContinent === 'all' ? flagsAllList.slice() : (flagsDataByContinent[flagsContinent]||[]).slice();
+      // normalize pool to unique entries
+      pool = pool.filter(Boolean);
+      // Build questions as array of country keys
+      flagsQuestionList = shuffle(pool.slice());
+      // update round display
+      document.getElementById('flags-round').textContent = `Round 0/${flagsQuestionList.length}`;
+      // start flags timer
+      startFlagsTimer();
+      nextFlagQuestion();
+   });
+}
+
+function endFlagsGame(){
+   document.getElementById('flags-game-screen').style.display='none';
+   document.getElementById('main-menu').style.display='flex';
+   // restore map and controls
+   document.getElementById('map').style.display = '';
+   document.getElementById('controls').style.display = '';
+   // stop flags timer
+   if(flagsTimerInterval) { clearInterval(flagsTimerInterval); flagsTimerInterval = null; }
+   // show results in the results screen
+   const total = (flagsCorrect || 0) + (flagsWrong || 0);
+   const percent = total>0 ? (((flagsCorrect||0)/total)*100).toFixed(1) : 100;
+   const minutes = Math.floor((flagsElapsed||0)/60000);
+   const seconds = Math.floor(((flagsElapsed||0)/1000)%60).toString().padStart(2,'0');
+   document.getElementById('results-text').innerHTML = `
+      <div>Flags Game Over (${flagsGameMode === 'flag-to-country' ? 'Assign flag to country' : 'Assign country to flag'})</div>
+      <div>Time: ${minutes}:${seconds}</div>
+      <div>Wrong Attempts: ${flagsWrong||0}</div>
+      <div>Accuracy: ${percent}%</div>`;
+   document.getElementById('results-screen').style.display='flex';
+}
+
+function nextFlagQuestion(){
+   document.getElementById('flags-next-btn').style.display='none';
+   document.getElementById('flags-options').innerHTML='';
+   if(flagsQuestionIndex >= flagsQuestionList.length){
+      showMessage('Flags game completed!','correct');
+      endFlagsGame();
+      return;
+   }
+   const key = flagsQuestionList[flagsQuestionIndex];
+   flagsCurrentQuestion = key;
+   const pretty = capitalizeWords(key.replace(/-/g,' '));
+   // update round display
+   document.getElementById('flags-round').textContent = `Round ${Math.min(flagsQuestionIndex+1, flagsQuestionList.length)}/${flagsQuestionList.length}`;
+   if(flagsGameMode === 'flag-to-country'){
+      document.getElementById('flags-prompt').textContent = 'Which country does this flag belong to?';
+      // show flag image
+      const img = document.createElement('img');
+      img.src = `https://coe-chat.vercel.app/teorainneacha/bratai/${key}.svg`;
+      img.alt = pretty + ' flag';
+      img.style.width='240px'; img.style.height='160px'; img.style.objectFit='contain';
+      const visual = document.getElementById('flags-visual'); visual.innerHTML=''; visual.appendChild(img);
+      // options: one correct country name + 3 random wrong names
+      const pool = (flagsContinent==='all' ? flagsAllList : (flagsDataByContinent[flagsContinent]||[])).filter(k=>k!==key);
+      const wrong = sample(pool,3).map(k=>capitalizeWords(k.replace(/-/g,' ')));
+      const options = shuffle([capitalizeWords(key.replace(/-/g,' ')), ...wrong]);
+      renderFlagOptions(options, 'text', key);
+   }else{
+      // country-to-flag
+      document.getElementById('flags-prompt').textContent = `What is the flag of ${pretty}?`;
+      const visual = document.getElementById('flags-visual'); visual.innerHTML = '';
+      // options: one correct flag + 3 wrong flags
+      const pool = (flagsContinent==='all' ? flagsAllList : (flagsDataByContinent[flagsContinent]||[])).filter(k=>k!==key);
+      const wrong = sample(pool,3);
+      const options = shuffle([key, ...wrong]);
+      renderFlagOptions(options, 'image', key);
+   }
+}
+
+function renderFlagOptions(options, mode, correctKey){
+   const container = document.getElementById('flags-options');
+   options.forEach(opt=>{
+      const btn = document.createElement('button');
+      btn.style.width='auto'; btn.style.height='auto'; btn.style.minWidth='160px'; btn.style.minHeight='60px'; btn.style.padding='8px';
+      btn.style.borderRadius='8px'; btn.style.cursor='pointer';
+      btn.setAttribute('data-opt',opt);
+      if(mode==='text'){
+         btn.textContent = opt;
+      }else{
+         const img = document.createElement('img');
+         img.src = `https://coe-chat.vercel.app/teorainneacha/bratai/${opt}.svg`;
+         img.alt = opt; img.style.width='120px'; img.style.height='80px'; img.style.objectFit='contain';
+         // on error, remove the broken image and show the prettified country name as fallback
+         img.onerror = function(){
+            img.remove();
+            const fallback = document.createElement('div');
+            fallback.className = 'flag-fallback';
+            fallback.textContent = capitalizeWords(opt.replace(/-/g,' '));
+            fallback.style.display = 'block';
+            btn.appendChild(fallback);
+         };
+         btn.appendChild(img);
+      }
+      btn.onclick = ()=>{ handleFlagSelection(btn, opt, correctKey, mode); };
+      container.appendChild(btn);
+   });
+}
+
+function handleFlagSelection(btn, opt, correctKey, mode){
+   // If game is paused (either global or flags), ignore input
+   if(paused || flagsPaused) return;
+   // Disable further clicks for this question
+   Array.from(document.getElementById('flags-options').children).forEach(b=>b.disabled=true);
+   const pickedKey = mode==='text' ? opt.replace(/\b\w/g,ch=>ch.toLowerCase()) : opt; // for image mode opt is key
+   const correctPretty = capitalizeWords(correctKey.replace(/-/g,' '));
+   if((mode==='text' && opt.toLowerCase() === capitalizeWords(correctKey.replace(/-/g,' ')).toLowerCase()) || opt === correctKey){
+      // correct
+      btn.style.outline = '4px solid #0f992f';
+      showMessage('Correct!', 'check');
+      // update counters if flags mode
+      flagsCorrect = (typeof flagsCorrect === 'number') ? flagsCorrect + 1 : 1;
+      // auto-advance after a short delay
+      setTimeout(()=>{ nextFlagQuestion(); }, 700);
+   }else{
+      // wrong: highlight picked red and highlight correct green
+      btn.style.outline = '4px solid #e53935';
+      // find correct button
+      const children = Array.from(document.getElementById('flags-options').children);
+      children.forEach(b=>{
+         const data = b.getAttribute('data-opt');
+         if(mode==='text'){
+            if(data.toLowerCase() === capitalizeWords(correctKey.replace(/-/g,' ')).toLowerCase()){
+               b.style.outline = '4px solid #0f992f';
+            }
+         }else{
+            if(data === correctKey) b.style.outline = '4px solid #0f992f';
+         }
+      });
+      // Learning message: tell user what their picked flag/country actually is
+      if(mode==='text'){
+         // They clicked a country name; show which country that name is
+         const pickedPretty = opt;
+         showMessage(`The answer you picked is the country: ${pickedPretty}. Correct answer: ${correctPretty}`, 'error');
+      }else{
+         // They clicked a flag; say which country that flag belongs to
+         const pickedKeyNorm = opt;
+         const pickedPretty = capitalizeWords(pickedKeyNorm.replace(/-/g,' '));
+         showMessage(`The answer you picked is the flag of ${pickedPretty}. Correct answer: ${correctPretty}`, 'error');
+      }
+      document.getElementById('flags-next-btn').style.display='inline-block';
+      flagsWrong = (typeof flagsWrong === 'number') ? flagsWrong + 1 : 1;
+   }
+   flagsQuestionIndex++;
+}
+
+// small helpers
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+function sample(arr,n){ const copy=arr.slice(); shuffle(copy); return copy.slice(0,n); }
+
+document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
+  clearInterval(timerInterval);
+  paused = false;
+  elapsed = 0;
+  round = 1;
+  continentIndex = 0;
+  wrongGuesses = 0;
+  revealedCountries.clear();
+  revealedCapitals.clear();
+  mapGroup.selectAll("image").remove();
+  mapGroup.selectAll("path.country").classed("revealed", false).attr("fill", null);
+  capitalDots.forEach(dot => dot.remove());
+  capitalDots = [];
+   // flags cleanup if necessary
+   if(flagsTimerInterval) { clearInterval(flagsTimerInterval); flagsTimerInterval = null; }
+   flagsPaused = false; flagsQuestionIndex = 0; flagsQuestionList = [];
+   document.getElementById('flags-game-screen').style.display = 'none';
+   document.getElementById('flags-continent-screen').style.display = 'none';
+   document.getElementById('flags-start-screen').style.display = 'none';
+  document.getElementById("pause-overlay").style.display = "none";
+  document.getElementById("results-screen").style.display = "none";
+  document.getElementById("start-screen").style.display = "none";
+  document.getElementById("main-menu").style.display = "flex";
+});
+
+document.getElementById("results-mainmenu-btn").addEventListener("click", () => {
+  clearInterval(timerInterval);
+  paused = false;
+  elapsed = 0;
+  round = 1;
+  continentIndex = 0;
+  wrongGuesses = 0;
+  revealedCountries.clear();
+  revealedCapitals.clear();
+  mapGroup.selectAll("image").remove();
+  mapGroup.selectAll("path.country").classed("revealed", false).attr("fill", null);
+  capitalDots.forEach(dot => dot.remove());
+  capitalDots = [];
+  document.getElementById("pause-overlay").style.display = "none";
+  document.getElementById("results-screen").style.display = "none";
+  document.getElementById("start-screen").style.display = "none";
+  document.getElementById("main-menu").style.display = "flex";
+});
+
+function startGame(mode){
+   gameMode=mode;
+   document.getElementById("start-screen").style.display="none";
+   round=1; continentIndex=0; wrongGuesses=0; revealedCountries.clear(); revealedCapitals.clear();
+   capitalDots.forEach(dot=>dot.remove()); capitalDots=[];
+   if(gameType==="countries"){
+      startTimer(); nextRound();
+   }else if(gameType==="cities"){
+      mapGroup.selectAll("path.country").classed("revealed",true);
+      capitalsOrder.forEach((rec,i)=>{
+         const coords=projection([rec.latlng[1],rec.latlng[0]]);
+         const dot=mapGroup.append("circle")
+            .attr("cx",coords[0]).attr("cy",coords[1])
+            .attr("r",2)
+            .attr("class","capital-dot capital-dot-grey")
+            .attr("data-capital",rec.capital)
+            .attr("data-country",rec.country);
+         capitalDots.push(dot);
+      });
+      startTimer(); nextCitiesRound();
+   }else if(gameType==="highlight"){
+   startTimer(); nextHighlightRound();
+   }
+}
+
+function getFeature(rec){
+   const key=normalizeName(rec.name);
+   const topoId=topoIdMap[rec.cca3];
+
+  if (topoId) {
+   const foundFeature = features.find(f => String(f.id) === topoId);
+   if (foundFeature) return foundFeature;
+}    if(topoId) {
+      const foundFeature = features.find(f => f.id === topoId);
+      if (foundFeature) return foundFeature;
+   }
+   if(manualFeatureMap[key] && featureByCCA3.has(manualFeatureMap[key])) return featureByCCA3.get(manualFeatureMap[key]);
+   if(featureByCCA3.has(rec.cca3)) return featureByCCA3.get(rec.cca3);
+   if(featureByName.has(key)) return featureByName.get(key);
+   for(let alias of rec.aliases){
+      const aliasKey=normalizeName(alias);
+      if(manualFeatureMap[aliasKey] && featureByCCA3.has(manualFeatureMap[aliasKey])) return featureByCCA3.get(manualFeatureMap[aliasKey]);
+      const f=featureByName.get(aliasKey);
+      if(f) return f;
+   }
+   for(let f of features) {
+      const props = f.properties || {};
+      if (props.iso_a3 === rec.cca3 || props.ISO_A3 === rec.cca3 || props.ADM0_A3 === rec.cca3) {
+         return f;
+      }
+   }
+   for(let [name, f] of featureByName){
+      if(name.includes(key) || key.includes(name)) return f;
+   }
+   return null;
+}
+  
+  const flagCache = new Map();
+
+countriesData.forEach(c => {
+    const img = new Image();
+    img.src = `https://flagcdn.com/w640/${c.cca2.toLowerCase()}.png`;
+    flagCache.set(c.cca2, img);
+});
+
+function revealCountry(rec) {
+    if (revealedCountries.has(rec.name)) return;
+    revealedCountries.add(rec.name);
+
+    const feature = getFeature(rec);
+    if (!feature) return;
+
+    // Get preloaded image or fallback to creating a new one
+    let flagImg = flagCache.get(rec.cca2);
+    if (!flagImg) {
+        flagImg = new Image();
+        flagImg.src = `https://flagcdn.com/w640/${rec.cca2.toLowerCase()}.png`;
+    }
+
+    // Handle multipolygon countries (USA, FRA)
+    if (["USA","FRA"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") {
+        feature.geometry.coordinates.forEach((poly, idx) => {
+            const singleFeature = { type: "Feature", geometry: { type: "Polygon", coordinates: poly }, properties: feature.properties };
+            const clipId = `clip-${rec.cca3}-part${idx}`;
+            mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(singleFeature));
+
+            const bounds = path.bounds(singleFeature);
+            const w = bounds[1][0] - bounds[0][0];
+            const h = bounds[1][1] - bounds[0][1];
+
+            mapGroup.append("image")
+                .attr("href", flagImg.src)
+                .attr("x", bounds[0][0])
+                .attr("y", bounds[0][1])
+                .attr("width", w)
+                .attr("height", h)
+                .attr("preserveAspectRatio", "none")
+                .attr("clip-path", `url(#${clipId})`)
+                .attr("style", "pointer-events:none;")
+                .on("error", function() {
+                    d3.select(this).remove();
+                    mapGroup.append("path")
+                        .attr("d", path(singleFeature))
+                        .attr("clip-path", `url(#${clipId})`)
+                        .attr("fill", "#005f99")
+                        .attr("opacity", 0.7)
+                        .attr("stroke", "#fff")
+                        .attr("stroke-width", 0.8);
+                });
+        });
+    } else {
+        // Single polygon countries
+        const clipId = `clip-${rec.cca3 || normalizeName(rec.name)}`;
+        mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
+
+        const bounds = path.bounds(feature);
+        const w = bounds[1][0] - bounds[0][0];
+        const h = bounds[1][1] - bounds[0][1];
+
+        mapGroup.append("image")
+            .attr("href", flagImg.src)
+            .attr("x", bounds[0][0])
+            .attr("y", bounds[0][1])
+            .attr("width", w)
+            .attr("height", h)
+            .attr("preserveAspectRatio", "none")
+            .attr("clip-path", `url(#${clipId})`)
+            .attr("style", "pointer-events:none;")
+            .on("error", function() {
+                d3.select(this).remove();
+                mapGroup.append("path")
+                    .attr("d", path(feature))
+                    .attr("clip-path", `url(#${clipId})`)
+                    .attr("fill", "#005f99")
+                    .attr("opacity", 0.7)
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", 0.8);
+            });
+    }
+
+    // Mark SVG path as revealed
+    const iso = rec.cca3;
+    mapGroup.selectAll("path.country")
+        .filter(d => {
+            const props = d.properties || {};
+            return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
+        })
+        .classed("revealed", true)
+        .raise();
+}
+
+
+function nextRound(){
+   const submitSpan=document.querySelector("#submit-btn span");
+   submitSpan.textContent="arrow_forward_ios"; submitSpan.style.fontSize="24px";
+   let remaining;
+   let continentCompleted = false;
+   let completedContinentName = null;
+   if(gameMode==="Normal"||gameMode==="Hard"){
+      while(continentIndex<continentOrder.length){
+         const cont=continentOrder[continentIndex];
+         remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region===cont);
+         if(remaining.length>0) break;
+         // Mark continent as completed
+         continentCompleted = true;
+         completedContinentName = continentOrder[continentIndex];
+         continentIndex++;
+      }
+      if(continentIndex>=continentOrder.length){ endGame(); return; }
+   }else{
+      remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region!=="Antarctic");
+   }
+   if(!remaining || !remaining.length){ endGame(); return; }
+   // Pick a country such that the first letter is not the same as lastPromptLetter
+   let rec;
+   let tries = 0;
+   do {
+     rec = remaining[Math.floor(Math.random()*remaining.length)];
+     tries++;
+   } while (remaining.length > 1 && rec.name[0].toUpperCase() === lastPromptLetter && tries < 20);
+   currentContinent=rec.region; currentLetter=rec.name[0].toUpperCase();
+   lastPromptLetter = currentLetter;
+   let promptText=`Round ${round}: Name a country starting with "${currentLetter}"`;
+   if(gameMode==="Normal"||gameMode==="Hard") promptText=`Round ${round}: Name a country in ${currentContinent} starting with "${currentLetter}"`;
+   document.getElementById("prompt").innerText=promptText;
+   if (continentCompleted && completedContinentName) {
+      showMessage(`Continent completed! moving on to ${continentOrder[continentIndex]||'End'}`, 'continent');
+   }
+}
+
+function nextCitiesRound(){
+   let continentCompleted = false;
+   let completedContinentName = null;
+   while(continentIndex<continentOrder.length){
+      const cont=continentOrder[continentIndex];
+      const remaining=capitalsOrder.filter(c=>!revealedCapitals.has(c.capital)&&c.region===cont);
+      if(remaining.length>0){
+         // Pick a random country from the remaining in this continent
+         currentCountry=remaining[Math.floor(Math.random()*remaining.length)];
+         currentContinent=cont;
+         break;
+      }
+      // Mark continent as completed
+      continentCompleted = true;
+      completedContinentName = continentOrder[continentIndex];
+      continentIndex++;
+   }
+   if(continentIndex>=continentOrder.length){ endGame(); return; }
+   if(!currentCountry){ endGame(); return; }
+   let promptText=`Round ${round}: What is the capital of ${currentCountry.country}?`;
+   document.getElementById("prompt").innerText=promptText;
+   if (continentCompleted && completedContinentName) {
+      showMessage(`Continent completed! moving on to ${continentOrder[continentIndex]||'End'}`, 'continent');
+   }
+}
+
+const answerInput=document.getElementById("answer"), autocompleteList=document.getElementById("autocomplete-list");
+
+let autocompleteHighlightIndex = 0;
+
+answerInput.addEventListener("input", function(){
+   autocompleteList.innerHTML="";
+   const val=normalizeName(this.value);
+   if(!val) return;
+   if(this.value.trim()==="|ra") return;
+   let matches=[];
+   if(gameType==="countries"){
+      if(gameMode==="Hard"||gameMode==="Medium"){ return; }
+      matches=countriesData.map(c=>c.name).filter(n=>normalizeName(n).startsWith(val)&&!revealedCountries.has(n));
+   }else if(gameType==="cities"){
+      if(gameMode==="Hard"){ return; }
+      matches=capitalsOrder.filter(c=>normalizeName(c.capital).startsWith(val)&&!revealedCapitals.has(c.capital)).map(c=>c.capital);
+   }else if(gameType==="highlight"){
+      if(gameMode==="Hard"){ return; }
+      matches=[highlightCurrentCountry.name].filter(n=>normalizeName(n).startsWith(val));
+   }
+   autocompleteHighlightIndex = 0;
+   matches.forEach((name,i)=>{
+      const div=document.createElement("div");
+      div.classList.add("autocomplete-item");
+      div.textContent=name;
+      if(i===autocompleteHighlightIndex) div.classList.add("highlighted");
+      div.onclick=()=>{ answerInput.value=name; autocompleteList.innerHTML=""; submitAnswer(); };
+      autocompleteList.appendChild(div);
+   });
+});
+
+answerInput.addEventListener("keydown", function(e){
+  const items = Array.from(autocompleteList.children || []);
+  if(e.key==="ArrowDown" && items.length){
+    autocompleteHighlightIndex = Math.min(autocompleteHighlightIndex + 1, items.length - 1);
+    items.forEach((item, i) => item.classList.toggle("highlighted", i === autocompleteHighlightIndex));
+    e.preventDefault();
+  }
+  if(e.key==="ArrowUp" && items.length){
+    autocompleteHighlightIndex = Math.max(autocompleteHighlightIndex - 1, 0);
+    items.forEach((item, i) => item.classList.toggle("highlighted", i === autocompleteHighlightIndex));
+    e.preventDefault();
+  }
+  if(e.key==="Enter"){
+    if(this.value.trim() === "|ra"){
+      submitAnswer();
+      autocompleteList.innerHTML="";
+      e.preventDefault();
+      return;
+    }
+    if(items.length){
+      this.value = items[autocompleteHighlightIndex].textContent;
+    }
+    submitAnswer();
+    autocompleteList.innerHTML="";
+    e.preventDefault();
+  }
+});
+
+document.addEventListener("click", e=>{ if(e.target!==answerInput) autocompleteList.innerHTML=""; });
+
+document.getElementById("submit-btn").addEventListener("click", submitAnswer);
+
+function submitAnswer(){
+   if(paused) return;
+   const rawInput = answerInput.value.trim();
+   answerInput.value=""; autocompleteList.innerHTML="";
+   if(!rawInput) return;
+   if(rawInput==="|ra"){
+      if(gameType==="countries"){
+         countriesData.forEach(revealCountry);
+      }else if(gameType==="cities"){
+         capitalsOrder.forEach(revealCapital);
+      }else if(gameType==="highlight"){
+         countriesData.forEach(revealCountry);
+      }
+      endGame(); return;
+   }
+   const submitSpan=document.querySelector("#submit-btn span");
+   if(gameType==="countries"){
+         let rec = nameIndex.get(normalizeName(rawInput));
+         let usedFuzzy=false;
+         if(!rec){
+            let best=null, bestDist=999;
+            for(const [norm, val] of nameIndex){
+               const d = levenshtein(normalizeName(rawInput), norm);
+               if(d < bestDist){
+                  bestDist = d;
+                  best = val;
+               }
+            }
+            if(best && bestDist <= 2){
+               rec = best;
+               usedFuzzy = true;
+               showMessage(`Correct spelling: ${best.name}`, 'spellcheck');
+            }
+         }
+      if(!rec){
+         showMessage(`Invalid input: ${rawInput}`, 'error');
+         wrongGuesses++;
+         return;
+      }
+      if((gameMode==="Normal"||gameMode==="Hard") && rec.region!==currentContinent){
+         showMessage(`Wrong continent: ${rec.name} is in ${rec.region}`, 'public');
+         wrongGuesses++;
+         return;
+      }
+      if(!rec.name.toUpperCase().startsWith(currentLetter)){
+         showMessage(`Wrong letter: ${rec.name} does not start with ${currentLetter}`, 'warning');
+         wrongGuesses++;
+         return;
+      }
+         submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
+         if(!usedFuzzy) showMessage('Correct!', 'check');
+         revealCountry(rec); round++; setTimeout(nextRound,500);
+   }else if(gameType==="cities"){
+         let rec = capitalsIndex.get(normalizeName(rawInput));
+         let usedFuzzy=false;
+         if(!rec){
+            let best=null, bestDist=999;
+            for(const [norm, val] of capitalsIndex){
+               const d = levenshtein(normalizeName(rawInput), norm);
+               if(d < bestDist){
+                  bestDist = d;
+                  best = val;
+               }
+            }
+            if(best && bestDist <= 2){
+               rec = best;
+               usedFuzzy = true;
+               showMessage(`Correct spelling: ${best.capital}`, 'spellcheck');
+            }
+         }
+      if(!rec){
+         showMessage(`Invalid input: ${rawInput}`, 'error');
+         wrongGuesses++;
+         return;
+      }
+      if(rec.country!==currentCountry.country){
+         showMessage(`Wrong country: ${rec.capital} is the capital of ${rec.country}`, 'public');
+         wrongGuesses++;
+         return;
+      }
+         submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
+         if(!usedFuzzy) showMessage('Correct!', 'check');
+         revealCapital(rec); round++; setTimeout(nextCitiesRound,500);
+   }else if(gameType==="highlight"){
+         let rec = nameIndex.get(normalizeName(rawInput));
+         let usedFuzzy=false;
+         if(!rec){
+            let best=null, bestDist=999;
+            for(const [norm, val] of nameIndex){
+               const d = levenshtein(normalizeName(rawInput), norm);
+               if(d < bestDist){
+                  bestDist = d;
+                  best = val;
+               }
+            }
+            if(best && bestDist <= 2){
+               rec = best;
+               usedFuzzy = true;
+               showMessage(`Correct spelling: ${best.name}`, 'spellcheck');
+            }
+         }
+      if(!rec){
+         showMessage(`Invalid input: ${rawInput}`, 'error');
+         wrongGuesses++;
+         return;
+      }
+      if(rec.name !== highlightCurrentCountry.name){
+         showMessage(`Wrong country: Highlighted is ${highlightCurrentCountry.name}`, 'public');
+         wrongGuesses++;
+         return;
+      }
+         submitSpan.textContent="check_circle"; submitSpan.style.fontSize="36px";
+         if(!usedFuzzy) showMessage('Correct!', 'check');
+         revealCountry(rec); round++; setTimeout(nextHighlightRound,500);
+   }
+}
+
+function revealCapital(rec){
+   if(revealedCapitals.has(rec.capital)) return;
+   revealedCapitals.add(rec.capital);
+   capitalDots.forEach(dot=>{
+      if(dot.attr("data-capital")===rec.capital){
+         dot.classed("capital-dot-grey",false).classed("capital-dot-red",true);
+      }
+   });
+}
+
+function startTimer(){ startTime=Date.now()-elapsed; timerInterval=setInterval(updateTimer,1000); }
+function updateTimer(){ elapsed=Date.now()-startTime; const totalSec=Math.floor(elapsed/1000); const min=Math.floor(totalSec/60), sec=totalSec%60; document.getElementById("timer").textContent=`${min}:${sec.toString().padStart(2,"0")}`; }
+function pauseTimer(){ clearInterval(timerInterval); paused=true; document.getElementById("pause-overlay").style.display="flex"; }
+function resumeTimer(){ startTimer(); paused=false; document.getElementById("pause-overlay").style.display="none"; }
+// Flags timer (separate so we can pause/resume independently)
+let flagsStartTime = null, flagsElapsed = 0, flagsTimerInterval = null, flagsPaused = false;
+function startFlagsTimer(){ flagsStartTime = Date.now() - flagsElapsed; if(flagsTimerInterval) clearInterval(flagsTimerInterval); flagsTimerInterval = setInterval(()=>{
+   flagsElapsed = Date.now() - flagsStartTime; const s = Math.floor(flagsElapsed/1000); const m=Math.floor(s/60), sec=s%60; document.getElementById('flags-timer').textContent = `${m}:${sec.toString().padStart(2,'0')}`;
+},1000); }
+function pauseFlagsTimer(){ if(flagsTimerInterval) clearInterval(flagsTimerInterval); flagsPaused = true; }
+function resumeFlagsTimer(){ if(flagsPaused){ startFlagsTimer(); flagsPaused = false; } }
+
+document.addEventListener('click', function(e){
+   if(e.target && e.target.id === 'flags-pause-btn'){
+      if(!flagsPaused){
+         // pause flags game: show overlay and pause timer
+         pauseFlagsTimer(); flagsPaused = true;
+         document.getElementById('flags-pause-btn').textContent = '▶';
+         document.getElementById('pause-overlay').style.display = 'flex';
+      } else {
+         // resume flags game
+         resumeFlagsTimer(); flagsPaused = false;
+         document.getElementById('flags-pause-btn').textContent = '⏸';
+         document.getElementById('pause-overlay').style.display = 'none';
+      }
+   }
+});
+function endGame(){
+   clearInterval(timerInterval);
+   const totalSec=Math.floor(elapsed/1000); const min=Math.floor(totalSec/60), sec=totalSec%60;
+   const correct=round-1; const total=correct+wrongGuesses; const percent= total>0 ? ((correct/total)*100).toFixed(1) : 100;
+   document.getElementById("results-text").innerHTML=`
+      <div>Game Over! (${gameType==="countries"?gameMode+" Countries":"Cities "+gameMode} Mode)</div>
+      <div>Time: ${min}:${sec.toString().padStart(2,"0")}</div>
+         <div>Wrong Attempts: ${wrongGuesses}</div>
+         <div>Accuracy: ${percent}%</div>`;
+   document.getElementById("results-screen").style.display="flex";
+}
+
+document.getElementById("pause-btn").addEventListener("click", ()=>{ if(!paused) pauseTimer(); });
+document.getElementById("resume-btn").addEventListener("click", ()=>{
+   // resume global timer
+   resumeTimer();
+   // also resume flags timer if we were in flags mode
+   if(flagsPaused){ resumeFlagsTimer(); flagsPaused = false; document.getElementById('flags-pause-btn').textContent = ''; }
+});
+document.getElementById("close-results-btn").addEventListener("click", ()=>{ document.getElementById("results-screen").style.display="none"; });
+
+document.addEventListener("keydown", function(e) {
+  const answerInput = document.getElementById("answer");
+  // Always pause on 'x' (case-insensitive)
+  if (e.key.toLowerCase() === "") {
+    if (!paused) pauseTimer();
+    e.preventDefault();
+    return;
+  }
+  // If textbox is NOT focused and key is not 'x' or 'Enter', focus it
+  if (document.activeElement !== answerInput && e.key !== "Enter" && e.key.toLowerCase() !== "x") {
+    answerInput.focus();
+    e.preventDefault();
+  }
+});
+
+
+init();
+</script>
+</body>
+</html>
