@@ -1,106 +1,198 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>World Map 10m with Flags</title>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="https://unpkg.com/topojson-client@3"></script>
-  <style>
-    body { margin:0; background:#111; }
-    svg { width:100vw; height:100vh; display:block; cursor: grab; }
-    .country { fill:none; stroke:#666; stroke-width:0.02px; }
-  </style>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; overflow: hidden; background: #111; }
+  svg { display: block; }
+  .land { fill: #3c527e; stroke: #bbb; stroke-width: 1px; }
+  .border { fill: none; stroke: #aaa; stroke-width: 1px; }
+  .graticule { fill: none; stroke: #fff; stroke-width: 0.5px; stroke-dasharray: 3 3; }
+  .latlon-label, .capital-label { fill: #fff; font-size: 12px; font-family: sans-serif; pointer-events: none; }
+  .capital { fill: #ff4500; stroke: none; pointer-events: none; }
+  .minimap { position: absolute; bottom: 10px; right: 10px; border: 1px solid #555; background: #111; }
+  .minimap-water { fill: #111; }
+  .minimap-rect { fill: none; stroke: red; stroke-width: 2px; }
+</style>
 </head>
 <body>
-  <svg id="map"></svg>
-  <script>
-    const svg = d3.select("#map");
-    const width = window.innerWidth, height = window.innerHeight;
+<svg id="mainMap" width="100vw" height="100vh"></svg>
+<svg id="miniMap" width="400" height="200" class="minimap"></svg>
 
-    const projection = d3.geoMercator()
-      .scale(width / 6.5)
-      .translate([width / 2, height / 1.5]);
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/d3-geo-projection@4"></script>
+<script src="https://unpkg.com/topojson-client@3"></script>
 
-    const path = d3.geoPath(projection);
-    const g = svg.append("g");
+<script>
+const width = window.innerWidth;
+const height = window.innerHeight;
+const padding = 20;
+const zoomx = 6;
+const labelOffset = 10;
 
-    // Enable zoom & pan
-    svg.call(
-      d3.zoom()
-        .scaleExtent([1, 4000])
-        .on("zoom", (event) => g.attr("transform", event.transform))
-    );
+// ----------------- PROJECTION -----------------
+const projection = d3.geoWinkel3()
+  .scale((width / (2 * Math.PI)) * zoomx)
+  .translate([width / 2, height / 2]);
+const path = d3.geoPath().projection(projection);
+const graticule = d3.geoGraticule10();
 
-    // ISO3 -> ISO2 mapping (full set)
-    const iso3to2 = {
-      AFG:"af",ALA:"ax",ALB:"al",DZA:"dz",ASM:"as",AND:"ad",AGO:"ao",AIA:"ai",
-      ATA:"aq",ATG:"ag",ARG:"ar",ARM:"am",ABW:"aw",AUS:"au",AUT:"at",AZE:"az",
-      BHS:"bs",BHR:"bh",BGD:"bd",BRB:"bb",BLR:"by",BEL:"be",BLZ:"bz",BEN:"bj",
-      BMU:"bm",BTN:"bt",BOL:"bo",BES:"bq",BIH:"ba",BWA:"bw",BVT:"bv",BRA:"br",
-      IOT:"io",BRN:"bn",BGR:"bg",BFA:"bf",BDI:"bi",CPV:"cv",KHM:"kh",CMR:"cm",
-      CAN:"ca",CYM:"ky",CAF:"cf",TCD:"td",CHL:"cl",CHN:"cn",CXR:"cx",CCK:"cc",
-      COL:"co",COM:"km",COG:"cg",COD:"cd",COK:"ck",CRI:"cr",CIV:"ci",HRV:"hr",
-      CUB:"cu",CUW:"cw",CYP:"cy",CZE:"cz",DNK:"dk",DJI:"dj",DMA:"dm",DOM:"do",
-      ECU:"ec",EGY:"eg",SLV:"sv",GNQ:"gq",ERI:"er",EST:"ee",SWZ:"sz",ETH:"et",
-      FLK:"fk",FRO:"fo",FJI:"fj",FIN:"fi",FRA:"fr",GUF:"gf",PYF:"pf",ATF:"tf",
-      GAB:"ga",GMB:"gm",GEO:"ge",DEU:"de",GHA:"gh",GIB:"gi",GRC:"gr",GRL:"gl",
-      GRD:"gd",GLP:"gp",GUM:"gu",GTM:"gt",GGY:"gg",GIN:"gn",GNB:"gw",GUY:"gy",
-      HTI:"ht",HMD:"hm",VAT:"va",HND:"hn",HKG:"hk",HUN:"hu",ISL:"is",IND:"in",
-      IDN:"id",IRN:"ir",IRQ:"iq",IRL:"ie",IMN:"im",ISR:"il",ITA:"it",JAM:"jm",
-      JPN:"jp",JEY:"je",JOR:"jo",KAZ:"kz",KEN:"ke",KIR:"ki",PRK:"kp",KOR:"kr",
-      KWT:"kw",KGZ:"kg",LAO:"la",LVA:"lv",LBN:"lb",LSO:"ls",LBR:"lr",LBY:"ly",
-      LIE:"li",LTU:"lt",LUX:"lu",MAC:"mo",MDG:"mg",MWI:"mw",MYS:"my",MDV:"mv",
-      MLI:"ml",MLT:"mt",MHL:"mh",MTQ:"mq",MRT:"mr",MUS:"mu",MYT:"yt",MEX:"mx",
-      FSM:"fm",MDA:"md",MCO:"mc",MNG:"mn",MNE:"me",MSR:"ms",MAR:"ma",MOZ:"mz",
-      MMR:"mm",NAM:"na",NRU:"nr",NPL:"np",NLD:"nl",NCL:"nc",NZL:"nz",NIC:"ni",
-      NER:"ne",NGA:"ng",NIU:"nu",NFK:"nf",MKD:"mk",MNP:"mp",NOR:"no",OMN:"om",
-      PAK:"pk",PLW:"pw",PSE:"ps",PAN:"pa",PNG:"pg",PRY:"py",PER:"pe",PHL:"ph",
-      PCN:"pn",POL:"pl",PRT:"pt",PRI:"pr",QAT:"qa",REU:"re",ROU:"ro",RUS:"ru",
-      RWA:"rw",BLM:"bl",SHN:"sh",KNA:"kn",LCA:"lc",MAF:"mf",SPM:"pm",VCT:"vc",
-      WSM:"ws",SMR:"sm",STP:"st",SAU:"sa",SEN:"sn",SRB:"rs",SYC:"sc",SLE:"sl",
-      SGP:"sg",SXM:"sx",SVK:"sk",SVN:"si",SLB:"sb",SOM:"so",ZAF:"za",SGS:"gs",
-      SSD:"ss",ESP:"es",LKA:"lk",SDN:"sd",SUR:"sr",SJM:"sj",SWE:"se",CHE:"ch",
-      SYR:"sy",TWN:"tw",TJK:"tj",TZA:"tz",THA:"th",TLS:"tl",TGO:"tg",TKL:"tk",
-      TON:"to",TTO:"tt",TUN:"tn",TUR:"tr",TKM:"tm",TCA:"tc",TUV:"tv",UGA:"ug",
-      UKR:"ua",ARE:"ae",GBR:"gb",USA:"us",URY:"uy",UZB:"uz",VUT:"vu",VEN:"ve",
-      VNM:"vn",VGB:"vg",VIR:"vi",WLF:"wf",ESH:"eh",YEM:"ye",ZMB:"zm",ZWE:"zw"
-    };
+// ----------------- MAIN MAP -----------------
+const mainSvg = d3.select("#mainMap");
+const mainG = mainSvg.append("g");
 
-    d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-10m.json").then(world => {
-      const countries = topojson.feature(world, world.objects.countries).features;
+// ocean background
+mainG.append("rect")
+  .attr("x", 0).attr("y", 0)
+  .attr("width", width)
+  .attr("height", height)
+  .attr("fill", "#3c527e");
 
-      // Outlines only (no fill)
-      g.append("g")
-        .selectAll("path")
-        .data(countries)
-        .enter().append("path")
-          .attr("class", "country")
-          .attr("d", path);
+// load countries
+d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-10m.json").then(world => {
+  const countries = topojson.feature(world, world.objects.countries);
 
-      // Flag fills
-      countries.forEach(feature => {
-        const iso3 = feature.properties.iso_a3;
-        const iso2 = iso3to2[iso3];
-        if (!iso2) return;
+  mainG.selectAll("path.land")
+    .data(countries.features)
+    .join("path")
+    .attr("class", "land")
+    .attr("d", path);
 
-        const flagUrl = `https://flagcdn.com/w320/${iso2}.png`; // smaller size loads faster
+  mainG.selectAll("path.border")
+    .data(countries.features)
+    .join("path")
+    .attr("class", "border")
+    .attr("d", path)
+    .attr("stroke-width", 1);
 
-        const clipId = `clip-${iso3}`;
-        g.append("clipPath").attr("id", clipId)
-          .append("path").attr("d", path(feature));
+  mainG.append("path")
+    .datum(graticule)
+    .attr("class", "graticule")
+    .attr("d", path);
+});
 
-        const bounds = path.bounds(feature);
-        const w = bounds[1][0] - bounds[0][0];
-        const h = bounds[1][1] - bounds[0][1];
+// ----------------- LABELS -----------------
+const labelG = mainSvg.append("g").attr("class", "latlon-label");
+const capitalsG = mainSvg.append("g").attr("class", "capitals");
 
-        g.append("image")
-          .attr("href", flagUrl)
-          .attr("x", bounds[0][0]).attr("y", bounds[0][1])
-          .attr("width", w).attr("height", h)
-          .attr("clip-path", `url(#${clipId})`)
-          .attr("preserveAspectRatio", "none");
-      });
-    });
-  </script>
+function updateLabels(transform) {
+  labelG.selectAll("*").remove();
+  const step = 30;
+  const proj = ([lon, lat]) => {
+    const p = projection([lon, lat]);
+    if (!p) return null;
+    return [p[0] * transform.k + transform.x, p[1] * transform.k + transform.y];
+  };
+  for (let lat=-90; lat<=90; lat+=step){
+    const pts = d3.range(-180,181,1).map(lon=>proj([lon,lat])).filter(p=>p);
+    if(!pts.length) continue;
+    const left = pts.find(p=>p[0]>=padding);
+    if(left) labelG.append("text").attr("x",padding).attr("y",left[1])
+      .text(`${Math.abs(lat)}°${lat>0?'N':'S'}`).attr("class","latlon-label");
+    const right = pts.slice().reverse().find(p=>p[0]<=width-padding);
+    if(right) labelG.append("text").attr("x",width-padding-30).attr("y",right[1])
+      .text(`${Math.abs(lat)}°${lat>0?'N':'S'}`).attr("class","latlon-label");
+  }
+  for (let lon=-180; lon<=180; lon+=step){
+    const pts = d3.range(-90,91,1).map(lat=>proj([lon,lat])).filter(p=>p);
+    if(!pts.length) continue;
+    const top = pts.find(p=>p[1]>=padding);
+    if(top) labelG.append("text").attr("x",top[0]).attr("y",padding)
+      .text(`${Math.abs(lon)}°${lon>0?'E':'W'}`).attr("class","latlon-label");
+    const bottom = pts.slice().reverse().find(p=>p[1]<=height-padding);
+    if(bottom) labelG.append("text").attr("x",bottom[0]).attr("y",height-padding)
+      .text(`${Math.abs(lon)}°${lon>0?'E':'W'}`).attr("class","latlon-label");
+  }
+}
+
+// ----------------- ZOOM & PAN -----------------
+const zoom = d3.zoom()
+  .scaleExtent([1, 1])
+  .on("zoom", (event)=>{
+    mainG.attr("transform",event.transform);
+    capitalsG.attr("transform",event.transform);
+    updateLabels(event.transform);
+    updateMinimapRect(event.transform);
+  });
+mainSvg.call(zoom);
+
+// ----------------- MINIMAP -----------------
+const miniSvg = d3.select("#miniMap");
+const miniG = miniSvg.append("g");
+const miniWidth = +miniSvg.attr("width");
+const miniHeight = +miniSvg.attr("height");
+const miniProjection = d3.geoWinkel3()
+  .scale(60)
+  .translate([miniWidth/2, miniHeight/2]);
+const miniPath = d3.geoPath().projection(miniProjection);
+miniG.append("rect")
+  .attr("class","minimap-water")
+  .attr("x",0).attr("y",0)
+  .attr("width",miniWidth)
+  .attr("height",miniHeight);
+const softColours = ["#a8dadc","#f1faee","#ffe5d9","#ffd6a5","#cdb4db","#b5ead7","#ffb3c6","#f7ede2"];
+d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(world110=>{
+  const countries110 = topojson.feature(world110,world110.objects.countries);
+  miniG.selectAll("path.land")
+    .data(countries110.features)
+    .join("path")
+    .attr("d",miniPath)
+    .attr("fill",()=>softColours[Math.floor(Math.random()*softColours.length)])
+    .attr("stroke","#666")
+    .attr("stroke-width",0.3);
+  miniG.append("rect")
+    .attr("class","minimap-rect")
+    .attr("x",0).attr("y",0)
+    .attr("width",0)
+    .attr("height",0);
+});
+
+// ----------------- MINIMAP RECT -----------------
+function updateMinimapRect(transform){
+  const topLeft = projection.invert([0-transform.x,0-transform.y].map(d=>d/transform.k));
+  const bottomRight = projection.invert([width-transform.x,height-transform.y].map(d=>d/transform.k));
+  if(!topLeft||!bottomRight) return;
+  const coords=[topLeft,bottomRight].map(miniProjection);
+  miniG.select(".minimap-rect")
+    .attr("x",Math.min(coords[0][0],coords[1][0]))
+    .attr("y",Math.min(coords[0][1],coords[1][1]))
+    .attr("width",Math.abs(coords[1][0]-coords[0][0]))
+    .attr("height",Math.abs(coords[1][1]-coords[0][1]));
+}
+
+// ----------------- LOAD CAPITALS -----------------
+async function loadCapitals(){
+  const query = `[out:json][timeout:25];node["place"="city"]["capital"="yes"];out body;`;
+  const url = "https://overpass-api.de/api/interpreter?data="+encodeURIComponent(query);
+  try{
+    const resp = await fetch(url);
+    const json = await resp.json();
+    const capitals = json.elements.filter(d=>d.tags && d.tags.name);
+
+    // Draw circles
+    capitalsG.selectAll(".capital")
+      .data(capitals)
+      .join("circle")
+      .attr("class","capital")
+      .attr("cx",d=>projection([d.lon,d.lat])[0])
+      .attr("cy",d=>projection([d.lon,d.lat])[1])
+      .attr("r",3);
+
+    // Draw labels above the dot
+    capitalsG.selectAll("text")
+      .data(capitals)
+      .join("text")
+      .attr("x",d=>projection([d.lon,d.lat])[0])
+      .attr("y",d=>projection([d.lon,d.lat])[1]-labelOffset)
+      .text(d=>d.tags.name)
+      .attr("class","capital-label")
+      .attr("text-anchor","middle");
+
+  }catch(e){console.error("Failed to load capitals",e);}
+}
+
+loadCapitals();
+updateLabels({k:1,x:0,y:0});
+</script>
 </body>
 </html>
