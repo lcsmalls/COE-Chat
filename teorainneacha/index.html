@@ -303,19 +303,28 @@ const manualFeatureMap={
    papuanewguinea:"PNG", libya:"LBY", dominicanrepublic:"DOM",
    "sãotoméandpríncipe":"STP", "sao tome and principe":"STP", "sao tome":"STP",
    "são tomé":"STP", "são tomé e príncipe":"STP", "sao tome e principe":"STP",
-   svalbard:"SJM", "ivorycoast":"CIV", "cotedivoire":"CIV", "capeverde":"CPV",
+   svalbard:"SJM", "svalbardandjanmayen":"SJM", "svalbard and jan mayen":"SJM", "janmayen":"SJM", "jan mayen":"SJM",
+   "ivorycoast":"CIV", "cotedivoire":"CIV", "capeverde":"CPV",
    "timorleste":"TLS", "easttimor":"TLS", "vaticancity":"VAT", "holysee":"VAT",
    "eswatini":"SWZ", "swaziland":"SWZ", "burma":"MMR", "myanmar":"MMR",
-   "palestine":"PSE", "palestinianterritory":"PSE", "palestinian territories":"PSE"
+   "palestine":"PSE", "palestinianterritory":"PSE", "palestinian territories":"PSE",
+   "equatorialguinea":"GNQ",
+   "northerncyprus":"CYN", "turkishcyprus":"CYN", "somaliland":"SOL", "britishsomaliland":"SOL",
+   "faroeislands":"FRO", "faroe islands":"FRO", "faroes":"FRO",
+   "alandislands":"ALA", "ålandislands":"ALA", "aland":"ALA", "åland":"ALA"
 };
-  
-  // Attempt, though unsuccessfully for EQG and STP, to get proper topoJSON for broken countries using topoJSON 3 digit country code
+
+// TopoJSON id mapping for problematic countries
 const topoIdMap = {
    "COD":"180",
    "SSD":"728",
    "EQG":"226",
    "ESH":"732",
-   "STP":"678"
+   "STP":"678",
+   "CPV":"132",
+   "GNQ":"226",
+   "FRO":"234", // Faroe Islands (ISO 3166-1 numeric: 234)
+   "ALA":"248"  // Åland Islands (ISO 3166-1 numeric: 248)
 }
 
 
@@ -371,8 +380,8 @@ async function init(){
    const height = window.innerHeight * 0.7;
    svg.attr("width", width).attr("height", height);
 
-    // Use Winkel Tripel projection
-    projection = d3.geoWinkel3()
+    // Use Van der Grinten projection
+    projection = d3.geoVanDerGrinten()
        .scale(Math.min(width/6, height/3.2))
        .translate([width/2, height/2])
        .precision(0.1);
@@ -744,40 +753,60 @@ function getFeature(rec){
    const key=normalizeName(rec.name);
    const topoId=topoIdMap[rec.cca3];
 
-  if (topoId) {
-   const foundFeature = features.find(f => String(f.id) === topoId);
-   if (foundFeature) return foundFeature;
-}    if(topoId) {
-      const foundFeature = features.find(f => f.id === topoId);
+   // Try TopoJSON id match
+   if (topoId) {
+      const foundFeature = features.find(f => String(f.id) === topoId || f.id === topoId);
       if (foundFeature) return foundFeature;
    }
+
+   // Try manualFeatureMap for custom codes
    if(manualFeatureMap[key] && featureByCCA3.has(manualFeatureMap[key])) return featureByCCA3.get(manualFeatureMap[key]);
+
+   // Try direct cca3 match
    if(featureByCCA3.has(rec.cca3)) return featureByCCA3.get(rec.cca3);
+
+   // Try name match
    if(featureByName.has(key)) return featureByName.get(key);
+
+   // Try aliases
    for(let alias of rec.aliases){
       const aliasKey=normalizeName(alias);
       if(manualFeatureMap[aliasKey] && featureByCCA3.has(manualFeatureMap[aliasKey])) return featureByCCA3.get(manualFeatureMap[aliasKey]);
       const f=featureByName.get(aliasKey);
       if(f) return f;
    }
+
+   // Try feature properties for ISO code
    for(let f of features) {
       const props = f.properties || {};
       if (props.iso_a3 === rec.cca3 || props.ISO_A3 === rec.cca3 || props.ADM0_A3 === rec.cca3) {
          return f;
       }
    }
+
+   // Try matching by normalized name in feature properties (for regions like Northern Cyprus, Somaliland)
+   for(let f of features) {
+      const props = f.properties || {};
+      const fname = normalizeName(props.name || props.NAME || props.ADMIN || "");
+      if(fname && (fname === key || fname.includes(key) || key.includes(fname))) {
+         return f;
+      }
+   }
+
+   // Try partial match in featureByName
    for(let [name, f] of featureByName){
       if(name.includes(key) || key.includes(name)) return f;
    }
+
    return null;
 }
   
   const flagCache = new Map();
 
 countriesData.forEach(c => {
-    const img = new Image();
-    img.src = `https://flagcdn.com/w640/${c.cca2.toLowerCase()}.png`;
-    flagCache.set(c.cca2, img);
+   const img = new Image();
+   img.src = `https://coe-chat.vercel.app/teorainneacha/bratai/${normalizeName(c.name)}.svg`;
+   flagCache.set(c.cca2, img);
 });
 
 function revealCountry(rec) {
@@ -788,54 +817,71 @@ function revealCountry(rec) {
     if (!feature) return;
 
     // Get preloaded image or fallback to creating a new one
-    let flagImg = flagCache.get(rec.cca2);
-    if (!flagImg) {
-        flagImg = new Image();
-        flagImg.src = `https://flagcdn.com/w640/${rec.cca2.toLowerCase()}.png`;
-    }
+   let flagImg = flagCache.get(rec.cca2);
+   // Normalize country name for bratai CDN (replace spaces, apostrophes, accents, etc. with hyphens)
+   function brataiKey(name, cca3) {
+      // Special cases for DRC, Georgia, Jordan, Côte d'Ivoire, Faroe Islands, Åland Islands
+      if (cca3 === "COD") return "democratic-republic-of-the-congo";
+      if (cca3 === "GEO" || name.toLowerCase().includes('georgia')) return "georgia";
+      if (cca3 === "JOR") return "jordan";
+      if (cca3 === "CPV" || name.toLowerCase().includes('cape verde') || name.toLowerCase().includes('cabo verde')) return "cabo-verde";
+      if (cca3 === "STP" || name.toLowerCase().includes('sao tome')) return "sao-tome-and-principe";
+      if (cca3 === "CIV" || name.toLowerCase().includes("côte d'ivoire") || name.toLowerCase().includes("cote d'ivoire")) return "côte-d'ivoire";
+   if (cca3 === "FRO" || name.toLowerCase().includes('faroe')) return "faroe-islands";
+   if (cca3 === "ALA" || name.toLowerCase().includes('aland') || name.toLowerCase().includes('åland')) return "åland-islands";
+   if (cca3 === "SJM" || name.toLowerCase().includes('svalbard') || name.toLowerCase().includes('jan mayen')) return "svalbard-and-jan-mayen";
+      // Oceania special cases: fallback to normalized name if topoId fails
+      if (cca3 === "KIR" || name.toLowerCase().includes('kiribati')) return "kiribati";
+      if (cca3 === "TKL" || name.toLowerCase().includes('tokelau')) return "tokelau";
+      if (cca3 === "WSM" || name.toLowerCase().includes('samoa')) return "samoa";
+      if (cca3 === "TON" || name.toLowerCase().includes('tonga')) return "tonga";
+      if (cca3 === "NIU" || name.toLowerCase().includes('niue')) return "niue";
+      if (cca3 === "COK" || name.toLowerCase().includes('cook islands')) return "cook-islands";
+      if (cca3 === "PLW" || name.toLowerCase().includes('palau')) return "palau";
+      if (cca3 === "NRU" || name.toLowerCase().includes('nauru')) return "nauru";
+      if (cca3 === "TUV" || name.toLowerCase().includes('tuvalu')) return "tuvalu";
+      let key = name
+         .toLowerCase()
+         .replace(/['’]/g, '')
+         .replace(/[^a-z0-9]+/g, '-')
+         .replace(/-+/g, '-')
+         .replace(/^-|-$/g, '');
+      return key;
+   }
+   let flagSrc = `https://coe-chat.vercel.app/teorainneacha/bratai/${brataiKey(rec.name, rec.cca3)}.svg`;
+   if (!flagImg) {
+      flagImg = new Image();
+      flagImg.src = flagSrc;
+   }
 
-    // Handle multipolygon countries (USA, FRA)
-    if (["USA","FRA"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") {
-        feature.geometry.coordinates.forEach((poly, idx) => {
-            const singleFeature = { type: "Feature", geometry: { type: "Polygon", coordinates: poly }, properties: feature.properties };
-            const clipId = `clip-${rec.cca3}-part${idx}`;
-            mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(singleFeature));
+   function fallbackFlag(bounds, clipId, feature, rec) {
+      // fallback: solid color, no opacity
+      let fill = "#005f99";
+      // Special: Åland Islands fallback is yellow (flag color)
+      if (rec && (rec.cca3 === "ALA" || /åland/i.test(rec.name))) fill = "#ffe600";
+      // Special: Faroe Islands fallback is white (flag color)
+      if (rec && (rec.cca3 === "FRO" || /faroe/i.test(rec.name))) fill = "#fff";
+      mapGroup.append("path")
+         .attr("d", path(feature))
+         .attr("clip-path", `url(#${clipId})`)
+         .attr("fill", fill)
+         .attr("stroke", "#fff")
+         .attr("stroke-width", 0.8);
+      }
 
-            const bounds = path.bounds(singleFeature);
-            const w = bounds[1][0] - bounds[0][0];
-            const h = bounds[1][1] - bounds[0][1];
+   // Handle multipolygon countries (USA, FRA)
+   if (["USA","FRA"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") {
+      feature.geometry.coordinates.forEach((poly, idx) => {
+         const singleFeature = { type: "Feature", geometry: { type: "Polygon", coordinates: poly }, properties: feature.properties };
+         const clipId = `clip-${rec.cca3}-part${idx}`;
+         mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(singleFeature));
 
-            mapGroup.append("image")
-                .attr("href", flagImg.src)
-                .attr("x", bounds[0][0])
-                .attr("y", bounds[0][1])
-                .attr("width", w)
-                .attr("height", h)
-                .attr("preserveAspectRatio", "none")
-                .attr("clip-path", `url(#${clipId})`)
-                .attr("style", "pointer-events:none;")
-                .on("error", function() {
-                    d3.select(this).remove();
-                    mapGroup.append("path")
-                        .attr("d", path(singleFeature))
-                        .attr("clip-path", `url(#${clipId})`)
-                        .attr("fill", "#005f99")
-                        .attr("opacity", 0.7)
-                        .attr("stroke", "#fff")
-                        .attr("stroke-width", 0.8);
-                });
-        });
-    } else {
-        // Single polygon countries
-        const clipId = `clip-${rec.cca3 || normalizeName(rec.name)}`;
-        mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
+         const bounds = path.bounds(singleFeature);
+         const w = bounds[1][0] - bounds[0][0];
+         const h = bounds[1][1] - bounds[0][1];
 
-        const bounds = path.bounds(feature);
-        const w = bounds[1][0] - bounds[0][0];
-        const h = bounds[1][1] - bounds[0][1];
-
-        mapGroup.append("image")
-            .attr("href", flagImg.src)
+         mapGroup.append("image")
+            .attr("href", flagSrc)
             .attr("x", bounds[0][0])
             .attr("y", bounds[0][1])
             .attr("width", w)
@@ -844,16 +890,33 @@ function revealCountry(rec) {
             .attr("clip-path", `url(#${clipId})`)
             .attr("style", "pointer-events:none;")
             .on("error", function() {
-                d3.select(this).remove();
-                mapGroup.append("path")
-                    .attr("d", path(feature))
-                    .attr("clip-path", `url(#${clipId})`)
-                    .attr("fill", "#005f99")
-                    .attr("opacity", 0.7)
-                    .attr("stroke", "#fff")
-                    .attr("stroke-width", 0.8);
+               d3.select(this).remove();
+               fallbackFlag(bounds, clipId, singleFeature, rec);
             });
-    }
+      });
+   } else {
+      // Single polygon countries
+      const clipId = `clip-${rec.cca3 || brataiKey(rec.name)}`;
+      mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
+
+      const bounds = path.bounds(feature);
+      const w = bounds[1][0] - bounds[0][0];
+      const h = bounds[1][1] - bounds[0][1];
+
+      mapGroup.append("image")
+         .attr("href", flagSrc)
+         .attr("x", bounds[0][0])
+         .attr("y", bounds[0][1])
+         .attr("width", w)
+         .attr("height", h)
+         .attr("preserveAspectRatio", "none")
+         .attr("clip-path", `url(#${clipId})`)
+         .attr("style", "pointer-events:none;")
+         .on("error", function() {
+            d3.select(this).remove();
+            fallbackFlag(bounds, clipId, feature, rec);
+         });
+   }
 
     // Mark SVG path as revealed
     const iso = rec.cca3;
@@ -871,16 +934,11 @@ function nextRound(){
    const submitSpan=document.querySelector("#submit-btn span");
    submitSpan.textContent="arrow_forward_ios"; submitSpan.style.fontSize="24px";
    let remaining;
-   let continentCompleted = false;
-   let completedContinentName = null;
    if(gameMode==="Normal"||gameMode==="Hard"){
       while(continentIndex<continentOrder.length){
          const cont=continentOrder[continentIndex];
          remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region===cont);
          if(remaining.length>0) break;
-         // Mark continent as completed
-         continentCompleted = true;
-         completedContinentName = continentOrder[continentIndex];
          continentIndex++;
       }
       if(continentIndex>=continentOrder.length){ endGame(); return; }
@@ -900,14 +958,9 @@ function nextRound(){
    let promptText=`Round ${round}: Name a country starting with "${currentLetter}"`;
    if(gameMode==="Normal"||gameMode==="Hard") promptText=`Round ${round}: Name a country in ${currentContinent} starting with "${currentLetter}"`;
    document.getElementById("prompt").innerText=promptText;
-   if (continentCompleted && completedContinentName) {
-      showMessage(`Continent completed! moving on to ${continentOrder[continentIndex]||'End'}`, 'continent');
-   }
 }
 
 function nextCitiesRound(){
-   let continentCompleted = false;
-   let completedContinentName = null;
    while(continentIndex<continentOrder.length){
       const cont=continentOrder[continentIndex];
       const remaining=capitalsOrder.filter(c=>!revealedCapitals.has(c.capital)&&c.region===cont);
@@ -917,18 +970,12 @@ function nextCitiesRound(){
          currentContinent=cont;
          break;
       }
-      // Mark continent as completed
-      continentCompleted = true;
-      completedContinentName = continentOrder[continentIndex];
       continentIndex++;
    }
    if(continentIndex>=continentOrder.length){ endGame(); return; }
    if(!currentCountry){ endGame(); return; }
    let promptText=`Round ${round}: What is the capital of ${currentCountry.country}?`;
    document.getElementById("prompt").innerText=promptText;
-   if (continentCompleted && completedContinentName) {
-      showMessage(`Continent completed! moving on to ${continentOrder[continentIndex]||'End'}`, 'continent');
-   }
 }
 
 const answerInput=document.getElementById("answer"), autocompleteList=document.getElementById("autocomplete-list");
