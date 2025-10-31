@@ -1060,7 +1060,7 @@ function revealCountry(rec) {
          .style("opacity", 1);
    }
 
-   if (["USA","FRA","NLD","PRT","ESP"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") {
+   if (["USA","FRA","NLD","PRT","ESP","TWN"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") {
       feature.geometry.coordinates.forEach((poly, idx) => {
          const singleFeature = { type: "Feature", geometry: { type: "Polygon", coordinates: poly }, properties: feature.properties };
          const clipId = `clip-${rec.cca3}-part${idx}`;
