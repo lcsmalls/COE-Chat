@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Billiards</title>
+<style>
+:root {
+  --table-width: 960px;
+  --table-height: 540px;
+  --rail: 24px;
+  --felt: #0b6b2f;
+}
+html,body {
+  margin:0; padding:0;
+  height:100%; display:flex;
+  align-items:center; justify-content:center;
+  background:#222; color:#fff;
+  font-family:system-ui;
+}
+.wrap { width:calc(var(--table-width) + 40px); text-align:center; }
+canvas {
+  background:linear-gradient(#0b6b2f,#094f27);
+  border-radius:10px;
+  box-shadow:0 10px 25px rgba(0,0,0,0.7);
+  display:block; margin:auto;
+  touch-action:none;
+}
+.controls { margin-top:8px; display:flex; justify-content:center; gap:8px; }
+button {
+  background:#333; color:#eee; border:1px solid #555;
+  border-radius:6px; padding:8px 12px; cursor:pointer;
+}
+.powerbar {
+  width:200px; height:10px;
+  background:#111; border:1px solid #333; border-radius:6px; overflow:hidden;
+}
+.powerbar i {
+  display:block; height:100%; width:0%;
+  background:linear-gradient(90deg,#ffd36b,#ff7b7b);
+  transition:width 0.05s linear;
+}
+.hint { font-size:13px; color:#bbb; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <canvas id="table" width="960" height="540"></canvas>
+  <div class="controls">
+    <button id="reset">Reset</button>
+    <div class="powerbar"><i id="powerFill"></i></div>
+    <span class="hint">Drag from cue ball to aim; release to shoot.</span>
+  </div>
+</div>
+
+<script>
+// ==================== GAME STATE ====================
+let player = 1; // 1 or 2
+let groups = {1: null, 2: null}; // 'solid' or 'stripe'
+let gameOver = false;
+let message = "";
+
+function isSolid(n) { return n >= 1 && n <= 7; }
+function isStripe(n) { return n >= 9 && n <= 15; }
+function isEight(n) { return n === 8; }
+
+function getBallGroup(n) {
+  if (isSolid(n)) return 'solid';
+  if (isStripe(n)) return 'stripe';
+  if (isEight(n)) return 'eight';
+  return null;
+}
+
+function nextPlayer() { player = player === 1 ? 2 : 1; }
+
+function showMessage(msg) {
+  message = msg;
+  const el = document.getElementById('msg');
+  if (el) el.textContent = msg;
+}
+
+// Add message display above controls
+window.addEventListener('DOMContentLoaded',()=>{
+  let msgDiv = document.createElement('div');
+  msgDiv.id = 'msg';
+  msgDiv.style.margin = '10px 0';
+  msgDiv.style.fontWeight = 'bold';
+  msgDiv.style.fontSize = '16px';
+  document.querySelector('.wrap').insertBefore(msgDiv, document.querySelector('.controls'));
+  showMessage('Player 1: Break!');
+});
+const canvas=document.getElementById('table');
+const ctx=canvas.getContext('2d');
+const W=canvas.width,H=canvas.height;
+const RAIL=24,BALL_RADIUS=10,POCKET_R=26;
+const FRICTION=0.985;
+const MIN_V=0.15;
+// Prediction override state
+let predictedTargetNumber = null;
+let predictedObjVx = 0, predictedObjVy = 0;
+
+let balls=[];
+function Ball(x,y,c,n){
+  this.x=x; this.y=y;
+  this.vx=0; this.vy=0;
+  this.color=c; this.r=BALL_RADIUS;
+  this.number=n; this.potted=false;
+  this.forced=false; // whether this ball's velocity has been forced to match prediction
+}
+Ball.prototype.update=function(){
+  if(this.potted) return;
+  this.x+=this.vx; this.y+=this.vy;
+  this.vx*=FRICTION; this.vy*=FRICTION;
+  if(Math.hypot(this.vx,this.vy)<MIN_V){ this.vx=this.vy=0; }
+  wallBounce(this);
+  pocketCheck(this);
+};
+function wallBounce(b){
+  const minX=RAIL+b.r, maxX=W-RAIL-b.r, minY=RAIL+b.r, maxY=H-RAIL-b.r;
+  if(b.x<minX){b.x=minX;b.vx*=-0.9;}
+  if(b.x>maxX){b.x=maxX;b.vx*=-0.9;}
+  if(b.y<minY){b.y=minY;b.vy*=-0.9;}
+  if(b.y>maxY){b.y=maxY;b.vy*=-0.9;}
+}
+function pocketCheck(b){
+  const pockets=[[RAIL,RAIL],[W/2,RAIL],[W-RAIL,RAIL],
+                 [RAIL,H-RAIL],[W/2,H-RAIL],[W-RAIL,H-RAIL]];
+  for(const [px,py] of pockets){
+    if(Math.hypot(b.x-px,b.y-py)<POCKET_R){
+      b.potted=true; b.vx=b.vy=0;
+      // Assign groups after first pocketed ball
+      if(!gameOver && b.number>0 && !groups[1] && !groups[2]){
+        let grp = getBallGroup(b.number);
+        if(grp==='solid'||grp==='stripe'){
+          groups[player]=grp;
+          groups[player===1?2:1]=grp==='solid'?'stripe':'solid';
+          showMessage(`Player ${player} is ${grp}s!`);
+        }
+      }
+      if(b.number===0) setTimeout(resetCue,700);
+      break;
+    }
+  }
+}
+function collide(a,b){
+  if(a.potted||b.potted) return;
+  const dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy);
+  const minDist=a.r+b.r;
+  if(dist<minDist&&dist>0){
+    const overlap=(minDist-dist)/2;
+    const nx=dx/dist,ny=dy/dist;
+    a.x-=nx*overlap; a.y-=ny*overlap;
+    b.x+=nx*overlap; b.y+=ny*overlap;
+    const kx=a.vx-b.vx, ky=a.vy-b.vy;
+    const p=2*(nx*kx+ny*ky)/(1+1);
+    a.vx-=p*nx; a.vy-=p*ny;
+    b.vx+=p*nx; b.vy+=p*ny;
+
+    // If this collision is between the cue ball and the predicted target, force the target's
+    // post-collision direction to match the predicted direction (keep the resolved speed).
+    try{
+      // cue -> target
+      if(a.number===0 && b.number===predictedTargetNumber && !b.forced){
+        const predLen = Math.hypot(predictedObjVx, predictedObjVy);
+        if(predLen > 1e-6){
+          const speed = Math.hypot(b.vx, b.vy) || 0;
+          const dirX = predictedObjVx / predLen, dirY = predictedObjVy / predLen;
+          b.vx = dirX * speed; b.vy = dirY * speed;
+          b.forced = true;
+          predictedTargetNumber = null; predictedObjVx = predictedObjVy = 0;
+        }
+      }
+      // target <- cue (other order)
+      else if(b.number===0 && a.number===predictedTargetNumber && !a.forced){
+        const predLen = Math.hypot(predictedObjVx, predictedObjVy);
+        if(predLen > 1e-6){
+          const speed = Math.hypot(a.vx, a.vy) || 0;
+          const dirX = predictedObjVx / predLen, dirY = predictedObjVy / predLen;
+          a.vx = dirX * speed; a.vy = dirY * speed;
+          a.forced = true;
+          predictedTargetNumber = null; predictedObjVx = predictedObjVy = 0;
+        }
+      }
+    }catch(e){ /* swallow any unexpected errors */ }
+  }
+}
+
+function drawTable(){
+  ctx.fillStyle='#3b2f28'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0b6b2f'; ctx.fillRect(RAIL,RAIL,W-2*RAIL,H-2*RAIL);
+  const pockets=[[RAIL,RAIL],[W/2,RAIL],[W-RAIL,RAIL],
+                 [RAIL,H-RAIL],[W/2,H-RAIL],[W-RAIL,H-RAIL]];
+  ctx.fillStyle='#000';
+  for(const [px,py] of pockets){ctx.beginPath();ctx.arc(px,py,POCKET_R,0,Math.PI*2);ctx.fill();}
+}
+function drawBall(b){
+  if(b.potted) return;
+  ctx.beginPath();
+  ctx.fillStyle='rgba(0,0,0,0.35)';
+  ctx.ellipse(b.x+3,b.y+5,b.r*1.1,b.r*0.6,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();
+  ctx.fillStyle=b.color;
+  ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
+  if(b.number===0){
+    ctx.beginPath();ctx.fillStyle='#ddd';
+    ctx.arc(b.x+b.r*0.35,b.y-b.r*0.35,b.r*0.45,0,Math.PI*2);ctx.fill();
+  }else{
+    ctx.fillStyle='#fff';ctx.font=`${b.r*1.1}px sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(b.number,b.x,b.y);
+  }
+}
+
+function setupBalls(){
+  balls=[];
+  // Flip layout: rack on right, cue on left
+  const cx=W*0.75, cy=H/2;
+  // 8-ball rack: 1-7 solids, 9-15 stripes, 8 black
+  let rack = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+  let idx=0, sp=BALL_RADIUS*2+1;
+  balls.push(new Ball(W*0.25,H/2,'#fff',0)); // cue ball on left
+  for(let r=0;r<5;r++){
+    for(let i=0;i<=r;i++){
+      if(idx>=rack.length) continue;
+      const x=cx+r*sp, y=cy-r*sp/2+i*sp;
+      let num = rack[idx++];
+      let color = num===8 ? '#222' : (num>=1&&num<=7?'#ffd36b':'#ff7b7b');
+      balls.push(new Ball(x,y,color,num));
+    }
+  }
+  player = 1;
+  groups = {1: null, 2: null};
+  gameOver = false;
+  showMessage('Player 1: Break!');
+}
+setupBalls();
+
+const powerFill=document.getElementById('powerFill');
+let aiming=false,dragStart=null;
+let mouse={x:0,y:0,down:false};
+
+function getPos(e){
+  const rect=canvas.getBoundingClientRect();
+  const t=e.touches?e.touches[0]:e;
+  return {x:(t.clientX-rect.left)*(W/rect.width),y:(t.clientY-rect.top)*(H/rect.height)};
+}
+canvas.addEventListener('mousedown',e=>{mouse.down=true;mouse=getPos(e);startAim();});
+canvas.addEventListener('mouseup',e=>{mouse.down=false;endAim();});
+canvas.addEventListener('mousemove',e=>{mouse=getPos(e);});
+canvas.addEventListener('touchstart',e=>{e.preventDefault();mouse.down=true;mouse=getPos(e);startAim();});
+canvas.addEventListener('touchend',e=>{e.preventDefault();mouse.down=false;endAim();});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();mouse=getPos(e);});
+
+function startAim(){
+  const cue=balls.find(b=>b.number===0);
+  const d=Math.hypot(mouse.x-cue.x,mouse.y-cue.y);
+  if(d<cue.r+25&&!moving()) {aiming=true;dragStart={x:mouse.x,y:mouse.y};}
+}
+function endAim(){
+  if(!aiming) return;
+  const cue=balls.find(b=>b.number===0);
+  // Apply shot in the same direction as the drag (mouse -> cue defines aim visually,
+  // but the shot direction should be from cue towards the drag direction)
+  const dx = mouse.x - cue.x, dy = mouse.y - cue.y;
+  const dist = Math.hypot(dx,dy);
+  const power = Math.min(dist/6,20);
+  const nx = dx/(dist||1), ny = dy/(dist||1); // shot direction: mouse -> cue inverted gives cue->mouse
+  cue.vx += nx * power; cue.vy += ny * power;
+  powerFill.style.width='0%';
+  aiming=false; dragStart=null;
+}
+function moving(){return balls.some(b=>!b.potted&&(Math.abs(b.vx)>MIN_V||Math.abs(b.vy)>MIN_V));}
+function resetCue(){
+  const cb=balls.find(b=>b.number===0);
+  cb.potted=false;cb.x=W*0.75;cb.y=H/2;cb.vx=cb.vy=0;
+}
+
+// Simulate a short cloned physics run and return paths for each ball.
+// This uses the same physics rules as the live simulation but doesn't modify real balls.
+function simulateShot(initVx, initVy, maxSteps=200){
+  // clone
+  const sim = balls.map(b=>({ x:b.x, y:b.y, vx:b.vx, vy:b.vy, r:b.r, number:b.number, potted:b.potted }));
+  const cueIdx = sim.findIndex(s=>s.number===0);
+  if(cueIdx>=0){ sim[cueIdx].vx = initVx; sim[cueIdx].vy = initVy; }
+
+  const paths = sim.map(()=>[]);
+
+  const pockets=[[RAIL,RAIL],[W/2,RAIL],[W-RAIL,RAIL],[RAIL,H-RAIL],[W/2,H-RAIL],[W-RAIL,H-RAIL]];
+
+  for(let step=0; step<maxSteps; step++){
+    // update positions
+    for(let i=0;i<sim.length;i++){
+      const b = sim[i];
+      if(b.potted){ paths[i].push({x:b.x,y:b.y}); continue; }
+      b.x += b.vx; b.y += b.vy;
+      b.vx *= FRICTION; b.vy *= FRICTION;
+      if(Math.hypot(b.vx,b.vy) < MIN_V){ b.vx = 0; b.vy = 0; }
+      // wall bounce
+      const minX=RAIL+b.r, maxX=W-RAIL-b.r, minY=RAIL+b.r, maxY=H-RAIL-b.r;
+      if(b.x<minX){ b.x=minX; b.vx*=-0.9; }
+      if(b.x>maxX){ b.x=maxX; b.vx*=-0.9; }
+      if(b.y<minY){ b.y=minY; b.vy*=-0.9; }
+      if(b.y>maxY){ b.y=maxY; b.vy*=-0.9; }
+      // pocket check
+      for(const [px,py] of pockets){ if(Math.hypot(b.x-px,b.y-py) < POCKET_R){ b.potted=true; b.vx=b.vy=0; break; } }
+      paths[i].push({x:b.x,y:b.y});
+    }
+
+    // collisions (pairwise)
+    for(let i=0;i<sim.length;i++){
+      for(let j=i+1;j<sim.length;j++){
+        const a = sim[i], b = sim[j];
+        if(a.potted || b.potted) continue;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const dist = Math.hypot(dx,dy);
+        const minDist = a.r + b.r;
+        if(dist < minDist && dist > 0){
+          const overlap = (minDist - dist)/2;
+          const nx = dx/dist, ny = dy/dist;
+          a.x -= nx*overlap; a.y -= ny*overlap;
+          b.x += nx*overlap; b.y += ny*overlap;
+          const kx = a.vx - b.vx, ky = a.vy - b.vy;
+          const p = 2*(nx*kx + ny*ky)/(1+1);
+          a.vx -= p*nx; a.vy -= p*ny;
+          b.vx += p*nx; b.vy += p*ny;
+        }
+      }
+    }
+
+    // stop early if everything's settled
+    if(sim.every(s=>s.potted || (Math.abs(s.vx) <= MIN_V && Math.abs(s.vy) <= MIN_V))) break;
+  }
+
+  return { sim, paths, cueIdx };
+}
+
+// ==================== TRAJECTORY ====================
+function drawCue(){
+  if(!aiming) return;
+  const cue=balls.find(b=>b.number===0);
+  // shot vector: from cue -> mouse (drag direction defines shot)
+  const sdx = (mouse.x - cue.x), sdy = (mouse.y - cue.y);
+  const sdist = Math.hypot(sdx,sdy);
+  const powerPct = Math.min(1, sdist/160);
+  powerFill.style.width=(powerPct*100)+'%';
+  const shotDirX = sdx/(sdist||1), shotDirY = sdy/(sdist||1);
+  // Draw the cue stick on the opposite side of the ball from the shot direction.
+  // The stick graphic extends along negative local X, so using the shotDir angle
+  // will place the stick behind the ball relative to where the ball will go.
+  const ang = Math.atan2(shotDirY, shotDirX);
+  // Predict cue ball first collision along the shot direction
+  let hitBall=null, minDist=Infinity, hitPoint={x:cue.x+shotDirX*1000, y:cue.y+shotDirY*1000};
+  for(const b of balls){
+    if(b===cue||b.potted) continue;
+    // vector from cue to ball
+    const vx=b.x-cue.x, vy=b.y-cue.y;
+    const proj=vx*shotDirX + vy*shotDirY;
+    if(proj<=0) continue;
+    // closest approach along shot line
+    const closestX=cue.x+shotDirX*proj, closestY=cue.y+shotDirY*proj;
+    const distToBall=Math.hypot(b.x-closestX,b.y-closestY);
+    if(distToBall<cue.r+b.r){
+      const offset=Math.sqrt((cue.r+b.r)**2 - distToBall**2);
+      const hitDist=proj - offset;
+      if(hitDist<minDist){
+        minDist=hitDist;
+        hitBall=b;
+        hitPoint={x:cue.x+shotDirX*hitDist, y:cue.y+shotDirY*hitDist};
+      }
+    }
+  }
+
+  // Draw aiming line to collision point
+  ctx.save();
+  ctx.strokeStyle='rgba(255,255,255,0.5)';
+  ctx.lineWidth=2;
+  ctx.setLineDash([8,6]);
+  ctx.beginPath();
+  ctx.moveTo(cue.x, cue.y);
+  ctx.lineTo(hitPoint.x, hitPoint.y);
+  ctx.stroke();
+
+  // If we hit a ball, draw only the immediate post-collision direction for that ball (no bounces)
+  if(hitBall){
+  // Use same power mapping as the real shot; shotDir is the true cue velocity direction
+  const predictedPower = Math.min(sdist/6,20);
+  const cueVx = shotDirX * predictedPower;
+  const cueVy = shotDirY * predictedPower;
+
+    // Compute collision normal at contact: from cue center at impact (hitPoint) to object center
+    let nxCol = (hitBall.x - hitPoint.x);
+    let nyCol = (hitBall.y - hitPoint.y);
+    const nLen = Math.hypot(nxCol, nyCol) || 1;
+    const nrmX = nxCol / nLen;
+    const nrmY = nyCol / nLen;
+
+    // Object ball velocity after collision (equal masses, stationary target): projection of cue velocity onto normal
+    const vDotN = cueVx * nrmX + cueVy * nrmY;
+    const objVx = vDotN * nrmX;
+    const objVy = vDotN * nrmY;
+
+  // Store prediction so we can force the real physics to match direction on collision
+  predictedTargetNumber = hitBall.number;
+  predictedObjVx = objVx; predictedObjVy = objVy;
+
+  // Draw a short line from the object's center in the direction of objV (no bounces)
+      const objSpeed = Math.hypot(objVx, objVy);
+    if(objSpeed > 0.0001){
+      const len = 180; // visual length
+      ctx.strokeStyle='rgba(255,255,255,0.9)';
+      ctx.setLineDash([6,6]);
+      ctx.beginPath();
+      ctx.moveTo(hitBall.x, hitBall.y);
+      ctx.lineTo(hitBall.x + (objVx/objSpeed) * len, hitBall.y + (objVy/objSpeed) * len);
+      ctx.stroke();
+    }
+
+    // small marker at contact point
+    ctx.fillStyle='rgba(255,255,255,0.7)';
+    ctx.beginPath();
+    ctx.arc(hitPoint.x, hitPoint.y, 3, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Draw cue stick
+  const len=200+powerPct*100,thick=10;
+  ctx.save();ctx.translate(cue.x,cue.y);ctx.rotate(ang);
+  ctx.fillStyle='#8b5a2b';
+  ctx.fillRect(-len, -thick/2, len-20, thick);
+  ctx.fillStyle='#ccc';ctx.fillRect(-20,-thick*0.7,8,thick*1.4);
+  ctx.restore();
+}
+// ==================== END TRAJECTORY ====================
+
+function loop(){
+  ctx.clearRect(0,0,W,H);
+  drawTable();
+  for(const b of balls) b.update();
+  for(let i=0;i<balls.length;i++){
+    for(let j=i+1;j<balls.length;j++){
+      collide(balls[i],balls[j]);
+    }
+  }
+  for(const b of balls) drawBall(b);
+  if(aiming&&!moving()) drawCue();
+  requestAnimationFrame(loop);
+}
+loop();
+
+document.getElementById('reset').onclick=()=>setupBalls();
+</script>
+</body>
+</html>
