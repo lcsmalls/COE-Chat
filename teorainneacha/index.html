@@ -35,6 +35,7 @@ body { font-family:'Outfit', sans-serif; margin:0; padding:0; text-align:center;
 h1 { margin:1em 0 0.3em; }
 #map { width:100%; height:70vh; border:1px solid #444; background:#042342; border-radius:12px; }
 #controls { margin:1em; display:flex; align-items:center; justify-content:center; gap:8px; position:relative; }
+#controls { z-index: 2200; }
 #controls > #timer {
    min-width: 60px;
    text-align: center;
@@ -70,10 +71,11 @@ button:hover { background:#005f99; }
 }
 #pause-btn { background:#ff9800; }
 #pause-btn:hover { background:#cc7a00; }
+#pause-btn { position: relative; z-index: 2300; pointer-events: auto; }
 #pause-overlay, #results-screen, #start-screen, #instructions-overlay, #credits-overlay, #flags-start-screen, #flags-continent-screen, #flags-game-screen {
    position:fixed; top:0; left:0; width:100%; height:100%;
    background:rgba(0,0,0,0.9); display:flex; flex-direction:column;
-   justify-content:center; align-items:center; z-index:2000; color:#fff;
+   justify-content:center; align-items:center; z-index:3200; color:#fff;
    text-align:center; display:none;
 }
 #pause-overlay button, #results-screen button, #start-screen button, #instructions-overlay button, #credits-overlay button, #flags-start-screen button, #flags-continent-screen button, #flags-game-screen button {
@@ -187,6 +189,20 @@ button:hover { background:#005f99; }
    font-family:'Material Symbols Rounded' !important; font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 48 !important; font-size:20px;
 }
 #flags-pause-btn:hover{ background:#cc7a00; }
+/* Ensure the inner span actually uses the Material Symbols font (overrides the broad flags-* * rule) */
+#flags-pause-btn .material-symbols-rounded {
+   font-family: 'Material Symbols Rounded' !important;
+   font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 48 !important;
+   font-size: 20px;
+}
+/* Splash progress bar */
+#splash-progress { width: 320px; height: 8px; background: rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; margin-top: 320px; position: absolute; left:50%; transform: translateX(-50%); bottom: 8%; }
+#splash-progress-inner { width: 0%; height: 100%; background: linear-gradient(90deg,#4fc3f7,#81d4fa); border-radius:8px; transition: width 120ms linear; }
+
+/* Splash meta: percent and current status line */
+#splash-meta { position: absolute; left:50%; transform: translateX(-50%); bottom: 5%; width: 480px; max-width:90%; color: rgba(255,255,255,0.95); font-size:14px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+#splash-percent { font-weight:700; min-width:48px; text-align:left; }
+#splash-status { flex:1; text-align:right; opacity:0.95; font-family: 'Outfit', sans-serif; }
 </style>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
@@ -195,6 +211,13 @@ button:hover { background:#005f99; }
 <body>
 <div id="splash-screen">
    <img id="splash-logo" src="https://teorainneacha.vercel.app/icon.png" alt="Company Logo">
+   <div id="splash-progress" aria-hidden="true">
+      <div id="splash-progress-inner"></div>
+   </div>
+   <div id="splash-meta" aria-hidden="true">
+      <div id="splash-percent">0%</div>
+      <div id="splash-status">Starting...</div>
+   </div>
 </div>
 <h1>Teorainneacha</h1>
 <div id="controls">
@@ -221,7 +244,7 @@ button:hover { background:#005f99; }
     <button onclick="showInstructions()">Instructions</button>
     <button onclick="showCredits()">Credits</button>
   </div>
-   <div id="main-menu-version">v3.6.2</div>
+   <div id="main-menu-version">v3.6.3</div>
 </div>
 
 <div id="start-screen" style="display:none;">
@@ -306,7 +329,7 @@ button:hover { background:#005f99; }
     <ul>
       <li><strong>Country shapes:</strong> Natural Earth / World Atlas TopoJSON</li>
       <li><strong>Country and city names:</strong> RestCountries API</li>
-      <li><strong>Flag images:</strong> FlagCDN</li>
+      <li><strong>Flag images:</strong> Brataí Flag SVG CDN</li>
       <li><strong>Libraries:</strong> D3.js (map rendering and projections), TopoJSON client</li>
     </ul>
     <h3>Rights notice</h3>
@@ -323,27 +346,81 @@ button:hover { background:#005f99; }
 <div id="message-modal" aria-hidden="true"></div>
 
 <script>
-// Splash screen logic
+// Splash screen logic with simulated loader and milestones
 window.addEventListener('DOMContentLoaded', function() {
    const splash = document.getElementById('splash-screen');
    const logo = document.getElementById('splash-logo');
+   const progressInner = document.getElementById('splash-progress-inner');
+   // percent and status elements (created in markup)
+   const percentEl = document.getElementById('splash-percent');
+   const statusEl = document.getElementById('splash-status');
+
    splash.style.opacity = '1';
    logo.style.opacity = '0';
-      setTimeout(() => {
-         logo.style.opacity = '1';
-      }, 500); // fade in after 0.5s
-      setTimeout(() => {
-         logo.style.opacity = '0';
-         splash.style.opacity = '0';
-      }, 2500); // fade out after 2s (logo stays longer)
-      setTimeout(() => {
-         splash.style.display = 'none';
-         document.getElementById('main-menu').style.opacity = '0';
-         document.getElementById('main-menu').style.display = 'flex';
+   setTimeout(() => { logo.style.opacity = '1'; }, 300);
+
+   // Milestones to display during the fake load (percent triggers)
+   const milestones = [
+      {pct:6, text: 'Loaded fonts'},
+      {pct:18, text: 'Initialized projection (d3)'} ,
+      {pct:30, text: 'Loaded country list (restcountries)'},
+      {pct:44, text: 'Loaded topojson/world-atlas'},
+      {pct:56, text: 'Prepared flags dataset'},
+      {pct:68, text: 'Loaded assets (icons & images)'},
+      {pct:78, text: 'Wired handlers (#pause-btn)'} ,
+      {pct:84, text: 'Wired handlers (#flags-pause-btn)'},
+      {pct:90, text: 'Started timers'},
+      {pct:97, text: 'Finalising...'},
+      {pct:100, text: 'Ready'}
+   ];
+
+   let pct = 0; let milestoneIndex = 0;
+   const totalDuration = 3200; // ms - visual length of the fake load
+   const start = Date.now();
+
+   // Use an interval to simulate progress with slight random stalls for realism
+   const tickInterval = 70; // ms
+   const interval = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const t = Math.min(1, elapsed / totalDuration);
+      // ease-out cubic for smoother finish
+      let target = Math.floor(100 * (1 - Math.pow(1 - t, 3)));
+      // introduce occasional tiny backward stalls/jitter for realism
+      if (Math.random() < 0.04) target = Math.max(0, target - Math.floor(Math.random() * 3));
+      // slow down near certain ranges to create pauses
+      if (target > 40 && target < 50) target = Math.min(48, target);
+      if (target > 64 && target < 70) target = Math.min(66, target);
+
+      if (target > pct) pct = target;
+      if (pct > 100) pct = 100;
+
+      // update UI
+      progressInner.style.width = pct + '%';
+      if (percentEl) percentEl.textContent = pct + '%';
+
+      // milestone messages
+      while (milestoneIndex < milestones.length && pct >= milestones[milestoneIndex].pct) {
+         const m = milestones[milestoneIndex];
+         if (statusEl) statusEl.textContent = m.text;
+         milestoneIndex++;
+      }
+
+      // finish
+      if (pct >= 100 || elapsed > totalDuration + 800) {
+         clearInterval(interval);
+         // final flash and hide
+         setTimeout(() => { logo.style.opacity = '0'; splash.style.opacity = '0'; }, 200);
          setTimeout(() => {
-            document.getElementById('main-menu').style.opacity = '1';
-         }, 100);
-      }, 3200); // show main menu after fade out
+            splash.style.display = 'none';
+            const main = document.getElementById('main-menu');
+            if (main) {
+               main.style.opacity = '0';
+               main.style.display = 'flex';
+               setTimeout(() => { main.style.opacity = '1'; }, 100);
+            }
+         }, 600);
+      }
+   }, tickInterval);
 });
 let countriesData=[], features=[], projection, path, svg, mapGroup;
 let round=1, currentContinent="", currentLetter="", currentCountry=null;
@@ -354,7 +431,7 @@ let featureByCCA3=new Map(), featureByName=new Map();
 let wrongGuesses=0, gameMode="Normal", gameType="countries";
 let startTime=null, elapsed=0, timerInterval=null, paused=false;
 const continentOrder=["Europe","Oceania","Americas","Asia","Africa","Antarctic"];
-let continentIndex=0;
+let noregdip=0;
 
 // Cities mode data
 let capitalsData=[], capitalsByCountry=new Map(), revealedCapitals=new Set(), capitalDots=[];
@@ -769,7 +846,7 @@ document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
   paused = false;
   elapsed = 0;
   round = 1;
-  continentIndex = 0;
+  noregdip = 0;
   wrongGuesses = 0;
   revealedCountries.clear();
   revealedCapitals.clear();
@@ -794,7 +871,7 @@ document.getElementById("results-mainmenu-btn").addEventListener("click", () => 
   paused = false;
   elapsed = 0;
   round = 1;
-  continentIndex = 0;
+  noregdip = 0;
   wrongGuesses = 0;
   revealedCountries.clear();
   revealedCapitals.clear();
@@ -811,7 +888,7 @@ document.getElementById("results-mainmenu-btn").addEventListener("click", () => 
 function startGame(mode){
    gameMode=mode;
    document.getElementById("start-screen").style.display="none";
-   round=1; continentIndex=0; wrongGuesses=0; revealedCountries.clear(); revealedCapitals.clear();
+   round=1; noregdip=0; wrongGuesses=0; revealedCountries.clear(); revealedCapitals.clear();
    capitalDots.forEach(dot=>dot.remove()); capitalDots=[];
    if(gameType==="countries"){
       startTimer(); nextRound();
@@ -910,7 +987,9 @@ function revealCountry(rec) {
         if (cca3 === "STP" || name.toLowerCase().includes('sao tome')) return "sao-tome-and-principe";
         if (cca3 === "CIV" || name.toLowerCase().includes("côte d'ivoire") || name.toLowerCase().includes("cote d'ivoire")) return "côte-d'ivoire";
         if (cca3 === "FRO" || name.toLowerCase().includes('faroe')) return "faroe-islands";
-        if (cca3 === "ALA" || name.toLowerCase().includes('aland') || name.toLowerCase().includes('åland')) return "åland-islands";
+   // Match Åland only as a standalone word or by ISO code.
+   // Avoid matching the substring 'aland' inside names like 'New Zealand'.
+   if (cca3 === "ALA" || /\b(aland|åland)\b/i.test(name)) return "åland-islands";
         if (cca3 === "SJM" || name.toLowerCase().includes('svalbard') || name.toLowerCase().includes('jan mayen')) return "svalbard-and-jan-mayen";
         if (cca3 === "KIR" || name.toLowerCase().includes('kiribati')) return "kiribati";
         if (cca3 === "TKL" || name.toLowerCase().includes('tokelau')) return "tokelau";
@@ -990,59 +1069,69 @@ function revealCountry(rec) {
                 .attr("width", patternWidth * repeatCount)
                 .attr("height", h);
 
-            for (let i = 0; i < repeatCount; i++) {
-                pattern.append("image")
-                    .attr("href", flagSrc)
-                    .attr("width", patternWidth)
-                    .attr("height", h)
-                    .attr("x", i * patternWidth)
-                    .attr("y", 0)
-                    .attr("preserveAspectRatio", "none");
+         for (let i = 0; i < repeatCount; i++) {
+            pattern.append("image")
+               .attr("href", flagSrc)
+               .attr("width", patternWidth)
+               .attr("height", h)
+               .attr("x", i * patternWidth)
+               .attr("y", 0)
+               .attr("preserveAspectRatio", "xMidYMid slice");
+         }
+
+             mapGroup.append("rect")
+            .attr("x", bounds[0][0])
+            .attr("y", bounds[0][1])
+            .attr("width", w)
+            .attr("height", h)
+            .attr("fill", `url(#${patternId})`)
+            .attr("clip-path", `url(#${clipId})`)
+            .attr("pointer-events", "none");
+
+         } else {
+            // helper to size an image so it covers the target box while preserving aspect ratio
+            function placeImageCover(imgSel, naturalImg) {
+               const flagRatio = naturalImg.width / naturalImg.height;
+               const boxRatio = w / h;
+               let width, height;
+               if (flagRatio > boxRatio) {
+                  // flag is wider: match height, allow horizontal overflow
+                  height = h;
+                  width = h * flagRatio;
+               } else {
+                  // flag is taller or equal: match width, allow vertical overflow
+                  width = w;
+                  height = w / flagRatio;
+               }
+               imgSel
+                  .attr("width", width)
+                  .attr("height", height)
+                  .attr("x", bounds[0][0] - (width - w) / 2)
+                  .attr("y", bounds[0][1] - (height - h) / 2)
+                  .attr("preserveAspectRatio", "xMidYMid slice");
             }
 
-            mapGroup.append("rect")
-                .attr("x", bounds[0][0])
-                .attr("y", bounds[0][1])
-                .attr("width", w)
-                .attr("height", h)
-                .attr("fill", `url(#${patternId})`)
-                .attr("clip-path", `url(#${clipId})`)
-                .attr("pointer-events", "none");
-
-        } else {
             const img = mapGroup.append("image")
-                .attr("href", flagSrc)
-                .attr("clip-path", `url(#${clipId})`)
-                .attr("style", "pointer-events:none;");
+               .attr("href", flagSrc)
+               .attr("clip-path", `url(#${clipId})`)
+               .attr("style", "pointer-events:none;")
+               .attr("opacity", 0);
 
             // Use cached image dimensions if available
-            const tmp = flagImg.complete ? flagImg : new Image();
-            if (!flagImg.complete) tmp.src = flagImg.src;
-
-            tmp.onload = () => {
-                const flagRatio = tmp.width / tmp.height;
-                const boxRatio = w / h;
-                let width, height;
-
-                if (flagRatio > boxRatio) {
-                    height = h;
-                    width = h * flagRatio;
-                } else {
-                    width = w;
-                    height = w / flagRatio;
-                }
-
-                img.attr("width", width)
-                   .attr("height", height)
-                   .attr("x", bounds[0][0] - (width - w) / 2)
-                   .attr("y", bounds[0][1] - (height - h) / 2)
-                   .attr("preserveAspectRatio", "xMidYMid meet");
-            };
-
-            img.on("error", function() {
-                d3.select(this).remove();
-            });
-        }
+            if (flagImg && flagImg.complete && flagImg.naturalWidth) {
+               placeImageCover(img, flagImg);
+               img.transition().duration(600).attr("opacity", 1);
+            } else {
+               // fallback: create a temporary Image to measure
+               const tmp = new Image();
+               tmp.onload = function() {
+                  placeImageCover(img, tmp);
+                  img.transition().duration(600).attr("opacity", 1);
+               };
+               tmp.onerror = function() { d3.select(img.node()).remove(); };
+               tmp.src = flagSrc;
+            }
+         }
     }
 
    // Animation: fade in highlight, then fade in flag image
@@ -1060,7 +1149,7 @@ function revealCountry(rec) {
          .style("opacity", 1);
    }
 
-   if (["USA","FRA","NLD","PRT","ESP","TWN"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") {
+   if (["USA","FRA","NLD","PRT","ESP","TWN",].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") {
       feature.geometry.coordinates.forEach((poly, idx) => {
          const singleFeature = { type: "Feature", geometry: { type: "Polygon", coordinates: poly }, properties: feature.properties };
          const clipId = `clip-${rec.cca3}-part${idx}`;
@@ -1080,13 +1169,43 @@ function revealCountry(rec) {
                .attr("href", flagSrc)
                .attr("clip-path", `url(#${clipId})`)
                .attr("style", "pointer-events:none;")
-               .attr("width", bounds[1][0] - bounds[0][0])
-               .attr("height", bounds[1][1] - bounds[0][1])
-               .attr("x", bounds[0][0])
-               .attr("y", bounds[0][1])
-               .attr("preserveAspectRatio", "none")
                .attr("opacity", 0);
-            img.transition().duration(600).attr("opacity", 1);
+
+            // size so the image covers the bounds while preserving aspect ratio (may overflow)
+            const tmp = flagImg && flagImg.complete ? flagImg : new Image();
+            if (flagImg && flagImg.complete) {
+               const flagRatio = tmp.width / tmp.height;
+               const wBox = bounds[1][0] - bounds[0][0];
+               const hBox = bounds[1][1] - bounds[0][1];
+               if (flagRatio > (wBox / hBox)) {
+                  const height = hBox;
+                  const width = height * flagRatio;
+                  img.attr("width", width).attr("height", height).attr("x", bounds[0][0] - (width - wBox) / 2).attr("y", bounds[0][1] - 0).attr("preserveAspectRatio", "xMidYMid slice");
+               } else {
+                  const width = wBox;
+                  const height = width / flagRatio;
+                  img.attr("width", width).attr("height", height).attr("x", bounds[0][0] - 0).attr("y", bounds[0][1] - (height - hBox) / 2).attr("preserveAspectRatio", "xMidYMid slice");
+               }
+               img.transition().duration(600).attr("opacity", 1);
+            } else {
+               tmp.onload = () => {
+                  const flagRatio = tmp.width / tmp.height;
+                  const wBox = bounds[1][0] - bounds[0][0];
+                  const hBox = bounds[1][1] - bounds[0][1];
+                  if (flagRatio > (wBox / hBox)) {
+                     const height = hBox;
+                     const width = height * flagRatio;
+                     img.attr("width", width).attr("height", height).attr("x", bounds[0][0] - (width - wBox) / 2).attr("y", bounds[0][1] - 0).attr("preserveAspectRatio", "xMidYMid slice");
+                  } else {
+                     const width = wBox;
+                     const height = width / flagRatio;
+                     img.attr("width", width).attr("height", height).attr("x", bounds[0][0] - 0).attr("y", bounds[0][1] - (height - hBox) / 2).attr("preserveAspectRatio", "xMidYMid slice");
+                  }
+                  img.transition().duration(600).attr("opacity", 1);
+               };
+               tmp.onerror = () => { d3.select(img.node()).remove(); };
+               tmp.src = flagSrc;
+            }
          }, 500);
       });
    } else if (rec.cca3 === "GNQ" && feature.geometry.type === "MultiPolygon") {
@@ -1110,13 +1229,36 @@ function revealCountry(rec) {
                .attr("href", flagSrc)
                .attr("clip-path", `url(#${clipId})`)
                .attr("style", "pointer-events:none;")
-               .attr("width", bounds[1][0] - bounds[0][0])
-               .attr("height", bounds[1][1] - bounds[0][1])
-               .attr("x", bounds[0][0])
-               .attr("y", bounds[0][1])
-               .attr("preserveAspectRatio", "none")
                .attr("opacity", 0);
-            img.transition().duration(600).attr("opacity", 1);
+
+            const tmp = flagImg && flagImg.complete ? flagImg : new Image();
+            const wBox = bounds[1][0] - bounds[0][0];
+            const hBox = bounds[1][1] - bounds[0][1];
+            if (flagImg && flagImg.complete) {
+               const flagRatio = tmp.width / tmp.height;
+               if (flagRatio > (wBox / hBox)) {
+                  const height = hBox; const width = height * flagRatio;
+                  img.attr("width", width).attr("height", height).attr("x", bounds[0][0] - (width - wBox) / 2).attr("y", bounds[0][1] - 0).attr("preserveAspectRatio", "xMidYMid slice");
+               } else {
+                  const width = wBox; const height = width / flagRatio;
+                  img.attr("width", width).attr("height", height).attr("x", bounds[0][0] - 0).attr("y", bounds[0][1] - (height - hBox) / 2).attr("preserveAspectRatio", "xMidYMid slice");
+               }
+               img.transition().duration(600).attr("opacity", 1);
+            } else {
+               tmp.onload = () => {
+                  const flagRatio = tmp.width / tmp.height;
+                  if (flagRatio > (wBox / hBox)) {
+                     const height = hBox; const width = height * flagRatio;
+                     img.attr("width", width).attr("height", height).attr("x", bounds[0][0] - (width - wBox) / 2).attr("y", bounds[0][1] - 0).attr("preserveAspectRatio", "xMidYMid slice");
+                  } else {
+                     const width = wBox; const height = width / flagRatio;
+                     img.attr("width", width).attr("height", height).attr("x", bounds[0][0] - 0).attr("y", bounds[0][1] - (height - hBox) / 2).attr("preserveAspectRatio", "xMidYMid slice");
+                  }
+                  img.transition().duration(600).attr("opacity", 1);
+               };
+               tmp.onerror = () => { d3.select(img.node()).remove(); };
+               tmp.src = flagSrc;
+            }
          }, 500);
       });
    } else {
@@ -1164,13 +1306,13 @@ function nextRound(){
    submitSpan.textContent="arrow_forward_ios"; submitSpan.style.fontSize="24px";
    let remaining;
    if(gameMode==="Normal"||gameMode==="Hard"){
-      while(continentIndex<continentOrder.length){
-         const cont=continentOrder[continentIndex];
+      while(noregdip<continentOrder.length){
+         const cont=continentOrder[noregdip];
          remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region===cont);
          if(remaining.length>0) break;
-         continentIndex++;
+         noregdip++;
       }
-      if(continentIndex>=continentOrder.length){ endGame(); return; }
+      if(noregdip>=continentOrder.length){ endGame(); return; }
    }else{
       remaining=countriesData.filter(c=>!revealedCountries.has(c.name)&&c.region!=="Antarctic");
    }
@@ -1198,8 +1340,8 @@ function nextRound(){
 }
 
 function nextCitiesRound(){
-   while(continentIndex<continentOrder.length){
-      const cont=continentOrder[continentIndex];
+   while(noregdip<continentOrder.length){
+      const cont=continentOrder[noregdip];
       const remaining=capitalsOrder.filter(c=>!revealedCapitals.has(c.capital)&&c.region===cont);
       if(remaining.length>0){
          // Pick a random country from the remaining in this continent
@@ -1207,9 +1349,9 @@ function nextCitiesRound(){
          currentContinent=cont;
          break;
       }
-      continentIndex++;
+      noregdip++;
    }
-   if(continentIndex>=continentOrder.length){ endGame(); return; }
+   if(noregdip>=continentOrder.length){ endGame(); return; }
    if(!currentCountry){ endGame(); return; }
    let promptText=`Round ${round}: What is the capital of ${currentCountry.country}?`;
    document.getElementById("prompt").innerText=promptText;
@@ -1368,7 +1510,7 @@ function submitAnswer(){
                            .transition().duration(400).style("background", "#042342");
                         showMessage('Map reset! Try again from scratch.', 'warning');
                         round = 1;
-                        continentIndex = 0;
+                        noregdip = 0;
                         setTimeout(nextRound, 1200);
                         return;
          }
@@ -1392,7 +1534,7 @@ function submitAnswer(){
                  .transition().duration(400).style("background", "#042342");
                showMessage('Map reset! Try again from scratch.', 'warning');
                round = 1;
-               continentIndex = 0;
+               noregdip = 0;
                setTimeout(nextRound, 1200);
                return;
             }
@@ -1412,7 +1554,7 @@ function submitAnswer(){
                         .transition().duration(400).style("background", "#042342");
                      showMessage('Map reset! Try again from scratch.', 'warning');
                      round = 1;
-                     continentIndex = 0;
+                     noregdip = 0;
                      setTimeout(nextRound, 1200);
                      return;
                 }
@@ -1618,7 +1760,17 @@ function endGame(){
    document.getElementById("results-screen").style.display="flex";
 }
 
-document.getElementById("pause-btn").addEventListener("click", ()=>{ if(!paused) pauseTimer(); });
+// Toggle pause/resume when clicking the pause button so it responds immediately
+document.getElementById("pause-btn").addEventListener("click", ()=>{
+   if(!paused) {
+      pauseTimer();
+      // update title to indicate state
+      document.getElementById('pause-btn').setAttribute('aria-pressed', 'true');
+   } else {
+      resumeTimer();
+      document.getElementById('pause-btn').setAttribute('aria-pressed', 'false');
+   }
+});
 document.getElementById("resume-btn").addEventListener("click", ()=>{
    // resume global timer
    resumeTimer();
