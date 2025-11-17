@@ -973,17 +973,20 @@ countriesData.forEach(c => {
    img.src = `https://teorainneacha.vercel.app/bratai/${normalizeName(c.name)}.svg`;
    flagCache.set(c.cca2, img);
 });
-
+  
 function revealCountry(rec) {
     if (revealedCountries.has(rec.name)) return;
     revealedCountries.add(rec.name);
+
+    // Countries that should use stretched placement
+    const forceStretch = new Set(["RUS"]);
 
     let feature = getFeature(rec);
 
     // PATCH: handle missing/odd territories like British Somaliland and Northern Cyprus
     if (!feature) {
         if (rec.cca3 === "BSC") { // British Somaliland
-            const topoFeature = worldData.objects.countries.geometries.find(d => d.id === 686); // pick unused ID
+            const topoFeature = worldData.objects.countries.geometries.find(d => d.id === 686);
             if (topoFeature) {
                 feature = {
                     type: "Feature",
@@ -992,7 +995,7 @@ function revealCountry(rec) {
                 };
             }
         } else if (rec.cca3 === "NCY") { // Northern Cyprus
-            const topoFeature = worldData.objects.countries.geometries.find(d => d.id === 0); // small fake ID
+            const topoFeature = worldData.objects.countries.geometries.find(d => d.id === 0); // fixed nested .geometries
             if (topoFeature) {
                 feature = {
                     type: "Feature",
@@ -1089,65 +1092,55 @@ function revealCountry(rec) {
             .attr("preserveAspectRatio", "xMidYMid slice");
     }
 
-    function renderSingleFeature(feature, rec, clipId) {
+    function renderSingleFeature(feature, rec, clipId, stretchOverride = false) {
         const bounds = path.bounds(feature);
-        const w = bounds[1][0] - bounds[0][0];
-        const h = bounds[1][1] - bounds[0][1];
 
-        // RUS tiler
-        if (rec.cca3 === "RUS") {
-            const patternId = `pattern-${rec.cca3}`;
-            const defs = mapGroup.append("defs");
-            const patternWidth = 200;
-            const repeatCount = Math.ceil(w / patternWidth);
+        const img = mapGroup.append("image")
+            .attr("href", flagSrc)
+            .attr("clip-path", `url(#${clipId})`)
+            .attr("style", "pointer-events:none;")
+            .attr("opacity", 0);
 
-            const pattern = defs.append("pattern")
-                .attr("id", patternId)
-                .attr("patternUnits", "userSpaceOnUse")
-                .attr("width", patternWidth * repeatCount)
-                .attr("height", h);
+        const useStretch = forceStretch.has(rec.cca3) || stretchOverride;
 
-            for (let i = 0; i < repeatCount; i++) {
-                pattern.append("image")
-                    .attr("href", flagSrc)
-                    .attr("width", patternWidth)
-                    .attr("height", h)
-                    .attr("x", i * patternWidth)
-                    .attr("y", 0)
-                    .attr("preserveAspectRatio", "xMidYMid slice");
-            }
+        function applyStretch(imgSel, b) {
+            imgSel
+                .attr("x", b[0][0])
+                .attr("y", b[0][1])
+                .attr("width", b[1][0] - b[0][0])
+                .attr("height", b[1][1] - b[0][1])
+                .attr("preserveAspectRatio", "none"); // ensures actual stretch
+        }
 
-            mapGroup.append("rect")
-                .attr("x", bounds[0][0])
-                .attr("y", bounds[0][1])
-                .attr("width", w)
-                .attr("height", h)
-                .attr("fill", `url(#${patternId})`)
-                .attr("clip-path", `url(#${clipId})`)
-                .attr("pointer-events", "none");
+        if (flagImg && flagImg.complete && flagImg.naturalWidth) {
+            if (useStretch) applyStretch(img, bounds);
+            else placeImageCover(img, flagImg, bounds);
+            img.transition().duration(600).attr("opacity", 1);
         } else {
-            const img = mapGroup.append("image")
-                .attr("href", flagSrc)
-                .attr("clip-path", `url(#${clipId})`)
-                .attr("style", "pointer-events:none;")
-                .attr("opacity", 0);
-
-            if (flagImg && flagImg.complete && flagImg.naturalWidth) {
-                placeImageCover(img, flagImg, bounds);
+            const tmp = new Image();
+            tmp.onload = function() {
+                if (useStretch) applyStretch(img, bounds);
+                else placeImageCover(img, tmp, bounds);
                 img.transition().duration(600).attr("opacity", 1);
-            } else {
-                const tmp = new Image();
-                tmp.onload = function() {
-                    placeImageCover(img, tmp, bounds);
-                    img.transition().duration(600).attr("opacity", 1);
-                };
-                tmp.onerror = function() { d3.select(img.node()).remove(); };
-                tmp.src = flagSrc;
-            }
+            };
+            tmp.onerror = function() { d3.select(img.node()).remove(); };
+            tmp.src = flagSrc;
         }
     }
 
     function processMultiPolygon(feature, rec) {
+        let corsicaIndex = null;
+
+        if (rec.cca3 === "FRA") {
+            // Detect Corsica polygon by approximate centroid (lon/lat bounds)
+            feature.geometry.coordinates.forEach((poly, idx) => {
+                const lons = poly[0].map(p => p[0]);
+                const lats = poly[0].map(p => p[1]);
+                const cx = d3.mean(lons), cy = d3.mean(lats);
+                if (cx > 8 && cx < 10 && cy > 41 && cy < 43) corsicaIndex = idx;
+            });
+        }
+
         feature.geometry.coordinates.forEach((poly, idx) => {
             const singleFeature = {
                 type: "Feature",
@@ -1156,13 +1149,17 @@ function revealCountry(rec) {
             };
             const clipId = `clip-${rec.cca3}-part${idx}`;
             mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(singleFeature));
-            renderSingleFeature(singleFeature, rec, clipId);
+            const stretchOverride = (rec.cca3 === "FRA" && idx === corsicaIndex);
+            renderSingleFeature(singleFeature, rec, clipId, stretchOverride);
         });
     }
 
-    if (["USA","FRA","NLD","PRT","ESP","TWN","MLT","AUS"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") {
-        processMultiPolygon(feature, rec);
-    } else if (rec.cca3 === "GNQ" && feature.geometry.type === "MultiPolygon") {
+    // ===== FIXED MULTIPOLYGON LOGIC =====
+    if (rec.cca3 === "RUS") {
+        const clipId = `clip-${rec.cca3}`;
+        mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
+        renderSingleFeature(feature, rec, clipId);
+    } else if (["USA","FRA","NLD","PRT","ESP","TWN","MLT","AUS"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") {
         processMultiPolygon(feature, rec);
     } else {
         const clipId = `clip-${rec.cca3 || brataiKey(rec.name)}`;
@@ -1179,6 +1176,7 @@ function revealCountry(rec) {
         .classed("revealed", true)
         .raise();
 }
+
 
 function nextRound(){
    const submitSpan=document.querySelector("#submit-btn span");
