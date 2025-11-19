@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"> 
 <title>Teorainneacha</title>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="https://teorainneacha.vercel.app/icon.png">
 <style>
@@ -20,7 +20,7 @@
    font-size: 24px;
 }
 html, body, * {
-   font-family: 'Outfit', sans-serif !important;
+   font-family: 'Outfit', sans-serif;
 }
 body { font-family:'Outfit', sans-serif; margin:0; padding:0; text-align:center; background:#265788; color:#eee; }
 #splash-screen {
@@ -105,7 +105,8 @@ button:hover { background:#005f99; }
 #flags-options img, #flags-visual img {
    border-radius: 16px !important;
    overflow: hidden;
-   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+   border: white !important;
+  /* why does this not work?!?!?! */
 }
 
 /* Make sure next/end buttons in flags game are visible */
@@ -117,7 +118,7 @@ button:hover { background:#005f99; }
 #flags-start-screen img, #flags-continent-screen img { width:90px; height:90px; margin-bottom:1em; }
 
 /* Force readable font inside Flags screens so buttons show text (not Material Symbols) */
-#flags-start-screen, #flags-continent-screen, #flags-game-screen { font-family: sans-serif !important; }
+#flags-start-screen, #flags-continent-screen, #flags-game-screen { font-family: 'Outfit', sans-serif !important; }
 #flags-start-screen *, #flags-continent-screen *, #flags-game-screen * { font-family: sans-serif !important; font-variation-settings: normal !important; }
 /* Center continent buttons and reduce vertical spacing */
 #flags-continent-buttons { display:flex; flex-direction:column; gap:12px; align-items:center; }
@@ -128,7 +129,7 @@ button:hover { background:#005f99; }
 
 /* fallback text when a flag SVG fails to load */
 #flags-options .flag-fallback { display:none; color:#fff; margin-left:8px; font-size:1rem; }
-#flags-options img { display:block; }
+#flags-options img { display:block; border-radius: 10px; overflow: hidden;}
 #start-screen h1 { margin-bottom:0.5em; }
 #start-screen button {
       margin-top:1em;
@@ -225,7 +226,7 @@ button:hover { background:#005f99; }
   <input id="answer" type="text" placeholder="Type country name" autocomplete="off">
   <div id="autocomplete-list"></div>
   <button id="submit-btn"><span class="material-symbols-rounded" style="font-variation-settings:'FILL' 1;font-size:24px;">arrow_forward_ios</span></button>
-  <button id="pause-btn" title="Pause">&#10073;&#10073;</button>
+  <button id="pause-btn" title="Pause"><span class="material-symbols-rounded" style="font-variation-settings:'FILL' 1;font-size:24px;">pause</span></button>
   <div id="timer">0:00</div>
 </div>
 <svg id="map"></svg>
@@ -286,7 +287,7 @@ button:hover { background:#005f99; }
    <div id="flags-options" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:800px;margin:0 auto;"></div>
    <div style="margin-top:1em;">
       <button id="flags-next-btn" style="display:none;" onclick="nextFlagQuestion()">Next</button>
-      <button onclick="endFlagsGame()">End</button>
+      <button class="end-game-btn" onclick="endFlagsGame()"><span class="material-symbols-rounded" style="font-family: 'Material Symbols Rounded' !important; font-variation-settings:'FILL' 1;font-size:24px;">close</span></button>
    </div>
 </div>
 
@@ -307,10 +308,12 @@ button:hover { background:#005f99; }
   <div id="instructions-content">
    <h2>How to play</h2>
    <h3>Countries mode</h3>
-   <p>Each round you will be prompted for a country. Type the country's name and press Enter or the blue arrow to submit. The country will fade in on the map, then its flag will fade in after a short delay.</p>
+    <p>Each round you will be prompted for a country. Type the country's name and press <b>Enter</b> or the blue arrow to submit. The country will fade in on the map, then its flag will fade in after a short delay.</p>
    <p>You can type <b>skip</b> to skip a country if you don't know the answer. Skipped countries will be revisited at the end of the game.</p>
    <h3>Capitals mode</h3>
-   <p>Each round you will be asked for the capital of a country. Type the capital and submit. Capitals already revealed show as red dots. Skipping works the same as in countries mode.</p>
+   <p>Each round you will be asked for the capital of a country. Type the capital and submit. Capitals already revealed show as red dots. Skipping and submitting works the same as in countries mode.</p>
+    <h3>Flags mode</h3>
+    <p>In <b>Assign Flag to Country</b>, you will be prompted with a country and four flag options. Click on the flag that belongs to that country. In <b>Assign Country to Flag</b> you will be shown a flag and four country option. Click on the Country that has that flag.</p>
    <h3>Autocomplete and forgiving spelling</h3>
    <p>If you type only the start of a country/capital and the autocomplete shows exactly one suggestion, pressing Enter will accept that suggestion. If your input has a small typo (up to two letters different), the game will automatically accept the best match and flash the correct spelling for two seconds.</p>
    <h3>Extreme mode</h3>
@@ -361,6 +364,7 @@ window.addEventListener('DOMContentLoaded', function() {
 
    // Milestones to display during the fake load (percent triggers)
    const milestones = [
+      {pct:3, text: 'Loading Fonts'},
       {pct:6, text: 'Loaded fonts'},
       {pct:18, text: 'Initialized projection (d3)'} ,
       {pct:30, text: 'Loaded country list (restcountries)'},
@@ -381,11 +385,11 @@ window.addEventListener('DOMContentLoaded', function() {
    ];
 
    let pct = 0; let milestoneIndex = 0;
-   const totalDuration = 3200; // ms - visual length of the fake load
+   const totalDuration = 4200; // ms - visual length of the fake load
    const start = Date.now();
 
    // Use an interval to simulate progress with slight random stalls for realism
-   const tickInterval = 70; // ms
+   const tickInterval = 60; // ms
    const interval = setInterval(() => {
       const elapsed = Date.now() - start;
       const t = Math.min(1, elapsed / totalDuration);
@@ -394,7 +398,7 @@ window.addEventListener('DOMContentLoaded', function() {
       // introduce occasional tiny backward stalls/jitter for realism
       if (Math.random() < 0.04) target = Math.max(0, target - Math.floor(Math.random() * 3));
       // slow down near certain ranges to create pauses
-      if (target > 40 && target < 50) target = Math.min(48, target);
+      if (target > 40 && target < 50) target = Math.min(28, target);
       if (target > 64 && target < 70) target = Math.min(66, target);
 
       if (target > pct) pct = target;
@@ -428,20 +432,40 @@ window.addEventListener('DOMContentLoaded', function() {
       }
    }, tickInterval);
 });
-let countriesData=[], features=[], projection, path, svg, mapGroup;
-let round=1, currentContinent="", currentLetter="", currentCountry=null;
-let revealedCountries=new Set(), nameIndex=new Map();
-let skippedCountries=[];
+  
+let countriesData = [];
+let features = [];
+let projection; 
+let path;
+let svg;
+let mapGroup;
+let round = 1;
+let currentContinent = "";
+let currentLetter="";
+let currentCountry = null;
+let revealedCountries = new Set();
+let nameIndex = new Map();
+let skippedCountries = [];
 let lastPromptLetter = null;
-let featureByCCA3=new Map(), featureByName=new Map();
-let wrongGuesses=0, gameMode="Normal", gameType="countries";
-let startTime=null, elapsed=0, timerInterval=null, paused=false;
-const continentOrder=["Europe","Oceania","Americas","Asia","Africa","Antarctic"];
-let noregdip=0;
+let featureByCCA3 = new Map();
+let featureByName = new Map();
+let wrongGuesses = 0;
+let gameMode = "Normal";
+let gameType = "countries";
+let startTime = null;
+let elapsed = 0;
+let timerInterval = null;
+let paused = false;
+const continentOrder =["Europe","Oceania","Americas","Asia","Africa","Antarctic"];
+let noregdip = 0;
 
 // Cities mode data
-let capitalsData=[], capitalsByCountry=new Map(), revealedCapitals=new Set(), capitalDots=[];
-let capitalsIndex=new Map(), capitalsOrder=[];
+let capitalsData = [];
+let capitalsByCountry = new Map();
+let revealedCapitals = new Set();
+let capitalDots = [];
+let capitalsIndex = new Map();
+let capitalsOrder = [];
 
 // Flags game data and state
 let flagsDataByContinent = {};
@@ -546,7 +570,9 @@ async function init(){
    mapGroup=svg.append("g").attr("class","map-content");
 
    svg.call(d3.zoom().scaleExtent([1,4000]).on("zoom",event=>{mapGroup.attr("transform",event.transform);})); 
-
+  
+  
+  
    const rc=await fetch('https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,altSpellings').then(r=>r.json());
    rc.forEach(c=>{
       const cca3=c.cca3||"", cca2=c.cca2||"", common=c.name.common, region=c.region||"Other";
@@ -567,7 +593,9 @@ async function init(){
       rec.aliases.forEach(a=>nameIndex.set(normalizeName(a),rec));
    });
 
-   const topo=await fetch('https://unpkg.com/world-atlas@2/countries-50m.json').then(r=>r.json());
+  let topoJSONLink = 'https://unpkg.com/world-atlas@2/countries-50m.json';
+  
+   const topo=await fetch(topoJSONLink).then(r=>r.json());
    const objKey=Object.keys(topo.objects)[0];
    features=topojson.feature(topo, topo.objects[objKey]).features;
    features.forEach(f=>{
@@ -978,34 +1006,25 @@ function revealCountry(rec) {
     if (revealedCountries.has(rec.name)) return;
     revealedCountries.add(rec.name);
 
-    // Countries that should use stretched placement
     const forceStretch = new Set(["RUS"]);
-
     let feature = getFeature(rec);
 
-    // PATCH: handle missing/odd territories like British Somaliland and Northern Cyprus
     if (!feature) {
-        if (rec.cca3 === "BSC") { // British Somaliland
+        if (rec.cca3 === "BSC") {
             const topoFeature = worldData.objects.countries.geometries.find(d => d.id === 686);
-            if (topoFeature) {
-                feature = {
-                    type: "Feature",
-                    geometry: topoFeature.geometry,
-                    properties: { name: rec.name, iso_a3: rec.cca3 }
-                };
-            }
-        } else if (rec.cca3 === "NCY") { // Northern Cyprus
-            const topoFeature = worldData.objects.countries.geometries.find(d => d.id === 0); // fixed nested .geometries
-            if (topoFeature) {
-                feature = {
-                    type: "Feature",
-                    geometry: topoFeature.geometry,
-                    properties: { name: rec.name, iso_a3: rec.cca3 }
-                };
-            }
+            if (topoFeature) feature = { type: "Feature", geometry: topoFeature.geometry, properties: { name: rec.name, iso_a3: rec.cca3 } };
+        } else if (rec.cca3 === "NCY") {
+            const topoFeature = worldData.objects.countries.geometries.find(d => d.id === 0);
+            if (topoFeature) feature = { type: "Feature", geometry: topoFeature.geometry, properties: { name: rec.name, iso_a3: rec.cca3 } };
         }
-
         if (!feature) return;
+    }
+
+    if (feature.geometry.type === "MultiPolygon") {
+        const polys = feature.geometry.coordinates;
+        const areas = polys.map(poly => d3.geoArea({ type: "Feature", geometry: { type: "Polygon", coordinates: poly } }));
+        const maxIndex = areas.indexOf(Math.max(...areas));
+        if (rec.cca3 === "NLD") feature.geometry.coordinates = [ polys[maxIndex] ];
     }
 
     let flagImg = flagCache.get(rec.cca2);
@@ -1031,12 +1050,7 @@ function revealCountry(rec) {
         if (cca3 === "TUV" || name.toLowerCase().includes('tuvalu')) return "tuvalu";
         if (cca3 === "BSC") return "british-somaliland";
         if (cca3 === "NCY") return "northern-cyprus";
-
-        return name.toLowerCase()
-            .replace(/['’]/g, '')
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-|-$/g, '');
+        return name.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     }
 
     let flagSrc = `https://teorainneacha.vercel.app/bratai/${brataiKey(rec.name, rec.cca3)}.svg`;
@@ -1055,7 +1069,6 @@ function revealCountry(rec) {
         flagCanvas.style.left = '0';
         flagCanvas.style.pointerEvents = 'none';
         document.body.appendChild(flagCanvas);
-
         function resizeFlagCanvas() {
             const svgNode = d3.select('svg').node();
             const width = svgNode ? svgNode.getBoundingClientRect().width : window.innerWidth;
@@ -1065,7 +1078,6 @@ function revealCountry(rec) {
             flagCanvas.style.width = width + 'px';
             flagCanvas.style.height = height + 'px';
         }
-
         window.addEventListener('resize', resizeFlagCanvas);
         resizeFlagCanvas();
     }
@@ -1075,7 +1087,6 @@ function revealCountry(rec) {
         const wBox = bounds[1][0] - bounds[0][0];
         const hBox = bounds[1][1] - bounds[0][1];
         let width, height;
-
         if (flagRatio > (wBox / hBox)) {
             height = hBox;
             width = height * flagRatio;
@@ -1083,99 +1094,38 @@ function revealCountry(rec) {
             width = wBox;
             height = width / flagRatio;
         }
-
-        imgSel
-            .attr("width", width)
-            .attr("height", height)
-            .attr("x", bounds[0][0] - (width - wBox) / 2)
-            .attr("y", bounds[0][1] - (height - hBox) / 2)
-            .attr("preserveAspectRatio", "xMidYMid slice");
+        imgSel.attr("width", width).attr("height", height).attr("x", bounds[0][0] - (width - wBox) / 2).attr("y", bounds[0][1] - (height - hBox) / 2).attr("preserveAspectRatio", "xMidYMid slice");
     }
 
     function renderSingleFeature(feature, rec, clipId, stretchOverride = false) {
         const bounds = path.bounds(feature);
-
-        const img = mapGroup.append("image")
-            .attr("href", flagSrc)
-            .attr("clip-path", `url(#${clipId})`)
-            .attr("style", "pointer-events:none;")
-            .attr("opacity", 0);
-
+        const img = mapGroup.append("image").attr("href", flagSrc).attr("clip-path", `url(#${clipId})`).attr("style", "pointer-events:none;").attr("opacity", 0);
         const useStretch = forceStretch.has(rec.cca3) || stretchOverride;
-
-        function applyStretch(imgSel, b) {
-            imgSel
-                .attr("x", b[0][0])
-                .attr("y", b[0][1])
-                .attr("width", b[1][0] - b[0][0])
-                .attr("height", b[1][1] - b[0][1])
-                .attr("preserveAspectRatio", "none"); // ensures actual stretch
-        }
-
-        if (flagImg && flagImg.complete && flagImg.naturalWidth) {
-            if (useStretch) applyStretch(img, bounds);
-            else placeImageCover(img, flagImg, bounds);
-            img.transition().duration(600).attr("opacity", 1);
-        } else {
-            const tmp = new Image();
-            tmp.onload = function() {
-                if (useStretch) applyStretch(img, bounds);
-                else placeImageCover(img, tmp, bounds);
-                img.transition().duration(600).attr("opacity", 1);
-            };
-            tmp.onerror = function() { d3.select(img.node()).remove(); };
-            tmp.src = flagSrc;
-        }
+        function applyStretch(imgSel, b) { imgSel.attr("x", b[0][0]).attr("y", b[0][1]).attr("width", b[1][0] - b[0][0]).attr("height", b[1][1] - b[0][1]).attr("preserveAspectRatio", "none"); }
+        if (flagImg && flagImg.complete && flagImg.naturalWidth) { if (useStretch) applyStretch(img, bounds); else placeImageCover(img, flagImg, bounds); img.transition().duration(600).attr("opacity", 1); } else { const tmp = new Image(); tmp.onload = function() { if (useStretch) applyStretch(img, bounds); else placeImageCover(img, tmp, bounds); img.transition().duration(600).attr("opacity", 1); }; tmp.onerror = function() { d3.select(img.node()).remove(); }; tmp.src = flagSrc; }
     }
 
     function processMultiPolygon(feature, rec) {
         let corsicaIndex = null;
-
-        if (rec.cca3 === "FRA") {
-            // Detect Corsica polygon by approximate centroid (lon/lat bounds)
-            feature.geometry.coordinates.forEach((poly, idx) => {
-                const lons = poly[0].map(p => p[0]);
-                const lats = poly[0].map(p => p[1]);
-                const cx = d3.mean(lons), cy = d3.mean(lats);
-                if (cx > 8 && cx < 10 && cy > 41 && cy < 43) corsicaIndex = idx;
-            });
-        }
-
-        feature.geometry.coordinates.forEach((poly, idx) => {
-            const singleFeature = {
-                type: "Feature",
-                geometry: { type: "Polygon", coordinates: poly },
-                properties: feature.properties
-            };
-            const clipId = `clip-${rec.cca3}-part${idx}`;
-            mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(singleFeature));
-            const stretchOverride = (rec.cca3 === "FRA" && idx === corsicaIndex);
-            renderSingleFeature(singleFeature, rec, clipId, stretchOverride);
-        });
+        if (rec.cca3 === "FRA") { feature.geometry.coordinates.forEach((poly, idx) => { const lons = poly[0].map(p => p[0]); const lats = poly[0].map(p => p[1]); const cx = d3.mean(lons), cy = d3.mean(lats); if (cx > 8 && cx < 10 && cy > 41 && cy < 43) corsicaIndex = idx; }); }
+        feature.geometry.coordinates.forEach((poly, idx) => { const singleFeature = { type: "Feature", geometry: { type: "Polygon", coordinates: poly }, properties: feature.properties }; const clipId = `clip-${rec.cca3}-part${idx}`; mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(singleFeature)); const stretchOverride = (rec.cca3 === "FRA" && idx === corsicaIndex); renderSingleFeature(singleFeature, rec, clipId, stretchOverride); });
     }
 
-    // ===== FIXED MULTIPOLYGON LOGIC =====
-    if (rec.cca3 === "RUS") {
-        const clipId = `clip-${rec.cca3}`;
-        mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
-        renderSingleFeature(feature, rec, clipId);
-    } else if (["USA","FRA","NLD","PRT","ESP","TWN","MLT","AUS"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") {
-        processMultiPolygon(feature, rec);
-    } else {
-        const clipId = `clip-${rec.cca3 || brataiKey(rec.name)}`;
-        mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
-        renderSingleFeature(feature, rec, clipId);
-    }
+    if (rec.cca3 === "RUS") { const clipId = `clip-${rec.cca3}`; mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature)); renderSingleFeature(feature, rec, clipId); } 
+    else if (["USA","FRA","NLD","PRT","ESP","TWN","MLT","AUS"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") processMultiPolygon(feature, rec); 
+    else { const clipId = `clip-${rec.cca3}`; mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature)); renderSingleFeature(feature, rec, clipId); }
 
     const iso = rec.cca3;
-    mapGroup.selectAll("path.country")
-        .filter(d => {
-            const props = d.properties || {};
-            return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso);
-        })
-        .classed("revealed", true)
-        .raise();
+    const countrySel = mapGroup.selectAll("path.country").filter(d => { const props = d.properties || {}; return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso); });
+
+    countrySel.transition().duration(400).style("fill", "rgb(0,255,0)").style("opacity", 1);
+
+    mapGroup.select(`#flag-${iso}`).transition().delay(350).duration(450).style("opacity", 1);
+
+    countrySel.classed("revealed", true).raise();
 }
+
+
 
 
 function nextRound(){
