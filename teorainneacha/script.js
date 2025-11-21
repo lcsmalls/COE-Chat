@@ -1283,14 +1283,19 @@ document.getElementById("close-results-btn").addEventListener("click", ()=>{ doc
 
 document.addEventListener("keydown", function(e) {
   const answerInput = document.getElementById("answer");
-  // Always pause on 'x' (case-insensitive)
-  if (e.key.toLowerCase() === "") {
-    if (!paused) pauseTimer();
-    e.preventDefault();
-    return;
+  // Always pause on '[' (case-insensitive)
+  if (e.key.toLowerCase() === "[") {
+  e.preventDefault();
+  if (!paused) {
+    pauseTimer();
+  } else {
+    resumeTimer();
   }
-  // If textbox is NOT focused and key is not 'x' or 'Enter', focus it
-  if (document.activeElement !== answerInput && e.key !== "Enter" && e.key.toLowerCase() !== "x") {
+}
+
+  
+  // If textbox is NOT focused and key is not '[' or 'Enter', focus it
+  if (document.activeElement !== answerInput && e.key !== "Enter" && e.key.toLowerCase() !== "[") {
     answerInput.focus();
     e.preventDefault();
   }
