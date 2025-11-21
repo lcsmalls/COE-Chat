@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Projection Selector</title>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://d3js.org/topojson.v3.min.js"></script>
+<script src="https://d3js.org/d3-geo-projection.v4.min.js"></script>
+
+<style>
+  body {
+    margin: 0;
+    background: #111;
+    color: #eee;
+    font-family: sans-serif;
+  }
+  #controls {
+    padding: 1em;
+    background: #222;
+    display: flex;
+    gap: 1em;
+  }
+  #map {
+    width: 100vw;
+    height: 100vh;
+  }
+</style>
+</head>
+<body>
+
+<div id="controls">
+  <label for="proj">Projection:</label>
+  <select id="proj">
+    <option value="grinten">Van Der Grinten</option>
+    <option value="mercator">Mercator</option>
+    <option value="winkel3">Winkel Tripel</option>
+    <option value="equirectangular">Equirectangular</option>
+    <option value="mollweide">Mollweide</option>
+    <option value="equalEarth">Equal Earth</option>
+  </select>
+</div>
+
+<svg id="map"></svg>
+
+<script>
+const width = window.innerWidth;
+const height = window.innerHeight;
+
+const svg = d3.select("#map");
+
+// Add ocean background
+svg.append("rect")
+  .attr("x", 0)
+  .attr("y", 0)
+  .attr("width", width)
+  .attr("height", height)
+  .attr("fill", "#042342");
+
+const g = svg.append("g");
+
+let projection, path, world;
+
+const zoom = d3.zoom()
+  .scaleExtent([0.5, 4000])
+  .on("zoom", (event) => {
+    g.attr("transform", event.transform);
+  });
+
+svg.call(zoom);
+
+function setProjection(type) {
+  switch(type) {
+    case "grinten": projection = d3.geoVanDerGrinten(); break;
+    case "mercator": projection = d3.geoMercator(); break;
+    case "winkel3": projection = d3.geoWinkel3(); break;
+    case "equirectangular": projection = d3.geoEquirectangular(); break;
+    case "mollweide": projection = d3.geoMollweide(); break;
+    case "equalEarth": projection = d3.geoEqualEarth(); break;
+  }
+
+  projection.fitSize([width, height],
+    topojson.feature(world, world.objects.countries)
+  );
+
+  path = d3.geoPath(projection);
+
+  draw();
+}
+
+function draw() {
+  g.selectAll("*").remove();
+
+  g.selectAll("path")
+    .data(topojson.feature(world, world.objects.countries).features)
+    .enter()
+    .append("path")
+    .attr("d", path)
+    .attr("fill", "#12385d")
+    .attr("stroke", "#95abc2")
+    .attr("stroke-width", 0.1);
+}
+
+d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json")
+  .then(data => {
+    world = data;
+    setProjection("grinten");
+  });
+
+document.getElementById("proj")
+  .addEventListener("change", e => {
+    setProjection(e.target.value);
+    svg.call(zoom.transform, d3.zoomIdentity);
+  });
+</script>
+
+</body>
+</html>
