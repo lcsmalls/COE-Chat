@@ -284,15 +284,15 @@ function showStartScreen(type){
    gameType=type;
    document.getElementById("main-menu").style.display="none";
    document.getElementById("start-screen").style.display="flex";
+   
    document.getElementById("start-desc").textContent = type==="countries"
       ? "Select a difficulty for Countries mode:" : "Select a difficulty for Cities mode:";
-   document.getElementById("easy-btn")
-   document.getElementById("medium-btn")
-   document.getElementById("normal-btn")
-   document.getElementById("hard-btn")
+   document.getElementById("easy-btn");
+   document.getElementById("medium-btn");
+   document.getElementById("normal-btn");
+   document.getElementById("hard-btn");
    document.getElementById("extreme-btn")
-
-    
+   
 }
 
 function showInstructions(){ document.getElementById("main-menu").style.display="none"; document.getElementById("instructions-overlay").style.display="flex"; }
@@ -310,6 +310,7 @@ function showFlagsStart(){
 }
 function backToMainFromFlags(){
    document.getElementById('flags-start-screen').style.display='none';
+  
    document.getElementById('main-menu').style.display='flex';
    // restore map and controls
    document.getElementById('map').style.display = '';
@@ -508,7 +509,7 @@ function handleFlagSelection(btn, opt, correctKey, mode){
          const pickedPretty = capitalizeWords(pickedKeyNorm.replace(/-/g,' '));
          showMessage(`The answer you picked is the flag of ${pickedPretty}. Correct answer: ${correctPretty}`, 'error');
       }
-      document.getElementById('flags-next-btn').style.display='';
+      document.getElementById('flags-next-btn').style.display='inline-block';
       flagsWrong = (typeof flagsWrong === 'number') ? flagsWrong + 1 : 1;
    }
    flagsQuestionIndex++;
@@ -518,8 +519,7 @@ function handleFlagSelection(btn, opt, correctKey, mode){
 function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
 function sample(arr,n){ const copy=arr.slice(); shuffle(copy); return copy.slice(0,n); }
 
-
-document.getElementById("startscreen-mainmenu-btn").addEventListener("click", () => {
+document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
   clearInterval(timerInterval);
   paused = false;
   elapsed = 0;
@@ -543,8 +543,8 @@ document.getElementById("startscreen-mainmenu-btn").addEventListener("click", ()
   document.getElementById("start-screen").style.display = "none";
   document.getElementById("main-menu").style.display = "flex";
 });
-
-document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
+  
+  document.getElementById("startscreen-mainmenu-btn").addEventListener("click", () => {
   clearInterval(timerInterval);
   paused = false;
   elapsed = 0;
@@ -1284,13 +1284,13 @@ document.getElementById("close-results-btn").addEventListener("click", ()=>{ doc
 document.addEventListener("keydown", function(e) {
   const answerInput = document.getElementById("answer");
   // Always pause on 'x' (case-insensitive)
-  if (e.key.toLowerCase() === "[") {
+  if (e.key.toLowerCase() === "") {
     if (!paused) pauseTimer();
     e.preventDefault();
     return;
-  } else resumeTimer();
+  }
   // If textbox is NOT focused and key is not 'x' or 'Enter', focus it
-  if (document.activeElement !== answerInput && e.key !== "Enter" && e.key.toLowerCase() !== "") {
+  if (document.activeElement !== answerInput && e.key !== "Enter" && e.key.toLowerCase() !== "x") {
     answerInput.focus();
     e.preventDefault();
   }
