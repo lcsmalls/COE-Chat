@@ -127,20 +127,39 @@ let flagsCurrentQuestion = null;
 
 // Improved manual mapping for problematic countries
 const manualFeatureMap={
-   northmacedonia:"MKD", southsudan:"SSD", democraticrepublicofthecongo:"COD",
-   centralafricanrepublic:"CAF", republicofthecongo:"COG", unitedstates:"USA",
-   stvincentandthegrenadines:"VCT", bosniaandherzegovina:"BIH", puertorico:"PRI",
-   papuanewguinea:"PNG", libya:"LBY", dominicanrepublic:"DOM",
-   "sãotoméandpríncipe":"STP", "sao tome and principe":"STP", "sao tome":"STP",
-   "são tomé":"STP", "são tomé e príncipe":"STP", "sao tome e principe":"STP",
-   svalbard:"SJM", "svalbardandjanmayen":"SJM", "svalbard and jan mayen":"SJM", "janmayen":"SJM", "jan mayen":"SJM",
-   "ivorycoast":"CIV", "cotedivoire":"CIV", "capeverde":"CPV",
-   "timorleste":"TLS", "easttimor":"TLS", "vaticancity":"VAT", "holysee":"VAT",
-   "eswatini":"SWZ", "swaziland":"SWZ", "burma":"MMR", "myanmar":"MMR",
-   "palestine":"PSE", "palestinianterritory":"PSE", "palestinian territories":"PSE",
+   northmacedonia:"MKD", 
+   southsudan:"SSD", 
+   democraticrepublicofthecongo:"COD",
+   centralafricanrepublic:"CAF", 
+   republicofthecongo:"COG",
+   unitedstates:"USA",
+   stvincentandthegrenadines:"VCT", 
+   bosniaandherzegovina:"BIH", 
+   puertorico:"PRI",
+   papuanewguinea:"PNG", 
+   libya:"LBY", 
+   dominicanrepublic:"DOM",
+   "sãotoméandpríncipe":"STP", 
+   "sao tome and principe":"STP", 
+   "sao tome":"STP",
+   "são tomé":"STP", 
+   "são tomé e príncipe":"STP", 
+   "sao tome e principe":"STP",
+   svalbard:"SJM", 
+   "svalbardandjanmayen":"SJM", 
+   "svalbard and jan mayen":"SJM", 
+   "janmayen":"SJM", 
+   "jan mayen":"SJM",
+   "ivorycoast":"CIV", 
+   "cotedivoire":"CIV", 
+   "capeverde":"CPV",
    "equatorialguinea":"GNQ",
-   "northerncyprus":"CYN", "turkishcyprus":"CYN", "somaliland":"SOL", "britishsomaliland":"SOL",
-   "faroeislands":"FRO", "faroe islands":"FRO", "faroes":"FRO",
+   "northerncyprus":"CYN", 
+   "turkishcyprus":"CYN", 
+   "somaliland":"SOL", 
+   "faroeislands":"FRO", 
+   "faroe islands":"FRO", 
+   "faroes":"FRO",
    "alandislands":"ALA", "ålandislands":"ALA", "aland":"ALA", "åland":"ALA"
 };
 
@@ -211,7 +230,7 @@ async function init(){
    svg.attr("width", width).attr("height", height);
 
     // Use Van der Grinten projection
-    projection = d3.geoVanDerGrinten()
+    projection = d3.geoWinkel3()
        .scale(Math.min(width/6, height/3.2))
        .translate([width/2, height/2])
        .precision(0.1);
