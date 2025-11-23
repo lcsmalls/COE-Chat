@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Projection Selector</title>
+<title>D3 Projection Selector</title>
 
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://d3js.org/topojson.v3.min.js"></script>
@@ -20,10 +20,17 @@
     background: #222;
     display: flex;
     gap: 1em;
+    align-items: center;
   }
   #map {
     width: 100vw;
-    height: 100vh;
+    height: calc(100vh - 60px);
+  }
+  select {
+    background: #333;
+    color: #eee;
+    border: 1px solid #555;
+    padding: 0.3em;
   }
 </style>
 </head>
@@ -31,28 +38,64 @@
 
 <div id="controls">
   <label for="proj">Projection:</label>
-  <select id="proj">
-    <option value="grinten">Van Der Grinten</option>
-    <option value="mercator">Mercator</option>
-    <option value="winkel3">Winkel Tripel</option>
-    <option value="equirectangular">Equirectangular</option>
-    <option value="mollweide">Mollweide</option>
-    <option value="equalEarth">Equal Earth</option>
-  </select>
+  <select id="proj"></select>
 </div>
 
 <svg id="map"></svg>
 
 <script>
+// --------------------------------------------
+// List of real projections that exist in D3 v7
+// and d3-geo-projection v4.
+// --------------------------------------------
+const projectionList = [
+  // Core d3-geo
+  "geoMercator", "geoEquirectangular", "geoEqualEarth",
+  "geoNaturalEarth1", "geoTransverseMercator",
+  "geoOrthographic", "geoAzimuthalEqualArea",
+  "geoAzimuthalEquidistant", "geoStereographic",
+  "geoGnomonic",
+
+  // d3-geo-projection
+  "geoAitoff", "geoArmadillo", "geoAugust", "geoBaker",
+  "geoBerghaus", "geoBoggs", "geoBonne", "geoBraun",
+  "geoCollignon", "geoCraig", "geoCraster",
+  "geoCylindricalEqualArea", "geoCylindricalStereographic",
+  "geoEckert1", "geoEckert2", "geoEckert3", "geoEckert4",
+  "geoEckert5", "geoEckert6", "geoEisenlohr", "geoFahey",
+  "geoFoucaut", "geoFoucautSinusoidal", "geoGilbert",
+  "geoGingery", "geoHammer", "geoHill", "geoHomolosine",
+  "geoHufnagel", "geoKavrayskiy7", "geoLagrange",
+  "geoLarrivee", "geoLaskowski", "geoLoximuthal",
+  "geoMiller", "geoModifiedStereographic",
+  "geoMollweide", "geoMtFlatPolarParabolic",
+  "geoMtFlatPolarQuartic", "geoMtFlatPolarSinusoidal",
+  "geoNaturalEarth2", "geoNellHammer", "geoPolyconic",
+  "geoRectangularPolyconic", "geoRobinson",
+  "geoSinusoidal", "geoSinuMollweide", "geoTimes",
+  "geoVanDerGrinten", "geoVanDerGrinten2",
+  "geoVanDerGrinten3", "geoVanDerGrinten4",
+  "geoWagner", "geoWagner4", "geoWagner6",
+  "geoWagner7", "geoWinkel1", "geoWinkel2", "geoWinkel3"
+];
+
+// Populate dropdown (VALUE stays "geoX", TEXT removes "geo")
+const sel = document.getElementById("proj");
+projectionList.forEach(name => {
+  const opt = document.createElement("option");
+  opt.value = name;
+  opt.textContent = name.replace(/^geo/, "");
+  sel.appendChild(opt);
+});
+
+// SVG setup
 const width = window.innerWidth;
-const height = window.innerHeight;
+const height = window.innerHeight - 60;
 
 const svg = d3.select("#map");
 
-// Add ocean background
+// Background
 svg.append("rect")
-  .attr("x", 0)
-  .attr("y", 0)
   .attr("width", width)
   .attr("height", height)
   .attr("fill", "#042342");
@@ -61,25 +104,22 @@ const g = svg.append("g");
 
 let projection, path, world;
 
+// Zoom
 const zoom = d3.zoom()
-  .scaleExtent([0.5, 4000])
-  .on("zoom", (event) => {
-    g.attr("transform", event.transform);
-  });
+  .scaleExtent([0.5, 5000])
+  .on("zoom", (event) => g.attr("transform", event.transform));
 
 svg.call(zoom);
 
+// Set projection dynamically
 function setProjection(type) {
-  switch(type) {
-    case "grinten": projection = d3.geoVanDerGrinten(); break;
-    case "mercator": projection = d3.geoMercator(); break;
-    case "winkel3": projection = d3.geoWinkel3(); break;
-    case "equirectangular": projection = d3.geoEquirectangular(); break;
-    case "mollweide": projection = d3.geoMollweide(); break;
-    case "equalEarth": projection = d3.geoEqualEarth(); break;
-  }
+  const ctor = d3[type];
+  if (!ctor) return;
 
-  projection.fitSize([width, height],
+  projection = ctor();
+
+  projection.fitSize(
+    [width, height],
     topojson.feature(world, world.objects.countries)
   );
 
@@ -104,14 +144,13 @@ function draw() {
 d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json")
   .then(data => {
     world = data;
-    setProjection("grinten");
+    setProjection("geoVanDerGrinten");
   });
 
-document.getElementById("proj")
-  .addEventListener("change", e => {
-    setProjection(e.target.value);
-    svg.call(zoom.transform, d3.zoomIdentity);
-  });
+sel.addEventListener("change", e => {
+  setProjection(e.target.value);
+  svg.call(zoom.transform, d3.zoomIdentity);
+});
 </script>
 
 </body>
