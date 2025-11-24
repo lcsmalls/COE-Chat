@@ -14,7 +14,7 @@
 html, body, * {
    font-family: 'Outfit', sans-serif;
 }
-body { font-family:'Outfit', sans-serif; margin:0; padding:0; text-align:center; background:#265788; color:#eee; }
+body { font-family:'Outfit', sans-serif; margin:0; padding:0; text-align:center; background:#007acc; color:#eee; }
 #splash-screen {
    position:fixed; top:0; left:0; width:100vw; height:100vh;
    background:#000; z-index:5000; display:flex; align-items:center; justify-content:center;
@@ -264,7 +264,7 @@ margin-left: 2em;}
 }
 /* Splash progress bar */
 #splash-progress { width: 320px; height: 8px; background: rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; margin-top: 320px; position: absolute; left:50%; transform: translateX(-50%); bottom: 8%; }
-#splash-progress-inner { width: 0%; height: 100%; background: linear-gradient(90deg,#4fc3f7,#81d4fa); border-radius:8px; transition: width 120ms linear; }
+#splash-progress-inner { width: 0%; height: 100%; background: #007acc; border-radius:8px; transition: width 120ms linear; }
 /* Splash meta: percent and current status line */
 #splash-meta { position: absolute; left:50%; transform: translateX(-50%); bottom: 5%; width: 480px; max-width:90%; color: rgba(255,255,255,0.95); font-size:14px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
 #splash-percent { font-weight:700; min-width:48px; text-align:left; }
