@@ -51,13 +51,11 @@ button:hover { background:#005f99; }
  z-index:3000; color:#fff;
   text-align: left;
   padding-top: 2.5em;
-
 }
 #main-menu-version {
    position:absolute; left:16px; bottom:12px; font-size:1.1em; color:#bbb; opacity:0.8;
    font-family:'Outfit',sans-serif;
    letter-spacing:0.04em;
-
 }
 #main-menu button {
    margin:10px; padding:1em; font-size:1.5em;
@@ -67,12 +65,10 @@ button:hover { background:#005f99; }
   justify-content: left;
   width: 250px
 }
-
 #main-menu button:hover {
   background: #007acc;
   font-style: italic;
 }
-
 #main-menu button:active {
   background: white;
   color: black;
@@ -81,12 +77,10 @@ button:hover { background:#005f99; }
 #pause-btn { background:#ff9800; }
 #pause-btn:hover { background:#cc7a00; }
 #pause-btn { position: relative; z-index: 2300; pointer-events: auto; }
-
 #close-results-btn:active, #pause-mainmenu-btn:active, #play-again-btn:active {
   background: white !important;
   color: black !important;
 }
-
 #pause-overlay, #results-screen {
        position:fixed; top:0; left:0; width:100%; height:100%;
    background: linear-gradient(to right, black, rgba(0, 0, 0, 0)); display:flex; flex-direction:column;
@@ -95,7 +89,6 @@ button:hover { background:#005f99; }
   padding-top: 2.5em;
   display: none;
 }
-
 #start-screen, #instructions-overlay, #credits-overlay, #flags-start-screen, #flags-continent-screen {
      position:fixed; top:0; left:0; width:100%; height:100%;
    background: linear-gradient(to right, black, #007acc); display:flex; flex-direction:column;
@@ -104,14 +97,12 @@ button:hover { background:#005f99; }
   padding-top: 2.5em;
   display: none;
 }
-
 #flags-game-screen {
   justify-content: center;
   background:#265788;
   margin-top: 0px !important;
   margin-bottom: 0px !important;
 }
-
 #pause-overlay button {
      margin:5px; padding:1em; font-size:1.5em;
    border:none; border-radius:25px; cursor:pointer;
@@ -121,17 +112,14 @@ button:hover { background:#005f99; }
   width: 250px;
 margin-left: 10px;
 }
-
 #pause-overlay button:hover {
   background: #007acc;
   font-style: italic;
 }
-
 #pause-overlay button:active {
   background: white;
   color: black;
 }
-
 #start-screen button, #results-screen button, #instructions-overlay button, #credits-overlay button, #flags-continent-screen button, #flags-game-screen button {
      margin:5px; padding:1em; font-size:1.5em;
    border:none; border-radius:25px; cursor:pointer;
@@ -141,7 +129,6 @@ margin-left: 10px;
   width: 250px;
 margin-left: 10px;
 }
-
 #flags-start-screen button {
        margin:5px; padding:1em; font-size:1.5em;
    border:none; border-radius:25px; cursor:pointer;
@@ -151,23 +138,18 @@ margin-left: 10px;
   width: 300px;
 margin-left: 10px;
 }
-
 #start-screen button:hover, #results-screen button:hover, #instructions-overlay button:hover, #credits-overlay button:hover, #flags-start-screen button:hover, #flags-continent-screen button:hover, #flags-game-screen button:hover {
   background: #007acc;
   font-style: italic;
 }
-
 #start-screen button:hover {
   background: #007acc;
   font-style: italic;
 }
-
 #start-screen button:active {
   background: white;
   color: black;
 }
-
-
 /* Flags game option buttons: rectangular, override global circular button base */
 #flags-options button {
    width: auto !important;
@@ -193,33 +175,27 @@ margin-left: 10px;
   margin-left:25em;
   /* why does this not work?!?!?! */
 }
-
 #results-text {
   width: max-content;
   text-align: center;
 }
-
 #end-game-btn {
   width: 100px !important;
   padding-top: 20px !important;
 }
-
 /* Make sure next/end buttons in flags game are visible */
 #flags-next-btn { margin-right:8px; background: none !important; }
 #flags-next-btn:hover {
   background: #007acc !important;
 }
-
 #end-game-btn:active, #flags-next-btn:active {
   background: white !important;
   color: black !important;
 }
-
 #start-screen img{ width:200px; height:200px; margin-bottom:1em; }
 #main-menu img{ width:200px!important; height:200px!important; margin-bottom:1em; }
-#flags-start-screen img, #flags-continent-screen img { width:200px; height:200px; margin-bottom:1em; 
+#flags-start-screen img, #flags-continent-screen img { width:200px; height:200px; margin-bottom:1em;
 margin-left: 2em;}
-
 /* Force readable font inside Flags screens so buttons show text (not Material Symbols) */
 #flags-start-screen, #flags-continent-screen, #flags-game-screen { font-family: 'Outfit', sans-serif !important; }
 #flags-start-screen *, #flags-continent-screen *, #flags-game-screen * { font-family: sans-serif !important; font-variation-settings: normal !important; }
@@ -229,7 +205,6 @@ margin-left: 2em;}
 /* slightly smaller font and reduced gap for tighter vertical spacing */
 #flags-continent-buttons { gap:8px; }
 #flags-continent-buttons button { font-size:1.05rem; font-family: 'Outfit', sans-serif !important; }
-
 /* fallback text when a flag SVG fails to load */
 #flags-options .flag-fallback { display:none; color:#fff; margin-left:8px; font-size:1rem; }
 #flags-options img { display:block; border-radius: 10px; overflow: hidden;}
@@ -274,7 +249,6 @@ margin-left: 2em;}
 @media (max-height:700px){
   #instructions-content, #credits-content { max-height:70vh; }
 }
-
 /* Make the flags pause button match the main pause button style */
 #flags-pause-btn {
    width:40px; height:40px; border-radius:50%; border:none; background:#ff9800; color:#fff; cursor:pointer;
@@ -291,7 +265,6 @@ margin-left: 2em;}
 /* Splash progress bar */
 #splash-progress { width: 320px; height: 8px; background: rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; margin-top: 320px; position: absolute; left:50%; transform: translateX(-50%); bottom: 8%; }
 #splash-progress-inner { width: 0%; height: 100%; background: linear-gradient(90deg,#4fc3f7,#81d4fa); border-radius:8px; transition: width 120ms linear; }
-
 /* Splash meta: percent and current status line */
 #splash-meta { position: absolute; left:50%; transform: translateX(-50%); bottom: 5%; width: 480px; max-width:90%; color: rgba(255,255,255,0.95); font-size:14px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
 #splash-percent { font-weight:700; min-width:48px; text-align:left; }
