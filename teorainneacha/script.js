@@ -6,11 +6,9 @@ window.addEventListener('DOMContentLoaded', function() {
    // percent and status elements (created in markup)
    const percentEl = document.getElementById('splash-percent');
    const statusEl = document.getElementById('splash-status');
-
    splash.style.opacity = '1';
    logo.style.opacity = '0';
    setTimeout(() => { logo.style.opacity = '1'; }, 300);
-
    // Milestones to display during the fake load (percent triggers)
    const milestones = [
       {pct:3, text: 'Loading Fonts'},
@@ -32,11 +30,9 @@ window.addEventListener('DOMContentLoaded', function() {
       {pct:99, text: 'Finalising...'},
       {pct:100, text: 'Ready'}
    ];
-
    let pct = 0; let milestoneIndex = 0;
    const totalDuration = 4200; // ms - visual length of the fake load
    const start = Date.now();
-
    // Use an interval to simulate progress with slight random stalls for realism
    const tickInterval = 60; // ms
    const interval = setInterval(() => {
@@ -49,21 +45,17 @@ window.addEventListener('DOMContentLoaded', function() {
       // slow down near certain ranges to create pauses
       if (target > 40 && target < 50) target = Math.min(28, target);
       if (target > 64 && target < 70) target = Math.min(66, target);
-
       if (target > pct) pct = target;
       if (pct > 100) pct = 100;
-
       // update UI
       progressInner.style.width = pct + '%';
       if (percentEl) percentEl.textContent = pct + '%';
-
       // milestone messages
       while (milestoneIndex < milestones.length && pct >= milestones[milestoneIndex].pct) {
          const m = milestones[milestoneIndex];
          if (statusEl) statusEl.textContent = m.text;
          milestoneIndex++;
       }
-
       // finish
       if (pct >= 100 || elapsed > totalDuration + 800) {
          clearInterval(interval);
@@ -81,10 +73,9 @@ window.addEventListener('DOMContentLoaded', function() {
       }
    }, tickInterval);
 });
-  
 let countriesData = [];
 let features = [];
-let projection; 
+let projection;
 let path;
 let svg;
 let mapGroup;
@@ -107,7 +98,6 @@ let timerInterval = null;
 let paused = false;
 const continentOrder =["Europe","Oceania","Americas","Asia","Africa","Antarctic"];
 let noregdip = 0;
-
 // Cities mode data
 let capitalsData = [];
 let capitalsByCountry = new Map();
@@ -115,7 +105,6 @@ let revealedCapitals = new Set();
 let capitalDots = [];
 let capitalsIndex = new Map();
 let capitalsOrder = [];
-
 // Flags game data and state
 let flagsDataByContinent = {};
 let flagsAllList = [];
@@ -124,45 +113,43 @@ let flagsContinent = 'all';
 let flagsQuestionIndex = 0;
 let flagsQuestionList = [];
 let flagsCurrentQuestion = null;
-
 // Improved manual mapping for problematic countries
 const manualFeatureMap={
-   northmacedonia:"MKD", 
-   southsudan:"SSD", 
+   northmacedonia:"MKD",
+   southsudan:"SSD",
    democraticrepublicofthecongo:"COD",
-   centralafricanrepublic:"CAF", 
+   centralafricanrepublic:"CAF",
    republicofthecongo:"COG",
    unitedstates:"USA",
-   stvincentandthegrenadines:"VCT", 
-   bosniaandherzegovina:"BIH", 
+   stvincentandthegrenadines:"VCT",
+   bosniaandherzegovina:"BIH",
    puertorico:"PRI",
-   papuanewguinea:"PNG", 
-   libya:"LBY", 
+   papuanewguinea:"PNG",
+   libya:"LBY",
    dominicanrepublic:"DOM",
-   "sãotoméandpríncipe":"STP", 
-   "sao tome and principe":"STP", 
+   "sãotoméandpríncipe":"STP",
+   "sao tome and principe":"STP",
    "sao tome":"STP",
-   "são tomé":"STP", 
-   "são tomé e príncipe":"STP", 
+   "são tomé":"STP",
+   "são tomé e príncipe":"STP",
    "sao tome e principe":"STP",
-   svalbard:"SJM", 
-   "svalbardandjanmayen":"SJM", 
-   "svalbard and jan mayen":"SJM", 
-   "janmayen":"SJM", 
+   svalbard:"SJM",
+   "svalbardandjanmayen":"SJM",
+   "svalbard and jan mayen":"SJM",
+   "janmayen":"SJM",
    "jan mayen":"SJM",
-   "ivorycoast":"CIV", 
-   "cotedivoire":"CIV", 
+   "ivorycoast":"CIV",
+   "cotedivoire":"CIV",
    "capeverde":"CPV",
    "equatorialguinea":"GNQ",
-   "northerncyprus":"CYN", 
-   "turkishcyprus":"CYN", 
-   "somaliland":"SOL", 
-   "faroeislands":"FRO", 
-   "faroe islands":"FRO", 
+   "northerncyprus":"CYN",
+   "turkishcyprus":"CYN",
+   "somaliland":"SOL",
+   "faroeislands":"FRO",
+   "faroe islands":"FRO",
    "faroes":"FRO",
    "alandislands":"ALA", "ålandislands":"ALA", "aland":"ALA", "åland":"ALA"
 };
-
 // TopoJSON id mapping for problematic countries
 const topoIdMap = {
    "COD":"180",
@@ -175,10 +162,7 @@ const topoIdMap = {
    "FRO":"234", // Faroe Islands (ISO 3166-1 numeric: 234)
    "ALA":"248"  // Åland Islands (ISO 3166-1 numeric: 248)
 }
-
-
 function normalizeName(s){ return (s||"").toLowerCase().replace(/[^a-z]+/g,''); }
-
 function showMessage(text, icon='info'){
    const modal = document.getElementById("message-modal");
    modal.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${text}</span>`;
@@ -202,7 +186,6 @@ function showMessage(text, icon='info'){
       setTimeout(()=>{ modal.style.display = "none"; modal.setAttribute('aria-hidden','true'); modal.style.background = 'rgba(20,20,20,0.98)'; }, 200);
    }, duration);
 }
-
 function levenshtein(a,b){
   a = a||''; b = b||'';
   const n=a.length, m=b.length;
@@ -222,13 +205,11 @@ function levenshtein(a,b){
   }
   return prev[m];
 }
-
 async function init(){
    svg=d3.select("#map");
    const width = window.innerWidth;
    const height = window.innerHeight * 0.7;
    svg.attr("width", width).attr("height", height);
-
     // Use Van der Grinten projection
     projection = d3.geoWinkel3()
        .scale(Math.min(width/6, height/3.2))
@@ -236,11 +217,7 @@ async function init(){
        .precision(0.1);
     path = d3.geoPath().projection(projection);
    mapGroup=svg.append("g").attr("class","map-content");
-
-   svg.call(d3.zoom().scaleExtent([1,4000]).on("zoom",event=>{mapGroup.attr("transform",event.transform);})); 
-  
-  
-  
+   svg.call(d3.zoom().scaleExtent([1,4000]).on("zoom",event=>{mapGroup.attr("transform",event.transform);}));
    const rc=await fetch('https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,altSpellings').then(r=>r.json());
    rc.forEach(c=>{
       const cca3=c.cca3||"", cca2=c.cca2||"", common=c.name.common, region=c.region||"Other";
@@ -260,9 +237,7 @@ async function init(){
       countriesData.push(rec);
       rec.aliases.forEach(a=>nameIndex.set(normalizeName(a),rec));
    });
-
   let topoJSONLink = 'https://unpkg.com/world-atlas@2/countries-50m.json';
-  
    const topo=await fetch(topoJSONLink).then(r=>r.json());
    const objKey=Object.keys(topo.objects)[0];
    features=topojson.feature(topo, topo.objects[objKey]).features;
@@ -273,13 +248,10 @@ async function init(){
       if(iso) featureByCCA3.set(iso,f);
       if(pname) featureByName.set(normalizeName(pname),f);
    });
-
    projection.fitSize([width, height], {type: "FeatureCollection", features: features});
    mapGroup.selectAll("path").data(features).join("path").attr("d",path).attr("class","country");
-   
    document.getElementById("main-menu").style.display="flex";
    document.getElementById("start-screen").style.display="none";
-
    const capitalsRaw=await fetch('https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,capital,capitalInfo').then(r=>r.json());
    capitalsData=[];
    capitalsByCountry.clear();
@@ -298,12 +270,10 @@ async function init(){
       capitalsData.filter(c=>c.region===cont).sort((a,b)=>a.country.localeCompare(b.country))
    );
 }
-
 function showStartScreen(type){
    gameType=type;
    document.getElementById("main-menu").style.display="none";
    document.getElementById("start-screen").style.display="flex";
-   
    document.getElementById("start-desc").textContent = type==="countries"
       ? "Select a difficulty for Countries mode:" : "Select a difficulty for Cities mode:";
    document.getElementById("easy-btn");
@@ -311,14 +281,11 @@ function showStartScreen(type){
    document.getElementById("normal-btn");
    document.getElementById("hard-btn");
    document.getElementById("extreme-btn")
-   
 }
-
 function showInstructions(){ document.getElementById("main-menu").style.display="none"; document.getElementById("instructions-overlay").style.display="flex"; }
 function closeInstructions(){ document.getElementById("instructions-overlay").style.display="none"; document.getElementById("main-menu").style.display="flex"; }
 function showCredits(){ document.getElementById("main-menu").style.display="none"; document.getElementById("credits-overlay").style.display="flex"; }
 function closeCredits(){ document.getElementById("credits-overlay").style.display="none"; document.getElementById("main-menu").style.display="flex"; }
-
 // Flags mode UI helpers
 function showFlagsStart(){
    document.getElementById('main-menu').style.display='none';
@@ -329,14 +296,12 @@ function showFlagsStart(){
 }
 function backToMainFromFlags(){
    document.getElementById('flags-start-screen').style.display='none';
-  
    document.getElementById('main-menu').style.display='flex';
    // restore map and controls
    document.getElementById('map').style.display = '';
    document.getElementById('controls').style.display = '';
 }
 function backToFlagsStart(){ document.getElementById('flags-continent-screen').style.display='none'; document.getElementById('flags-start-screen').style.display='flex'; }
-
 function showFlagsContinentSelect(mode){
    flagsGameMode = mode;
    document.getElementById('flags-start-screen').style.display='none';
@@ -353,7 +318,6 @@ function showFlagsContinentSelect(mode){
       container.appendChild(btn);
    });
 }
-
 // Unicode-aware capitalize: handles characters like Å correctly
 function capitalizeWords(s){
    if(!s) return '';
@@ -362,7 +326,6 @@ function capitalizeWords(s){
       return w.charAt(0).toLocaleUpperCase() + w.slice(1).toLocaleLowerCase();
    }).join(' ');
 }
-
 async function ensureFlagsData(){
    if(flagsAllList.length) return;
    try{
@@ -372,7 +335,6 @@ async function ensureFlagsData(){
       flagsAllList = Object.values(json).flat();
    }catch(err){ console.error('Failed to load flags dataset',err); showMessage('Failed to load flags data','error'); }
 }
-
 function startFlagsGame(continent){
    flagsContinent = continent;
    document.getElementById('flags-continent-screen').style.display='none';
@@ -398,7 +360,6 @@ function startFlagsGame(continent){
       nextFlagQuestion();
    });
 }
-
 function endFlagsGame(){
    document.getElementById('flags-game-screen').style.display='none';
    document.getElementById('main-menu').style.display='flex';
@@ -419,7 +380,6 @@ function endFlagsGame(){
       <div>Accuracy: ${percent}%</div>`;
    document.getElementById('results-screen').style.display='flex';
 }
-
 function nextFlagQuestion(){
    document.getElementById('flags-next-btn').style.display='none';
    document.getElementById('flags-options').innerHTML='';
@@ -457,7 +417,6 @@ function nextFlagQuestion(){
       renderFlagOptions(options, 'image', key);
    }
 }
-
 function renderFlagOptions(options, mode, correctKey){
    const container = document.getElementById('flags-options');
    options.forEach(opt=>{
@@ -486,7 +445,6 @@ function renderFlagOptions(options, mode, correctKey){
       container.appendChild(btn);
    });
 }
-
 function handleFlagSelection(btn, opt, correctKey, mode){
    // If game is paused (either global or flags), ignore input
    if(paused || flagsPaused) return;
@@ -533,11 +491,9 @@ function handleFlagSelection(btn, opt, correctKey, mode){
    }
    flagsQuestionIndex++;
 }
-
 // small helpers
 function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
 function sample(arr,n){ const copy=arr.slice(); shuffle(copy); return copy.slice(0,n); }
-
 document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
   clearInterval(timerInterval);
   paused = false;
@@ -562,7 +518,6 @@ document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
   document.getElementById("start-screen").style.display = "none";
   document.getElementById("main-menu").style.display = "flex";
 });
-  
   document.getElementById("startscreen-mainmenu-btn").addEventListener("click", () => {
   clearInterval(timerInterval);
   paused = false;
@@ -587,7 +542,6 @@ document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
   document.getElementById("start-screen").style.display = "none";
   document.getElementById("main-menu").style.display = "flex";
 });
-
 document.getElementById("results-mainmenu-btn").addEventListener("click", () => {
   clearInterval(timerInterval);
   paused = false;
@@ -606,7 +560,6 @@ document.getElementById("results-mainmenu-btn").addEventListener("click", () => 
   document.getElementById("start-screen").style.display = "none";
   document.getElementById("main-menu").style.display = "flex";
 });
-
 function startGame(mode){
    gameMode=mode;
    document.getElementById("start-screen").style.display="none";
@@ -629,26 +582,20 @@ function startGame(mode){
       startTimer(); nextCitiesRound();
    }
 }
-
 function getFeature(rec){
    const key=normalizeName(rec.name);
    const topoId=topoIdMap[rec.cca3];
-
    // Try TopoJSON id match
    if (topoId) {
       const foundFeature = features.find(f => String(f.id) === topoId || f.id === topoId);
       if (foundFeature) return foundFeature;
    }
-
    // Try manualFeatureMap for custom codes
    if(manualFeatureMap[key] && featureByCCA3.has(manualFeatureMap[key])) return featureByCCA3.get(manualFeatureMap[key]);
-
    // Try direct cca3 match
    if(featureByCCA3.has(rec.cca3)) return featureByCCA3.get(rec.cca3);
-
    // Try name match
    if(featureByName.has(key)) return featureByName.get(key);
-
    // Try aliases
    for(let alias of rec.aliases){
       const aliasKey=normalizeName(alias);
@@ -656,7 +603,6 @@ function getFeature(rec){
       const f=featureByName.get(aliasKey);
       if(f) return f;
    }
-
    // Try feature properties for ISO code
    for(let f of features) {
       const props = f.properties || {};
@@ -664,7 +610,6 @@ function getFeature(rec){
          return f;
       }
    }
-
    // Try matching by normalized name in feature properties (for regions like Northern Cyprus, Somaliland)
    for(let f of features) {
       const props = f.properties || {};
@@ -673,30 +618,23 @@ function getFeature(rec){
          return f;
       }
    }
-
    // Try partial match in featureByName
    for(let [name, f] of featureByName){
       if(name.includes(key) || key.includes(name)) return f;
    }
-
    return null;
 }
-  
   const flagCache = new Map();
-
 countriesData.forEach(c => {
    const img = new Image();
    img.src = `https://teorainneacha.vercel.app/bratai/${normalizeName(c.name)}.svg`;
    flagCache.set(c.cca2, img);
 });
-  
 function revealCountry(rec) {
     if (revealedCountries.has(rec.name)) return;
     revealedCountries.add(rec.name);
-
     const forceStretch = new Set(["RUS"]);
     let feature = getFeature(rec);
-
     if (!feature) {
         if (rec.cca3 === "BSC") {
             const topoFeature = worldData.objects.countries.geometries.find(d => d.id === 686);
@@ -707,16 +645,13 @@ function revealCountry(rec) {
         }
         if (!feature) return;
     }
-
     if (feature.geometry.type === "MultiPolygon") {
         const polys = feature.geometry.coordinates;
         const areas = polys.map(poly => d3.geoArea({ type: "Feature", geometry: { type: "Polygon", coordinates: poly } }));
         const maxIndex = areas.indexOf(Math.max(...areas));
         if (rec.cca3 === "NLD") feature.geometry.coordinates = [ polys[maxIndex] ];
     }
-
     let flagImg = flagCache.get(rec.cca2);
-
     function brataiKey(name, cca3) {
         if (cca3 === "COD") return "democratic-republic-of-the-congo";
         if (cca3 === "GEO" || name.toLowerCase().includes('georgia')) return "georgia";
@@ -740,15 +675,12 @@ function revealCountry(rec) {
         if (cca3 === "NCY") return "northern-cyprus";
         return name.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     }
-
     let flagSrc = `https://teorainneacha.vercel.app/bratai/${brataiKey(rec.name, rec.cca3)}.svg`;
-
     if (!flagImg) {
         flagImg = new Image();
         flagImg.src = flagSrc;
         flagImg.onload = () => flagCache.set(rec.cca2, flagImg);
     }
-
     if (!window.flagCanvas) {
         window.flagCanvas = document.createElement('canvas');
         window.flagCtx = window.flagCanvas.getContext('2d');
@@ -769,7 +701,6 @@ function revealCountry(rec) {
         window.addEventListener('resize', resizeFlagCanvas);
         resizeFlagCanvas();
     }
-
     function placeImageCover(imgSel, naturalImg, bounds) {
         const flagRatio = naturalImg.width / naturalImg.height;
         const wBox = bounds[1][0] - bounds[0][0];
@@ -784,7 +715,6 @@ function revealCountry(rec) {
         }
         imgSel.attr("width", width).attr("height", height).attr("x", bounds[0][0] - (width - wBox) / 2).attr("y", bounds[0][1] - (height - hBox) / 2).attr("preserveAspectRatio", "xMidYMid slice");
     }
-
     function renderSingleFeature(feature, rec, clipId, stretchOverride = false) {
         const bounds = path.bounds(feature);
         const img = mapGroup.append("image").attr("href", flagSrc).attr("clip-path", `url(#${clipId})`).attr("style", "pointer-events:none;").attr("opacity", 0);
@@ -792,30 +722,20 @@ function revealCountry(rec) {
         function applyStretch(imgSel, b) { imgSel.attr("x", b[0][0]).attr("y", b[0][1]).attr("width", b[1][0] - b[0][0]).attr("height", b[1][1] - b[0][1]).attr("preserveAspectRatio", "none"); }
         if (flagImg && flagImg.complete && flagImg.naturalWidth) { if (useStretch) applyStretch(img, bounds); else placeImageCover(img, flagImg, bounds); img.transition().duration(600).attr("opacity", 1); } else { const tmp = new Image(); tmp.onload = function() { if (useStretch) applyStretch(img, bounds); else placeImageCover(img, tmp, bounds); img.transition().duration(600).attr("opacity", 1); }; tmp.onerror = function() { d3.select(img.node()).remove(); }; tmp.src = flagSrc; }
     }
-
     function processMultiPolygon(feature, rec) {
         let corsicaIndex = null;
         if (rec.cca3 === "FRA") { feature.geometry.coordinates.forEach((poly, idx) => { const lons = poly[0].map(p => p[0]); const lats = poly[0].map(p => p[1]); const cx = d3.mean(lons), cy = d3.mean(lats); if (cx > 8 && cx < 10 && cy > 41 && cy < 43) corsicaIndex = idx; }); }
         feature.geometry.coordinates.forEach((poly, idx) => { const singleFeature = { type: "Feature", geometry: { type: "Polygon", coordinates: poly }, properties: feature.properties }; const clipId = `clip-${rec.cca3}-part${idx}`; mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(singleFeature)); const stretchOverride = (rec.cca3 === "FRA" && idx === corsicaIndex); renderSingleFeature(singleFeature, rec, clipId, stretchOverride); });
     }
-
-    if (rec.cca3 === "RUS") { const clipId = `clip-${rec.cca3}`; mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature)); renderSingleFeature(feature, rec, clipId); } 
-    else if (["USA","FRA","NLD","PRT","ESP","TWN","MLT","AUS"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") processMultiPolygon(feature, rec); 
+    if (rec.cca3 === "RUS") { const clipId = `clip-${rec.cca3}`; mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature)); renderSingleFeature(feature, rec, clipId); }
+    else if (["USA","FRA","NLD","PRT","ESP","TWN","MLT","AUS"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") processMultiPolygon(feature, rec);
     else { const clipId = `clip-${rec.cca3}`; mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature)); renderSingleFeature(feature, rec, clipId); }
-
     const iso = rec.cca3;
     const countrySel = mapGroup.selectAll("path.country").filter(d => { const props = d.properties || {}; return (props.iso_a3 === iso || props.ISO_A3 === iso || props.ADM0_A3 === iso); });
-
     countrySel.transition().duration(400).style("fill", "rgb(0,255,0)").style("opacity", 1);
-
     mapGroup.select(`#flag-${iso}`).transition().delay(350).duration(450).style("opacity", 1);
-
     countrySel.classed("revealed", true).raise();
 }
-
-
-
-
 function nextRound(){
    const submitSpan=document.querySelector("#submit-btn span");
    submitSpan.textContent="arrow_forward_ios"; submitSpan.style.fontSize="24px";
@@ -853,7 +773,6 @@ function nextRound(){
    }
    document.getElementById("prompt").innerText = promptText;
 }
-
 function nextCitiesRound(){
    while(noregdip<continentOrder.length){
       const cont=continentOrder[noregdip];
@@ -871,11 +790,8 @@ function nextCitiesRound(){
    let promptText=`Round ${round}: What is the capital of ${currentCountry.country}?`;
    document.getElementById("prompt").innerText=promptText;
 }
-
 const answerInput=document.getElementById("answer"), autocompleteList=document.getElementById("autocomplete-list");
-
 let autocompleteHighlightIndex = 0;
-
 answerInput.addEventListener("input", function(){
    autocompleteList.innerHTML="";
    if(gameMode === "Extreme") return; // No autocomplete in Extreme mode
@@ -913,7 +829,6 @@ answerInput.addEventListener("input", function(){
      }
    }, 0);
 });
-
 answerInput.addEventListener("keydown", function(e){
    const items = Array.from(autocompleteList.children || []);
    let changed = false;
@@ -958,11 +873,8 @@ answerInput.addEventListener("keydown", function(e){
       e.preventDefault();
    }
 });
-
 document.addEventListener("click", e=>{ if(e.target!==answerInput) autocompleteList.innerHTML=""; });
-
 document.getElementById("submit-btn").addEventListener("click", submitAnswer);
-
 function submitAnswer(){
    if(paused) return;
    const rawInput = answerInput.value.trim();
@@ -1147,7 +1059,6 @@ function submitAnswer(){
          revealCapital(rec); round++; setTimeout(nextCitiesRound,500);
    }
 }
-
 function revealCapital(rec){
    if(revealedCapitals.has(rec.capital)) return;
    revealedCapitals.add(rec.capital);
@@ -1157,7 +1068,6 @@ function revealCapital(rec){
       }
    });
 }
-
 function startTimer(){ startTime=Date.now()-elapsed; timerInterval=setInterval(updateTimer,1000); }
 function updateTimer(){ elapsed=Date.now()-startTime; const totalSec=Math.floor(elapsed/1000); const min=Math.floor(totalSec/60), sec=totalSec%60; document.getElementById("timer").textContent=`${min}:${sec.toString().padStart(2,"0")}`; }
 function pauseTimer(){ clearInterval(timerInterval); paused=true; document.getElementById("pause-overlay").style.display="flex"; }
@@ -1169,7 +1079,6 @@ function startFlagsTimer(){ flagsStartTime = Date.now() - flagsElapsed; if(flags
 },1000); }
 function pauseFlagsTimer(){ if(flagsTimerInterval) clearInterval(flagsTimerInterval); flagsPaused = true; }
 function resumeFlagsTimer(){ if(flagsPaused){ startFlagsTimer(); flagsPaused = false; } }
-
 document.addEventListener('click', function(e){
    if(e.target && e.target.id === 'flags-pause-btn'){
       const pauseBtn = document.getElementById('flags-pause-btn');
@@ -1274,7 +1183,6 @@ function endGame(){
          <div>Accuracy: ${percent}%</div>`;
    document.getElementById("results-screen").style.display="flex";
 }
-
 // Toggle pause/resume when clicking the pause button so it responds immediately
 document.getElementById("pause-btn").addEventListener("click", ()=>{
    if(!paused) {
@@ -1299,7 +1207,6 @@ document.getElementById("resume-btn").addEventListener("click", ()=>{
    }
 });
 document.getElementById("close-results-btn").addEventListener("click", ()=>{ document.getElementById("results-screen").style.display="none"; });
-
 document.addEventListener("keydown", function(e) {
   const answerInput = document.getElementById("answer");
   // Always pause on '[' (case-insensitive)
@@ -1311,14 +1218,10 @@ document.addEventListener("keydown", function(e) {
     resumeTimer();
   }
 }
-
-  
   // If textbox is NOT focused and key is not '[' or 'Enter', focus it
   if (document.activeElement !== answerInput && e.key !== "Enter" && e.key.toLowerCase() !== "[") {
     answerInput.focus();
     e.preventDefault();
   }
 });
-
-
 init();
