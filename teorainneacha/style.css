@@ -1,271 +1,652 @@
-
 /* Ensure icons in alerts use Material Symbols Rounded font */
 #message-modal .material-symbols-rounded {
-   font-family: 'Material Symbols Rounded' !important;
-   font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 48;
-   font-size: 24px;
+  font-family: 'Material Symbols Rounded' !important;
+  font-variation-settings: 'FILL'1, 'wght'400, 'GRAD'0, 'opsz'48;
+  font-size: 24px;
 }
+
 /* Ensure submit button icon uses Material Symbols Rounded font */
 #submit-btn span.material-symbols-rounded {
-   font-family: 'Material Symbols Rounded' !important;
-   font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 48;
-   font-size: 24px;
+  font-family: 'Material Symbols Rounded' !important;
+  font-variation-settings: 'FILL'1, 'wght'400, 'GRAD'0, 'opsz'48;
+  font-size: 24px;
 }
-html, body, * {
-   font-family: 'Outfit', sans-serif;
+
+html,
+body,
+* {
+  font-family: 'Outfit', sans-serif;
 }
-body { font-family:'Outfit', sans-serif; margin:0; padding:0; text-align:center; background:#007acc; color:#eee; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  background: #007acc;
+  color: #eee;
+}
+
 #splash-screen {
-   position:fixed; top:0; left:0; width:100vw; height:100vh;
-   background:#000; z-index:5000; display:flex; align-items:center; justify-content:center;
-   transition:opacity 0.7s;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.7s;
 }
+
 #splash-logo {
-   width:260px; height:260px; object-fit:contain; opacity:0; transition:opacity 0.7s;
-   position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width: 260px;
+  height: 260px;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 0.7s;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
-h1 { margin:1em 0 0.3em; }
-#map { width:100%; height:70vh; border:1px solid #444; background:#042342; border-radius:12px; }
-#controls { margin:1em; display:flex; align-items:center; justify-content:center; gap:8px; position:relative; }
-#controls { z-index: 2200; }
-#controls > #timer {
-   min-width: 60px;
-   text-align: center;
-   display: inline-block;
+
+h1 {
+  margin: 1em 0 0.3em;
 }
-input[type=text] { padding:0.5em; width:250px; border-radius:35px; border:1px solid #555; background:#222; color:#eee; flex-shrink:0; }
-button { width:40px; height:40px; border-radius:50%; border:none; background:#007acc; color:#fff; cursor:pointer; font-family:'Outfit', 'Material Symbols Rounded', sans-serif; font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 48; font-size:20px; display:flex; align-items:center; justify-content:center; padding:0; }
-button:hover { background:#005f99; }
-#autocomplete-list { position:absolute; top:4em; left:0; width:250px; border:1px solid #555; border-radius:8px; background:#222; max-height:150px; overflow-y:auto; z-index:1000; box-shadow:0 2px 6px rgba(0,0,0,0.5); }
-.autocomplete-item { padding:0.3em 0.5em; cursor:pointer; }
-.autocomplete-item:hover { background:#444; }
-.autocomplete-item.highlighted { background:#007acc; color:#fff; }
-.country { fill:#13385e; stroke:#95abc2; stroke-width:0.075px; }
-.revealed { stroke:#fff; stroke-width:0.15px; }
-.capital-dot { pointer-events:none; }
-.capital-dot-grey { fill:#888; stroke:#222; stroke-width:1px; }
-.capital-dot-red { fill:#e53935; stroke:#fff; stroke-width:1.5px; }
+
+#map {
+  width: 100%;
+  height: 70vh;
+  border: 1px solid #444;
+  background: #042342;
+  border-radius: 12px;
+}
+
+#controls {
+  margin: 1em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+}
+
+#controls {
+  z-index: 2200;
+}
+
+#controls>#timer {
+  min-width: 60px;
+  text-align: center;
+  display: inline-block;
+}
+
+input[type=text] {
+  padding: 0.5em;
+  width: 250px;
+  border-radius: 35px;
+  border: 1px solid #555;
+  background: #222;
+  color: #eee;
+  flex-shrink: 0;
+}
+
+button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: #007acc;
+  color: #fff;
+  cursor: pointer;
+  font-family: 'Outfit', 'Material Symbols Rounded', sans-serif;
+  font-variation-settings: 'FILL'1, 'wght'400, 'GRAD'0, 'opsz'48;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+button:hover {
+  background: #005f99;
+}
+
+#autocomplete-list {
+  position: absolute;
+  top: 4em;
+  left: 0;
+  width: 250px;
+  border: 1px solid #555;
+  border-radius: 8px;
+  background: #222;
+  max-height: 150px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.autocomplete-item {
+  padding: 0.3em 0.5em;
+  cursor: pointer;
+}
+
+.autocomplete-item:hover {
+  background: #444;
+}
+
+.autocomplete-item.highlighted {
+  background: #007acc;
+  color: #fff;
+}
+
+.country {
+  fill: #13385e;
+  stroke: #95abc2;
+  stroke-width: 0.075px;
+}
+
+.revealed {
+  stroke: #fff;
+  stroke-width: 0.15px;
+}
+
+.capital-dot {
+  pointer-events: none;
+}
+
+.capital-dot-grey {
+  fill: #888;
+  stroke: #222;
+  stroke-width: 1px;
+}
+
+.capital-dot-red {
+  fill: #e53935;
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
 #main-menu {
-   position:fixed; top:0; left:0; width:100%; height:100%;
-   background: linear-gradient(to right, black, #007acc); display:flex; flex-direction:column;
- z-index:3000; color:#fff;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, black, #007acc);
+  display: flex;
+  flex-direction: column;
+  z-index: 3000;
+  color: #fff;
   text-align: left;
   padding-top: 2.5em;
 }
+
 #main-menu-version {
-   position:absolute; left:16px; bottom:12px; font-size:1.1em; color:#bbb; opacity:0.8;
-   font-family:'Outfit',sans-serif;
-   letter-spacing:0.04em;
+  position: absolute;
+  left: 16px;
+  bottom: 12px;
+  font-size: 1.1em;
+  color: #bbb;
+  opacity: 0.8;
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: 0.04em;
 }
+
 #main-menu button {
-   margin:10px; padding:1em; font-size:1.5em;
-   border:none; border-radius:25px; cursor:pointer;
-   background: none; color:#fff; font-family:'Outfit',sans-serif;
+  margin: 10px;
+  padding: 1em;
+  font-size: 1.5em;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  background: none;
+  color: #fff;
+  font-family: 'Outfit', sans-serif;
   text-align: left !important;
   justify-content: left;
   width: 250px
 }
+
 #main-menu button:hover {
   background: #007acc;
   font-style: italic;
 }
+
 #main-menu button:active {
   background: white;
   color: black;
   font-style: italic;
 }
-#pause-btn { background:#ff9800; }
-#pause-btn:hover { background:#cc7a00; }
-#pause-btn { position: relative; z-index: 2300; pointer-events: auto; }
-#close-results-btn:active, #pause-mainmenu-btn:active, #play-again-btn:active {
+
+#pause-btn {
+  background: #ff9800;
+}
+
+#pause-btn:hover {
+  background: #cc7a00;
+}
+
+#pause-btn {
+  position: relative;
+  z-index: 2300;
+  pointer-events: auto;
+}
+
+#close-results-btn:active,
+#pause-mainmenu-btn:active,
+#play-again-btn:active {
   background: white !important;
   color: black !important;
 }
-#pause-overlay, #results-screen {
-       position:fixed; top:0; left:0; width:100%; height:100%;
-   background: linear-gradient(to right, black, rgba(0, 0, 0, 0)); display:flex; flex-direction:column;
- z-index:3000; color:#fff;
+
+#pause-overlay,
+#results-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, black, rgba(0, 0, 0, 0));
+  display: flex;
+  flex-direction: column;
+  z-index: 3000;
+  color: #fff;
   text-align: left;
   padding-top: 2.5em;
   display: none;
 }
-#start-screen, #instructions-overlay, #credits-overlay, #flags-start-screen, #flags-continent-screen {
-     position:fixed; top:0; left:0; width:100%; height:100%;
-   background: linear-gradient(to right, black, #007acc); display:flex; flex-direction:column;
- z-index:3000; color:#fff;
+
+#start-screen,
+#instructions-overlay,
+#credits-overlay,
+#flags-start-screen,
+#flags-continent-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, black, #007acc);
+  display: flex;
+  flex-direction: column;
+  z-index: 3000;
+  color: #fff;
   text-align: left;
   padding-top: 2.5em;
   display: none;
 }
+
 #flags-game-screen {
   justify-content: center;
-  background:#265788;
+  background: #265788;
   margin-top: 0px !important;
   margin-bottom: 0px !important;
 }
+
 #pause-overlay button {
-     margin:5px; padding:1em; font-size:1.5em;
-   border:none; border-radius:25px; cursor:pointer;
-   background: none; color:#fff; font-family:'Outfit',sans-serif;
+  margin: 5px;
+  padding: 1em;
+  font-size: 1.5em;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  background: none;
+  color: #fff;
+  font-family: 'Outfit', sans-serif;
   text-align: left !important;
   justify-content: left;
   width: 250px;
-margin-left: 10px;
+  margin-left: 10px;
 }
+
 #pause-overlay button:hover {
   background: #007acc;
   font-style: italic;
 }
+
 #pause-overlay button:active {
   background: white;
   color: black;
 }
-#start-screen button, #results-screen button, #instructions-overlay button, #credits-overlay button, #flags-continent-screen button, #flags-game-screen button {
-     margin:5px; padding:1em; font-size:1.5em;
-   border:none; border-radius:25px; cursor:pointer;
-   background: none; color:#fff; font-family:'Outfit',sans-serif;
+
+#start-screen button,
+#results-screen button,
+#instructions-overlay button,
+#credits-overlay button,
+#flags-continent-screen button,
+#flags-game-screen button {
+  margin: 5px;
+  padding: 1em;
+  font-size: 1.5em;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  background: none;
+  color: #fff;
+  font-family: 'Outfit', sans-serif;
   text-align: left !important;
   justify-content: left;
   width: 250px;
-margin-left: 10px;
+  margin-left: 10px;
 }
+
 #flags-start-screen button {
-       margin:5px; padding:1em; font-size:1.5em;
-   border:none; border-radius:25px; cursor:pointer;
-   background: none; color:#fff; font-family:'Outfit',sans-serif;
+  margin: 5px;
+  padding: 1em;
+  font-size: 1.5em;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  background: none;
+  color: #fff;
+  font-family: 'Outfit', sans-serif;
   text-align: left !important;
   justify-content: left;
   width: 300px;
-margin-left: 10px;
+  margin-left: 10px;
 }
-#start-screen button:hover, #results-screen button:hover, #instructions-overlay button:hover, #credits-overlay button:hover, #flags-start-screen button:hover, #flags-continent-screen button:hover, #flags-game-screen button:hover {
+
+#start-screen button:hover,
+#results-screen button:hover,
+#instructions-overlay button:hover,
+#credits-overlay button:hover,
+#flags-start-screen button:hover,
+#flags-continent-screen button:hover,
+#flags-game-screen button:hover {
   background: #007acc;
   font-style: italic;
 }
+
 #start-screen button:hover {
   background: #007acc;
   font-style: italic;
 }
+
 #start-screen button:active {
   background: white;
   color: black;
 }
+
 /* Flags game option buttons: rectangular, override global circular button base */
 #flags-options button {
-   width: auto !important;
-   height: auto !important;
-   min-width: 160px;
-   min-height: 60px;
-   border-radius: 12px !important;
-   padding: 8px !important;
-   display: inline-flex;
-   align-items: center;
-   justify-content: center;
-   background: #007acc !important;
-   color: #fff !important;
-   border: none !important;
-   cursor: pointer;
-   font-family: 'Outfit', sans-serif !important; /* use Outfit font for option buttons */
+  width: auto !important;
+  height: auto !important;
+  min-width: 160px;
+  min-height: 60px;
+  border-radius: 12px !important;
+  padding: 8px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #007acc !important;
+  color: #fff !important;
+  border: none !important;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif !important;
+  /* use Outfit font for option buttons */
 }
-#flags-options img, #flags-visual img {
-   border-radius: 16px !important;
-   overflow: hidden;
-   border: white !important;
+
+#flags-options img,
+#flags-visual img {
+  border-radius: 16px !important;
+  overflow: hidden;
+  border: white !important;
   justify-content: center !important;
-  margin-left:25em;
+  margin-left: 25em;
   /* why does this not work?!?!?! */
 }
+
 #results-text {
   width: max-content;
   text-align: center;
 }
+
 #end-game-btn {
   width: 100px !important;
   padding-top: 20px !important;
 }
+
 /* Make sure next/end buttons in flags game are visible */
-#flags-next-btn { margin-right:8px; background: none !important; }
+#flags-next-btn {
+  margin-right: 8px;
+  background: none !important;
+}
+
 #flags-next-btn:hover {
   background: #007acc !important;
 }
-#end-game-btn:active, #flags-next-btn:active {
+
+#end-game-btn:active,
+#flags-next-btn:active {
   background: white !important;
   color: black !important;
 }
-#start-screen img{ width:200px; height:200px; margin-bottom:1em; }
-#main-menu img{ width:200px!important; height:200px!important; margin-bottom:1em; }
-#flags-start-screen img, #flags-continent-screen img { width:200px; height:200px; margin-bottom:1em;
-margin-left: 2em;}
+
+#start-screen img {
+  width: 200px;
+  height: 200px;
+  margin-bottom: 1em;
+}
+
+#main-menu img {
+  width: 200px !important;
+  height: 200px !important;
+  margin-bottom: 1em;
+}
+
+#flags-start-screen img,
+#flags-continent-screen img {
+  width: 200px;
+  height: 200px;
+  margin-bottom: 1em;
+  margin-left: 2em;
+}
+
 /* Force readable font inside Flags screens so buttons show text (not Material Symbols) */
-#flags-start-screen, #flags-continent-screen, #flags-game-screen { font-family: 'Outfit', sans-serif !important; }
-#flags-start-screen *, #flags-continent-screen *, #flags-game-screen * { font-family: sans-serif !important; font-variation-settings: normal !important; }
+#flags-start-screen,
+#flags-continent-screen,
+#flags-game-screen {
+  font-family: 'Outfit', sans-serif !important;
+}
+
+#flags-start-screen *,
+#flags-continent-screen *,
+#flags-game-screen * {
+  font-family: sans-serif !important;
+  font-variation-settings: normal !important;
+}
+
 /* Center continent buttons and reduce vertical spacing */
-#flags-continent-buttons { display:flex; flex-direction:column; gap:2px; align-items:left; }
-#flags-continent-buttons button { margin:2px 0; padding:0.9em 1.6em; border-radius:30px; min-width:200px; }
+#flags-continent-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: left;
+}
+
+#flags-continent-buttons button {
+  margin: 2px 0;
+  padding: 0.9em 1.6em;
+  border-radius: 30px;
+  min-width: 200px;
+}
+
 /* slightly smaller font and reduced gap for tighter vertical spacing */
-#flags-continent-buttons { gap:8px; }
-#flags-continent-buttons button { font-size:1.05rem; font-family: 'Outfit', sans-serif !important; }
+#flags-continent-buttons {
+  gap: 8px;
+}
+
+#flags-continent-buttons button {
+  font-size: 1.05rem;
+  font-family: 'Outfit', sans-serif !important;
+}
+
 /* fallback text when a flag SVG fails to load */
-#flags-options .flag-fallback { display:none; color:#fff; margin-left:8px; font-size:1rem; }
-#flags-options img { display:block; border-radius: 10px; overflow: hidden;}
-#start-screen h1 { margin-bottom:0.5em; }
-   #flags-start-screen button {
-      font-family: 'Outfit', sans-serif !important;
-   }
+#flags-options .flag-fallback {
+  display: none;
+  color: #fff;
+  margin-left: 8px;
+  font-size: 1rem;
+}
+
+#flags-options img {
+  display: block;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+#start-screen h1 {
+  margin-bottom: 0.5em;
+}
+
+#flags-start-screen button {
+  font-family: 'Outfit', sans-serif !important;
+}
+
 #popup-country {
-  position:fixed;
-  pointer-events:none;
-  background:rgba(30,30,30,0.95);
-  color:#fff;
-  padding:0.4em 0.8em;
-  border-radius:8px;
-  font-size:1em;
-  z-index:3000;
-  box-shadow:0 2px 8px rgba(0,0,0,0.5);
-  display:none;
-  transition:opacity 0.15s;
+  position: fixed;
+  pointer-events: none;
+  background: rgba(30, 30, 30, 0.95);
+  color: #fff;
+  padding: 0.4em 0.8em;
+  border-radius: 8px;
+  font-size: 1em;
+  z-index: 3000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  display: none;
+  transition: opacity 0.15s;
 }
+
 #message-modal {
-  position:fixed;
-  top:50%; left:50%;
-  transform:translate(-50%,-50%);
-  background:rgba(20,20,20,0.98);
-  color:#fff;
-  padding:0.8em 1.2em;
-  border-radius:10px;
-  font-size:1.05em;
-  z-index:4000;
-  display:none;
-  align-items:center;
-  gap:0.6em;
-  box-shadow:0 6px 20px rgba(0,0,0,0.6);
-  transition:opacity 0.18s;
-  pointer-events:none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(20, 20, 20, 0.98);
+  color: #fff;
+  padding: 0.8em 1.2em;
+  border-radius: 10px;
+  font-size: 1.05em;
+  z-index: 4000;
+  display: none;
+  align-items: center;
+  gap: 0.6em;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  transition: opacity 0.18s;
+  pointer-events: none;
 }
-#message-modal .material-symbols-rounded { font-variation-settings:'FILL' 1; font-size:24px; vertical-align:middle; }
-#instructions-content, #credits-content { max-width:700px; text-align:left; overflow:auto; padding:1em; }
-#instructions-content h3, #credits-content h3 { margin-top:0; }
-#credits-content ul { margin-left:1.2em; }
-@media (max-height:700px){
-  #instructions-content, #credits-content { max-height:70vh; }
+
+#message-modal .material-symbols-rounded {
+  font-variation-settings: 'FILL'1;
+  font-size: 24px;
+  vertical-align: middle;
 }
+
+#instructions-content,
+#credits-content {
+  max-width: 700px;
+  text-align: left;
+  overflow: auto;
+  padding: 1em;
+}
+
+#instructions-content h3,
+#credits-content h3 {
+  margin-top: 0;
+}
+
+#credits-content ul {
+  margin-left: 1.2em;
+}
+
+@media (max-height:700px) {
+
+  #instructions-content,
+  #credits-content {
+    max-height: 70vh;
+  }
+}
+
 /* Make the flags pause button match the main pause button style */
 #flags-pause-btn {
-   width:40px; height:40px; border-radius:50%; border:none; background:#ff9800; color:#fff; cursor:pointer;
-   display:flex; align-items:center; justify-content:center; padding:0;
-   font-family:'Material Symbols Rounded' !important; font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 48 !important; font-size:20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: #ff9800;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: 'Material Symbols Rounded' !important;
+  font-variation-settings: 'FILL'1, 'wght'400, 'GRAD'0, 'opsz'48 !important;
+  font-size: 20px;
 }
-#flags-pause-btn:hover{ background:#cc7a00 !important; }
+
+#flags-pause-btn:hover {
+  background: #cc7a00 !important;
+}
+
 /* Ensure the inner span actually uses the Material Symbols font (overrides the broad flags-* * rule) */
 #flags-pause-btn .material-symbols-rounded {
-   font-family: 'Material Symbols Rounded' !important;
-   font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 48 !important;
-   font-size: 20px;
+  font-family: 'Material Symbols Rounded' !important;
+  font-variation-settings: 'FILL'1, 'wght'400, 'GRAD'0, 'opsz'48 !important;
+  font-size: 20px;
 }
+
 /* Splash progress bar */
-#splash-progress { width: 320px; height: 8px; background: rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; margin-top: 320px; position: absolute; left:50%; transform: translateX(-50%); bottom: 8%; }
-#splash-progress-inner { width: 0%; height: 100%; background: #007acc; border-radius:8px; transition: width 120ms linear; }
+#splash-progress {
+  width: 320px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 320px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 8%;
+}
+
+#splash-progress-inner {
+  width: 0%;
+  height: 100%;
+  background: #007acc;
+  border-radius: 8px;
+  transition: width 120ms linear;
+}
+
 /* Splash meta: percent and current status line */
-#splash-meta { position: absolute; left:50%; transform: translateX(-50%); bottom: 5%; width: 480px; max-width:90%; color: rgba(255,255,255,0.95); font-size:14px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
-#splash-percent { font-weight:700; min-width:48px; text-align:left; }
-#splash-status { flex:1; text-align:left; opacity:0.95; font-family: 'Outfit', sans-serif; }
+#splash-meta {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 5%;
+  width: 480px;
+  max-width: 90%;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#splash-percent {
+  font-weight: 700;
+  min-width: 48px;
+  text-align: left;
+}
+
+#splash-status {
+  flex: 1;
+  text-align: left;
+  opacity: 0.95;
+  font-family: 'Outfit', sans-serif;
+}
