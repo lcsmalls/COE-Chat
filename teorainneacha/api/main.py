@@ -1,52 +1,45 @@
+import os
 import json
 import base64
-import os
-from urllib.parse import urljoin
-from flask import Request
-
 from google import genai
 
-def handler(request: Request):
-    if request.method != "POST":
-        return ("Only POST allowed", 405)
+def handler(request):
+    try:
+        data = request.get_json()
+        flag_name = data["flag"]
+        drawing_dataurl = data["drawing"]
 
-    data = request.get_json()
+        # Decode PNG from canvas
+        drawing_b64 = drawing_dataurl.split(",")[1]
+        drawing_bytes = base64.b64decode(drawing_b64)
 
-    flag_name = data["flag"]
-    drawing_dataurl = data["drawing"]
+        # Load SVG flag from bratai/
+        flag_path = os.path.join(os.getcwd(), "..", "bratai", flag_name)
+        with open(flag_path, "rb") as f:
+            flag_bytes = f.read()
 
-    # remove "data:image/png;base64,"
-    drawing_b64 = drawing_dataurl.split(",")[1]
-    drawing_bytes = base64.b64decode(drawing_b64)
+        # Gemini client
+        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
-    # load correct flag file
-    flag_path = os.path.join(os.getcwd(), "..", "bratai", flag_name)
-    with open(flag_path, "rb") as f:
-        flag_bytes = f.read()
+        prompt = """
+Compare two images:
+1. Official flag (SVG)
+2. User drawing (PNG)
+Evaluate: colours, layout, symbols, proportions.
+Return ONLY a number 0–100.
+"""
 
-    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+        result = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=[
+                prompt,
+                {"mime_type":"image/svg+xml","data":flag_bytes},
+                {"mime_type":"image/png","data":drawing_bytes}
+            ]
+        )
 
-    response = client.models.generate_content(
-        model="gemini-1.5-flash",
-        contents=[
-            {
-                "role": "system",
-                "content": "Score the user's drawing accuracy from 0 to 100."
-            },
-            {
-                "role": "user",
-                "content": [
-                    {"text": "Here is the correct flag:"},
-                    {"image": {"mime_type": "image/svg+xml", "data": flag_bytes}},
-                    {"text": "Here is the player's drawing:"},
-                    {"image": {"mime_type": "image/png", "data": drawing_bytes}},
-                    {"text": "Return ONLY a number 0–100."}
-                ]
-            }
-        ]
-    )
+        score = result.text.strip()
+        return json.dumps({"score": score})
 
-    # clean output (model usually returns plain number)
-    score_text = response.text.strip()
-
-    return json.dumps({"score": score_text})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
