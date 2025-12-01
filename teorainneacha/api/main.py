@@ -1,61 +1,52 @@
-import base64
 import json
+import base64
+import os
+from urllib.parse import urljoin
+from flask import Request
+
 from google import genai
 
-# Vercel runs functions by calling `handler(request, response)`
-client = genai.Client(api_key="AIzaSyAvw91TEXOGreKvAUPbjV87IoGURQJNcxE") # Go ahead and use my key. See if i care.
+def handler(request: Request):
+    if request.method != "POST":
+        return ("Only POST allowed", 405)
 
-def handler(request, response):
-    try:
-        # parse incoming JSON
-        body = request.json()
-        drawing_b64 = body["drawing"]
-        flag_name = body["flag_name"]
+    data = request.get_json()
 
-        # Decode the user's drawing PNG
-        if "," in drawing_b64:
-            _, encoded = drawing_b64.split(",", 1)
-        else:
-            encoded = drawing_b64
-        drawing_bytes = base64.b64decode(encoded)
+    flag_name = data["flag"]
+    drawing_dataurl = data["drawing"]
 
-  
-        # Load the official SVG file
-        flag_path = f"bratai/{flag_name}.svg"
-        with open(flag_path, "rb") as f:
-            flag_bytes = f.read()
-        # Gemini comparison prompt
-        prompt = """
-Compare the two images:
-1. The official flag (SVG)
-2. The user's drawing (PNG)
+    # remove "data:image/png;base64,"
+    drawing_b64 = drawing_dataurl.split(",")[1]
+    drawing_bytes = base64.b64decode(drawing_b64)
 
-Judge:
-- colour accuracy
-- symbol accuracy
-- proportions
-- layout
+    # load correct flag file
+    flag_path = os.path.join(os.getcwd(), "..", "bratai", flag_name)
+    with open(flag_path, "rb") as f:
+        flag_bytes = f.read()
 
-Respond ONLY with strict JSON:
-{"score": number, "feedback": "string"}
-"""
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
-        # -----------------------------
-        # Call Gemini
-        # -----------------------------
-        result = client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=[
-                prompt,
-                {"mime_type": "image/svg+xml", "data": flag_bytes},
-                {"mime_type": "image/png", "data": drawing_bytes},
-            ]
-        )
+    response = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=[
+            {
+                "role": "system",
+                "content": "Score the user's drawing accuracy from 0 to 100."
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"text": "Here is the correct flag:"},
+                    {"image": {"mime_type": "image/svg+xml", "data": flag_bytes}},
+                    {"text": "Here is the player's drawing:"},
+                    {"image": {"mime_type": "image/png", "data": drawing_bytes}},
+                    {"text": "Return ONLY a number 0–100."}
+                ]
+            }
+        ]
+    )
 
-        # Send output back to browser
-        return response.json({
-            "result": result.text   # Gemini already returns JSON text
-        })
+    # clean output (model usually returns plain number)
+    score_text = response.text.strip()
 
-    except Exception as e:
-        return response.json({"error": str(e)}, status=500)
+    return json.dumps({"score": score_text})
