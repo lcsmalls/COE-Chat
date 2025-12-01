@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <title>Teorainneacha</title>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@100..900&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="https://teorainneacha.vercel.app/icon.png">
   <link href="style.css" rel="stylesheet">
   <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -56,22 +56,22 @@
     <button id="normal-btn" onclick="startGame('Normal')">Normal</button>
     <button id="hard-btn" onclick="startGame('Hard')">Hard</button>
     <button id="extreme-btn" onclick="startGame('Extreme')">Extreme</button>
-    <button style="font-family: 'Outfit' !important; background:white !important; color: black; width: 100px;" id="startscreen-mainmenu-btn" onclick="backToMainFromFlags()">Back</button>
+    <button style="font-family: 'Jost' !important; background:white !important; color: black; width: 100px;" id="startscreen-mainmenu-btn" onclick="backToMainFromFlags()">Back</button>
   </div>
   <!-- Flags start and selection screens -->
   <div id="flags-start-screen" style="display:none;">
     <img src="https://teorainneacha.vercel.app/icon.png" alt="Game Logo">
-    <p style="font-family: 'Outfit' !important; font-size: 1.25em; margin-left: 2em;">Choose a flags sub-mode:</p>
+    <p style="font-family: 'Jost' !important; font-size: 1.25em; margin-left: 2em;">Choose a flags sub-mode:</p>
     <button onclick="showFlagsContinentSelect('flag-to-country')">Assign flag to country</button>
     <button onclick="showFlagsContinentSelect('country-to-flag')">Assign country to flag</button>
-    <button style="font-family: 'Outfit' !important; background:white !important; color: black; width: 100px;" onclick="backToMainFromFlags()">Back</button>
+    <button style="font-family: 'Jost' !important; background:white !important; color: black; width: 100px;" onclick="backToMainFromFlags()">Back</button>
   </div>
   <div id="flags-continent-screen" style="display:none;">
     <img src="https://teorainneacha.vercel.app/icon.png" alt="Game Logo">
-    <h1 style="font-family: 'Outfit' !important;" id="flags-subtitle">Flags</h1>
-    <p style="font-family: 'Outfit'!important; margin-left: 2em;">Select a continent (or All):</p>
+    <h1 style="font-family: 'Jost' !important;" id="flags-subtitle"></h1>
+    <p style="font-family: 'Jost'!important; margin-left: 2em; margin-top: 0px !important;">Select a continent (or All):</p>
     <div id="flags-continent-buttons"></div>
-    <button style="font-family: 'Outfit' !important; background:white !important; color: black; width: 100px;" onclick="backToFlagsStart()">Back</button>
+    <button style="font-family: 'Jost' !important; background:white !important; color: black; width: 100px;" onclick="backToFlagsStart()">Back</button>
   </div>
   <div id="flags-game-screen" style="display:none; padding:1em; text-align: left;">
     <div id="flags-header" style="display:flex;gap:12px;align-items:left ;justify-content: left;margin-bottom:12px;">
