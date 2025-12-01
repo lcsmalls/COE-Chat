@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Flag Draw</title>
-    <link rel="stylesheet" href="flagdraw.css">
     <style>
         body {
     font-family: Arial, sans-serif;
@@ -53,6 +52,70 @@ canvas {
 
     <div id="result"></div>
 
-    <script src="flagdraw.js"></script>
+    <script>// ------- LOAD A RANDOM FLAG -------
+async function loadRandomFlag() {
+    const res = await fetch('bratai/countries.json');
+    const countries = await res.json();
+
+    const keys = Object.keys(countries);
+    const random = keys[Math.floor(Math.random() * keys.length)];
+    const flagFile = countries[random].flag; // assume like "afghanistan.svg"
+
+    document.getElementById('flagPrompt').innerHTML =
+        `<img src="bratai/${flagFile}" alt="Flag">`;
+
+    return flagFile;
+}
+
+let currentFlag = null;
+
+// ------- CANVAS DRAWING SETUP -------
+const canvas = document.getElementById('drawArea');
+const ctx = canvas.getContext('2d');
+
+let drawing = false;
+
+canvas.addEventListener('mousedown', () => drawing = true);
+canvas.addEventListener('mouseup', () => drawing = false);
+canvas.addEventListener('mouseleave', () => drawing = false);
+
+canvas.addEventListener('mousemove', e => {
+    if (!drawing) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    ctx.fillStyle = 'black';
+    ctx.fillRect(x, y, 4, 4);
+});
+
+// ------- CLEAR BUTTON -------
+document.getElementById('clearBtn').onclick = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+};
+
+// ------- SUBMIT BUTTON -------
+document.getElementById('submitBtn').onclick = async () => {
+    const imageData = canvas.toDataURL('image/png');
+
+    const response = await fetch('/api/main.py', {
+        method: 'POST',
+        body: JSON.stringify({
+            flag: currentFlag,
+            drawing: imageData
+        })
+    });
+
+    const result = await response.json();
+    document.getElementById('result').textContent =
+        `Accuracy Score: ${result.score}`;
+};
+
+// ------- INITIALISE -------
+(async () => {
+    currentFlag = await loadRandomFlag();
+})();
+</script>
 </body>
 </html>
