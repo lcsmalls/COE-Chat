@@ -282,7 +282,7 @@ button:hover {
 
 #flags-game-screen {
   justify-content: center;
-  background: #265788;
+  background: #007acc;
   margin-top: 0px !important;
   margin-bottom: 0px !important;
 }
@@ -377,13 +377,13 @@ button:hover {
   height: auto !important;
   min-width: 160px;
   min-height: 60px;
-  border-radius: 12px !important;
+  border-radius: 35px !important;
   padding: 8px !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #007acc !important;
-  color: #fff !important;
+  background: white !important;
+  color: #007acc !important;
   border: none !important;
   cursor: pointer;
   font-family: 'Jost', sans-serif !important;
@@ -396,7 +396,10 @@ button:hover {
   overflow: hidden;
   border: white !important;
   justify-content: center !important;
-  margin-left: 25em;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  align-items: center;
   /* why does this not work?!?!?! */
 }
 
