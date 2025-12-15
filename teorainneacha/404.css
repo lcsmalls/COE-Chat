@@ -1,0 +1,32 @@
+body {
+    background: linear-gradient(to right, black, #007acc);
+}
+
+p {
+    font-family: 'Cal Sans';
+    text-align: center;
+    color: white;
+}
+
+h1, h2 {
+    font-family: 'Cal Sans';
+    text-align: center;
+    color: white;
+}
+
+a {
+    color: #007acc;
+    text-decoration: none;
+}
+
+a:hover {
+    color: white;
+    font-style: italic;
+}
+
+img {
+    width: 200px; 
+    display: block; 
+    margin-left: auto; 
+    margin-right: auto;
+}
