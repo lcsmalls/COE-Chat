@@ -1223,7 +1223,7 @@ function revealCountry(rec) {
     const clipId = `clip-${rec.cca3}`;
     mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
     renderSingleFeature(feature, rec, clipId);
-  } else if (["USA", "FRA", "NLD", "PRT", "ESP", "TWN", "MLT", "AUS", "NZL"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") processMultiPolygon(feature, rec);
+  } else if (["USA", "FRA", "NLD", "PRT", "ESP", "TWN", "MLT", "AUS", "NZL", "GNQ"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") processMultiPolygon(feature, rec);
   else {
     const clipId = `clip-${rec.cca3}`;
     mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
