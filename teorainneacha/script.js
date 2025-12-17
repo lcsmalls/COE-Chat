@@ -696,7 +696,7 @@ function capitalizeWords(s) {
 async function ensureFlagsData() {
   if (flagsAllList.length) return;
   try {
-    const resp = await fetch('https://teorainneacha.vercel.app/bratai/countries.json');
+    const resp = await fetch('https://bratai.vercel.app/countries.json');
     const json = await resp.json();
     flagsDataByContinent = json;
     flagsAllList = Object.values(json).flat();
@@ -775,7 +775,7 @@ function nextFlagQuestion() {
     document.getElementById('flags-prompt').textContent = 'Which country does this flag belong to?';
     // show flag image
     const img = document.createElement('img');
-    img.src = `https://teorainneacha.vercel.app/bratai/${key}.svg`;
+    img.src = `https://bratai.vercel.app/${key}.svg`;
     img.alt = pretty + ' flag';
     img.style.width = '240px';
     img.style.height = '160px';
@@ -817,7 +817,7 @@ function renderFlagOptions(options, mode, correctKey) {
       btn.textContent = opt;
     } else {
       const img = document.createElement('img');
-      img.src = `https://teorainneacha.vercel.app/bratai/${opt}.svg`;
+      img.src = `https://bratai.vercel.app/${opt}.svg`;
       img.alt = opt;
       img.style.width = '120px';
       img.style.height = '80px';
@@ -1054,7 +1054,7 @@ function getFeature(rec) {
 const flagCache = new Map();
 countriesData.forEach(c => {
   const img = new Image();
-  img.src = `https://teorainneacha.vercel.app/bratai/${normalizeName(c.name)}.svg`;
+  img.src = `https://bratai.vercel.app/${normalizeName(c.name)}.svg`;
   flagCache.set(c.cca2, img);
 });
 
@@ -1124,7 +1124,7 @@ function revealCountry(rec) {
     if (cca3 === "NCY") return "northern-cyprus";
     return name.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
   }
-  let flagSrc = `https://teorainneacha.vercel.app/bratai/${brataiKey(rec.name, rec.cca3)}.svg`;
+  let flagSrc = `https://bratai.vercel.app/${brataiKey(rec.name, rec.cca3)}.svg`;
   if (!flagImg) {
     flagImg = new Image();
     flagImg.src = flagSrc;
