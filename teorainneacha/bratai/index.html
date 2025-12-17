@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <title>Flag Search</title>
+  <link rel="icon" href="https://teorainneacha.vercel.app/bratai/favicon.png" type="image/png">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    
+    @import url('https://fonts.googleapis.com/css2?family=Geologica:wght,CRSV@100..900,0&display=swap');
+    
+    .image {
+      text-align: centre;
+    }
+    
+    .image img {
+      display: inline-block;
+      width: 200px;
+    }
+    
+    body {
+      font-family: 'Geologica', sans-serif;
+      background: linear-gradient(to right, black, #007acc);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: centre;
+      padding: 2rem;
+    }
+
+    input {
+      padding: 0.7rem;
+      font-size: 1rem;
+      width: 260px;
+      border-radius: 35px;
+      border: 2px solid #007acc;
+      color: white;
+      background-color: black;
+      font-family: 'Geologica', sans-serif;
+    }
+    
+    input:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(0,122,204,0.5);
+    }
+
+
+    ::placeholder {
+      color: grey;
+      font-family: 'Geologica', sans-serif;
+    }
+    
+    button {
+      padding: 0.7rem 1rem;
+      cursor: pointer;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+      border-radius: 35px;
+      color: white;
+      background-color: #007acc;
+      border: none;
+      font-family: 'Geologica', sans-serif;
+    }
+
+    button:hover {
+      font-style: italic;
+      border: 1px solid white;
+    }
+    
+    button:active {
+      color: black;
+      background-color: white;
+    }
+    
+    #result {
+      margin-top: 2rem;
+      text-align: centre;
+    }
+
+    img {
+      max-width: 320px;
+      display: block;
+      margin: 1rem auto;
+    }
+  </style>
+</head>
+<body>
+
+  <div>
+    <div class="image">
+    <img src="https://teorainneacha.vercel.app/bratai/favicon.png">
+    </div>
+    <h3>Brataí Flag Search</h3>
+    <input id="query" placeholder="country-name"/>
+  </div>
+
+  <div id="result"></div>
+
+<script>
+const BASE = 'https://teorainneacha.vercel.app/bratai/';
+
+async function searchFlag() {
+  const q = document.getElementById('query').value.trim().toLowerCase();
+  const result = document.getElementById('result');
+  if (!q) return;
+
+  const url = `${BASE}${q}.svg`;
+  result.textContent = 'Looking…';
+
+  try {
+    const res = await fetch(url, { method: 'HEAD' });
+    if (!res.ok) throw new Error('Nope');
+
+    result.innerHTML = `
+      <img src="${url}" alt="${q} flag">
+      <button onclick="downloadFlag('${url}', '${q}.svg')">Download</button>
+    `;
+  } catch {
+    result.textContent = 'No flag found.';
+  }
+}
+
+document.getElementById('query').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    searchFlag();
+  }
+});
+
+function downloadFlag(url, name) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+</script>
+
+</body>
+</html>
