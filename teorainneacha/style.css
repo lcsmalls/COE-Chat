@@ -67,7 +67,7 @@ h1 {
 #map {
   width: 100%;
   height: 70vh;
-  border: 3px solid #6f90f4;
+  border: 3px solid black;
   background: #042342;
   border-radius: 35px;
 }
@@ -95,7 +95,7 @@ input[type=text] {
   padding: 0.5em;
   width: 250px;
   border-radius: 35px;
-  border: 3px solid #6f90f4;
+  border: 3px solid black;
   background: #222;
   color: #eee;
   flex-shrink: 0;
