@@ -15,12 +15,12 @@
 html,
 body,
 * {
-  font-family: "Cal Sans", sans-serif;
+  font-family: "Geologica", sans-serif;
   overflow: hidden;
 }
 
 body {
-  font-family: "Cal Sans", sans-serif;
+  font-family: "Geologica", sans-serif;
   margin: 0;
   padding: 0;
   text-align: center;
@@ -58,12 +58,18 @@ h1 {
   margin: 1em 0 0.3em;
 }
 
+.country {
+  fill: #13385e;
+  stroke: #95abc2;
+  stroke-width: 0.075px;
+}
+
 #map {
   width: 100%;
   height: 70vh;
-  border: 1px solid #444;
+  border: 3px solid #6f90f4;
   background: #042342;
-  border-radius: 12px;
+  border-radius: 35px;
 }
 
 #controls {
@@ -89,7 +95,7 @@ input[type=text] {
   padding: 0.5em;
   width: 250px;
   border-radius: 35px;
-  border: 1px solid #555;
+  border: 3px solid #6f90f4;
   background: #222;
   color: #eee;
   flex-shrink: 0;
@@ -103,7 +109,7 @@ button {
   background: #007acc;
   color: #fff;
   cursor: pointer;
-  font-family: "Cal Sans", 'Material Symbols Rounded', sans-serif;
+  font-family: "Geologica", 'Material Symbols Rounded', sans-serif;
   font-variation-settings: 'FILL'1, 'wght'400, 'GRAD'0, 'opsz'48;
   font-size: 20px;
   display: flex;
@@ -142,12 +148,6 @@ button:hover {
 .autocomplete-item.highlighted {
   background: #007acc;
   color: #fff;
-}
-
-.country {
-  fill: #13385e;
-  stroke: #95abc2;
-  stroke-width: 0.075px;
 }
 
 .revealed {
@@ -193,7 +193,7 @@ button:hover {
   font-size: 1.1em;
   color: #bbb;
   opacity: 0.8;
-  font-family: "Cal Sans", sans-serif;
+  font-family: "Geologica", sans-serif;
   letter-spacing: 0.04em;
 }
 
@@ -206,7 +206,7 @@ button:hover {
   cursor: pointer;
   background: none;
   color: #fff;
-  font-family: "Cal Sans", sans-serif;
+  font-family: "Geologica", sans-serif;
   text-align: left !important;
   justify-content: left;
   width: 250px
@@ -297,7 +297,7 @@ button:hover {
   cursor: pointer;
   background: none;
   color: #fff;
-  font-family: "Cal Sans", sans-serif;
+  font-family: "Geologica", sans-serif;
   text-align: left !important;
   justify-content: left;
   width: 250px;
@@ -328,7 +328,7 @@ button:hover {
   cursor: pointer;
   background: none;
   color: #fff;
-  font-family: "Cal Sans", sans-serif;
+  font-family: "Geologica", sans-serif;
   text-align: left !important;
   justify-content: left;
   width: 250px;
@@ -344,7 +344,7 @@ button:hover {
   cursor: pointer;
   background: none;
   color: #fff;
-  font-family: "Cal Sans", sans-serif;
+  font-family: "Geologica", sans-serif;
   text-align: left !important;
   justify-content: left;
   width: 300px;
@@ -387,8 +387,8 @@ button:hover {
   color: #007acc !important;
   border: none !important;
   cursor: pointer;
-  font-family: "Cal Sans", sans-serif !important;
-  /* use Cal Sans font for option buttons */
+  font-family: "Geologica", sans-serif !important;
+  /* use Geologica font for option buttons */
 }
 
 #flags-options img,
@@ -454,7 +454,7 @@ button:hover {
 #flags-start-screen,
 #flags-continent-screen,
 #flags-game-screen {
-  font-family: "Cal Sans", sans-serif !important;
+  font-family: "Geologica", sans-serif !important;
 }
 
 #flags-start-screen *,
@@ -486,7 +486,7 @@ button:hover {
 
 #flags-continent-buttons button {
   font-size: 1.05rem;
-  font-family: "Cal Sans", sans-serif !important;
+  font-family: "Geologica", sans-serif !important;
 }
 
 /* fallback text when a flag SVG fails to load */
@@ -508,7 +508,7 @@ button:hover {
 }
 
 #flags-start-screen button {
-  font-family: "Cal Sans", sans-serif !important;
+  font-family: "Geologica", sans-serif !important;
 }
 
 #popup-country {
@@ -654,6 +654,6 @@ button:hover {
   flex: 1;
   text-align: left;
   opacity: 0.95;
-  font-family: "Cal Sans", sans-serif;
+  font-family: "Geologica", sans-serif;
   margin-bottom:1.8em;
 }
