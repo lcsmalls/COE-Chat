@@ -1,86 +1,80 @@
 // Hardcode the version of the current instance here
-const CURRENT_VERSION = "1.4.8"; 
+const CURRENT_VERSION = "1.4.6"; 
 
-// Wrap initialization in DOMContentLoaded
+// Create a variable to store the timer ID globally so it can be cleared
+let updateCheckInterval;
+
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Run the check immediately on page start
+    // 1. Run initial check
     checkForUpdates();
 
-    // 2. Set the recurring interval (5 minutes = 300,000ms)
-    setInterval(checkForUpdates, 30);
+    // 2. Start the recurring check and save its ID
+    updateCheckInterval = setInterval(checkForUpdates, 300000); // 5 minutes
 });
 
 async function checkForUpdates() {
     try {
-        // Fetch version.json with a cache-busting timestamp
-        const response = await fetch(`https://teorainneacha.vercel.app/version.json?v=${new Date().getTime()}`);
+        const response = await fetch(`teorainneacha.vercel.app{new Date().getTime()}`, {
+            cache: "no-store"
+        });
+        
         if (!response.ok) return;
 
         const data = await response.json();
         const serverVersion = data.version;
 
-        // Compare server version to current instance
         if (serverVersion !== CURRENT_VERSION) {
-            showUpdatePopup();
+            showUpdatePopup(serverVersion);
         }
     } catch (error) {
         console.error("Update check failed:", error);
     }
 }
 
-function showUpdatePopup() {
-    // Prevent duplicate banners
+function showUpdatePopup(newVersion) {
     if (document.getElementById('update-banner')) return;
 
     const banner = document.createElement('div');
     banner.id = 'update-banner';
+    
     banner.style.cssText = `      
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: #222;
-      color: #fff;
-      padding: 20px; /* Increased padding slightly for the round corners */
-      border-radius: 25px; /* Slightly smaller radius for better space efficiency */
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-      z-index: 10000;
-      font-family: 'Geologica', sans-serif;
-      max-width: 300px; /* Prevents it from stretching too wide */
+      position: fixed; top: 20px; right: 20px;
+      background: #222; color: #fff; padding: 20px;
+      border-radius: 25px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      z-index: 10000; font-family: 'Geologica', sans-serif; max-width: 300px;
     `;
     
     banner.innerHTML = `
       <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.4;">
-        A new version of Teorainneacha is available. Any issues you may have encountered may have been fixed.
+        A new version of Teorainneacha is available (${newVersion}). Any issues you may have encountered may have been fixed.
       </p>
       <div style="display: flex; gap: 15px; align-items: center; justify-content: flex-start;">
         <button onclick="window.location.reload()" style="
-            font-family: 'Geologica', sans-serif; 
-            background: #007acc; 
-            color: white; 
-            border: none; 
-            padding: 8px 20px; 
-            border-radius: 35px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            min-width: 100px; /* Fixed the syntax here */
-            white-space: nowrap;">
+            font-family: 'Geologica', sans-serif; background: #007acc; 
+            color: white; border: none; padding: 8px 20px; 
+            border-radius: 35px; cursor: pointer; font-weight: bold; 
+            min-width: 100px; white-space: nowrap;">
             Reload
         </button>
-        <button onclick="document.getElementById('update-banner').remove()" style="
-            font-family: 'Geologica', sans-serif; 
-            background: none; 
-            color: #007acc; 
-            border: none; 
-            cursor: pointer; 
-            text-decoration: underline; 
-            font-size: 13px;
-            white-space: nowrap;">
+        <button id="dismiss-update" style="
+            font-family: 'Geologica', sans-serif; background: none; 
+            color: #007acc; border: none; cursor: pointer; 
+            text-decoration: underline; font-size: 13px; white-space: nowrap;">
             Dismiss
         </button>
       </div>
     `;
+    
     document.body.appendChild(banner);
+
+    // Added an event listener to the Dismiss button to stop the timer
+    document.getElementById('dismiss-update').addEventListener('click', () => {
+        clearInterval(updateCheckInterval); // This stops the 5-minute background check
+        banner.remove(); // Removes the banner from the screen
+        console.log("Update checks disabled by user.");
+    });
 }
+
 
 
 
