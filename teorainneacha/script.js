@@ -1,3 +1,90 @@
+// Hardcode the version of the current instance here
+const CURRENT_VERSION = "1.4.7"; 
+
+// Wrap initialization in DOMContentLoaded
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Run the check immediately on page start
+    checkForUpdates();
+
+    // 2. Set the recurring interval (5 minutes = 300,000ms)
+    setInterval(checkForUpdates, 300000);
+});
+
+async function checkForUpdates() {
+    try {
+        // Fetch version.json with a cache-busting timestamp
+        const response = await fetch(`https://teorainneacha.vercel.app/version.json?v=${new Date().getTime()}`);
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const serverVersion = data.version;
+
+        // Compare server version to current instance
+        if (serverVersion !== CURRENT_VERSION) {
+            showUpdatePopup();
+        }
+    } catch (error) {
+        console.error("Update check failed:", error);
+    }
+}
+
+function showUpdatePopup() {
+    // Prevent duplicate banners
+    if (document.getElementById('update-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'update-banner';
+    banner.style.cssText = `      
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #222;
+      color: #fff;
+      padding: 20px; /* Increased padding slightly for the round corners */
+      border-radius: 25px; /* Slightly smaller radius for better space efficiency */
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      z-index: 10000;
+      font-family: 'Geologica', sans-serif;
+      max-width: 300px; /* Prevents it from stretching too wide */
+    `;
+    
+    banner.innerHTML = `
+      <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.4;">
+        A new version of Teorainneacha is available. Any issues you may have encountered may have been fixed.
+      </p>
+      <div style="display: flex; gap: 15px; align-items: center; justify-content: flex-start;">
+        <button onclick="window.location.reload()" style="
+            font-family: 'Geologica', sans-serif; 
+            background: #007acc; 
+            color: white; 
+            border: none; 
+            padding: 8px 20px; 
+            border-radius: 35px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            min-width: 100px; /* Fixed the syntax here */
+            white-space: nowrap;">
+            Reload
+        </button>
+        <button onclick="document.getElementById('update-banner').remove()" style="
+            font-family: 'Geologica', sans-serif; 
+            background: none; 
+            color: #007acc; 
+            border: none; 
+            cursor: pointer; 
+            text-decoration: underline; 
+            font-size: 13px;
+            white-space: nowrap;">
+            Dismiss
+        </button>
+      </div>
+    `;
+    document.body.appendChild(banner);
+}
+
+
+
+
 // Splash screen logic with simulated loader and milestones
 window.addEventListener('DOMContentLoaded', function() {
   const splash = document.getElementById('splash-screen');
@@ -18,7 +105,7 @@ window.addEventListener('DOMContentLoaded', function() {
     },
     {
       pct: 6,
-      text: 'Loaded fonts'
+      text: 'Loaded Fonts'
     },
     {
       pct: 18,
@@ -175,296 +262,56 @@ let flagsQuestionIndex = 0;
 let flagsQuestionList = [];
 let flagsCurrentQuestion = null;
 // Improved manual mapping for problematic countries
-// const manualFeatureMap = {
-//   northmacedonia: "MKD",
-//   southsudan: "SSD",
-//   democraticrepublicofthecongo: "COD",
-//   centralafricanrepublic: "CAF",
-//   republicofthecongo: "COG",
-//   unitedstates: "USA",
-//   stvincentandthegrenadines: "VCT",
-//   bosniaandherzegovina: "BIH",
-//   puertorico: "PRI",
-//   papuanewguinea: "PNG",
-//   libya: "LBY",
-//   dominicanrepublic: "DOM",
-//   "sãotoméandpríncipe": "STP",
-//   "sao tome and principe": "STP",
-//   "sao tome": "STP",
-//   "são tomé": "STP",
-//   "são tomé e príncipe": "STP",
-//   "sao tome e principe": "STP",
-//   svalbard: "SJM",
-//   "svalbardandjanmayen": "SJM",
-//   "svalbard and jan mayen": "SJM",
-//   "janmayen": "SJM",
-//   "jan mayen": "SJM",
-//   "ivorycoast": "CIV",
-//   "cotedivoire": "CIV",
-//   "capeverde": "CPV",
-//   "equatorialguinea": "GNQ",
-//   "northerncyprus": "CYN",
-//   "turkishcyprus": "CYN",
-//   "somaliland": "SOL",
-//   "faroeislands": "FRO",
-//   "faroe islands": "FRO",
-//   "faroes": "FRO",
-//   "alandislands": "ALA",
-//   "ålandislands": "ALA",
-//   "aland": "ALA",
-//   "åland": "ALA"
-// };
+const manualFeatureMap = {
+  northmacedonia: "MKD",
+  southsudan: "SSD",
+  democraticrepublicofthecongo: "COD",
+  centralafricanrepublic: "CAF",
+  republicofthecongo: "COG",
+  unitedstates: "USA",
+  stvincentandthegrenadines: "VCT",
+  bosniaandherzegovina: "BIH",
+  puertorico: "PRI",
+  papuanewguinea: "PNG",
+  libya: "LBY",
+  dominicanrepublic: "DOM",
+  "sãotoméandpríncipe": "STP",
+  "sao tome and principe": "STP",
+  "sao tome": "STP",
+  "são tomé": "STP",
+  "são tomé e príncipe": "STP",
+  "sao tome e principe": "STP",
+  svalbard: "SJM",
+  "svalbardandjanmayen": "SJM",
+  "svalbard and jan mayen": "SJM",
+  "janmayen": "SJM",
+  "jan mayen": "SJM",
+  "ivorycoast": "CIV",
+  "cotedivoire": "CIV",
+  "capeverde": "CPV",
+  "equatorialguinea": "GNQ",
+  "northerncyprus": "CYN",
+  "turkishcyprus": "CYN",
+  "somaliland": "SOL",
+  "faroeislands": "FRO",
+  "faroe islands": "FRO",
+  "faroes": "FRO",
+  "alandislands": "ALA",
+  "ålandislands": "ALA",
+  "aland": "ALA",
+  "åland": "ALA"
+};
 // TopoJSON id mapping for problematic countries
-const topoIdMap ={
-  "AFG": "004",
-  "ALA": "248",
-  "ALB": "008",
-  "DZA": "012",
-  "ASM": "016",
-  "AND": "020",
-  "AGO": "024",
-  "AIA": "660",
-  "ATA": "010",
-  "ATG": "028",
-  "ARG": "032",
-  "ARM": "051",
-  "ABW": "533",
-  "AUS": "036",
-  "AUT": "040",
-  "AZE": "031",
-  "BHS": "044",
-  "BHR": "048",
-  "BGD": "050",
-  "BRB": "052",
-  "BLR": "112",
-  "BEL": "056",
-  "BLZ": "084",
-  "BEN": "204",
-  "BMU": "060",
-  "BTN": "064",
-  "BOL": "068",
-  "BES": "535",
-  "BIH": "070",
-  "BWA": "072",
-  "BVT": "074",
-  "BRA": "076",
-  "IOT": "086",
-  "VGB": "092",
-  "VIR": "850",
-  "BRN": "096",
-  "BGR": "100",
-  "BFA": "854",
-  "BDI": "108",
-  "CPV": "132",
-  "KHM": "116",
-  "CMR": "120",
-  "CAN": "124",
-  "CYM": "136",
-  "CAF": "140",
-  "TCD": "148",
-  "CHL": "152",
-  "CHN": "156",
-  "HKG": "344",
-  "MAC": "446",
-  "CXR": "162",
-  "CCK": "166",
-  "COL": "170",
-  "COM": "174",
+const topoIdMap = {
   "COD": "180",
-  "COG": "178",
-  "COK": "184",
-  "CRI": "188",
-  "CIV": "384",
-  "HRV": "191",
-  "CUB": "192",
-  "CUW": "531",
-  "CYP": "196",
-  "CZE": "203",
-  "DNK": "208",
-  "DJI": "262",
-  "DMA": "212",
-  "DOM": "214",
-  "ECU": "218",
-  "EGY": "818",
-  "SLV": "222",
-  "GNQ": "226",
-  "ERI": "232",
-  "EST": "233",
-  "SWZ": "748",
-  "ETH": "231",
-  "FLK": "238",
-  "FRO": "234",
-  "FJI": "242",
-  "FIN": "246",
-  "FRA": "250",
-  "GUF": "254",
-  "PYF": "258",
-  "ATF": "260",
-  "GAB": "266",
-  "GMB": "270",
-  "GEO": "268",
-  "DEU": "276",
-  "GHA": "288",
-  "GIB": "292",
-  "GRC": "300",
-  "GRL": "304",
-  "GRD": "308",
-  "GLP": "312",
-  "GUM": "316",
-  "GTM": "320",
-  "GGY": "831",
-  "GIN": "324",
-  "GNB": "624",
-  "GUY": "328",
-  "HTI": "332",
-  "HMD": "334",
-  "VAT": "336",
-  "HND": "340",
-  "HUN": "348",
-  "ISL": "352",
-  "IND": "356",
-  "IDN": "360",
-  "IRN": "364",
-  "IRQ": "368",
-  "IRL": "372",
-  "IMN": "833",
-  "ISR": "376",
-  "ITA": "380",
-  "JAM": "388",
-  "JPN": "392",
-  "JEY": "832",
-  "JOR": "400",
-  "KAZ": "398",
-  "KEN": "404",
-  "KIR": "296",
-  "PRK": "408",
-  "KOR": "410",
-  "KWT": "414",
-  "KGZ": "417",
-  "LAO": "418",
-  "LVA": "428",
-  "LBN": "422",
-  "LSO": "426",
-  "LBR": "430",
-  "LBY": "434",
-  "LIE": "438",
-  "LTU": "440",
-  "LUX": "442",
-  "MDG": "450",
-  "MWI": "454",
-  "MYS": "458",
-  "MDV": "462",
-  "MLI": "466",
-  "MLT": "470",
-  "MHL": "584",
-  "MTQ": "474",
-  "MRT": "478",
-  "MUS": "480",
-  "MYT": "175",
-  "MEX": "484",
-  "FSM": "583",
-  "MDA": "498",
-  "MCO": "492",
-  "MNG": "496",
-  "MNE": "499",
-  "MSR": "500",
-  "MAR": "504",
-  "MOZ": "508",
-  "MMR": "104",
-  "NAM": "516",
-  "NRU": "520",
-  "NPL": "524",
-  "NLD": "528",
-  "NCL": "540",
-  "NZL": "554",
-  "NIC": "558",
-  "NER": "562",
-  "NGA": "566",
-  "NIU": "570",
-  "NFK": "574",
-  "MNP": "580",
-  "NOR": "578",
-  "OMN": "512",
-  "PAK": "586",
-  "PLW": "585",
-  "PSE": "275",
-  "PAN": "591",
-  "PNG": "598",
-  "PRY": "600",
-  "PER": "604",
-  "PHL": "608",
-  "PCN": "612",
-  "POL": "616",
-  "PRT": "620",
-  "PRI": "630",
-  "QAT": "634",
-  "MKD": "807",
-  "ROU": "642",
-  "RUS": "643",
-  "RWA": "646",
-  "REU": "638",
-  "BLM": "652",
-  "SHN": "654",
-  "KNA": "659",
-  "LCA": "662",
-  "MAF": "663",
-  "SPM": "666",
-  "VCT": "670",
-  "WSM": "882",
-  "SMR": "674",
-  "STP": "678",
-  "SAU": "682",
-  "SEN": "686",
-  "SRB": "688",
-  "SYC": "690",
-  "SLE": "694",
-  "SGP": "702",
-  "SXM": "534",
-  "SVK": "703",
-  "SVN": "705",
-  "SLB": "090",
-  "SOM": "706",
-  "ZAF": "710",
-  "SGS": "239",
   "SSD": "728",
-  "ESP": "724",
-  "LKA": "144",
-  "SDN": "729",
-  "SUR": "740",
-  "SJM": "744",
-  "SWE": "752",
-  "CHE": "756",
-  "SYR": "760",
-  "TWN": "158",
-  "TJK": "762",
-  "TZA": "834",
-  "THA": "764",
-  "TLS": "626",
-  "TGO": "768",
-  "TKL": "772",
-  "TON": "776",
-  "TTO": "780",
-  "TUN": "788",
-  "TUR": "792",
-  "TKM": "795",
-  "TCA": "796",
-  "TUV": "798",
-  "UGA": "800",
-  "UKR": "804",
-  "ARE": "784",
-  "GBR": "826",
-  "USA": "840",
-  "UMI": "581",
-  "URY": "858",
-  "UZB": "860",
-  "VUT": "548",
-  "VEN": "862",
-  "VNM": "704",
-  "WLF": "876",
+  "EQG": "226",
   "ESH": "732",
-  "YEM": "887",
-  "ZMB": "894",
-  "ZWE": "716"
+  "STP": "678",
+  "CPV": "132",
+  "GNQ": "226",
+  "FRO": "234", // Faroe Islands (ISO 3166-1 numeric: 234)
+  "ALA": "248" // Åland Islands (ISO 3166-1 numeric: 248)
 }
 
 function normalizeName(s) {
@@ -696,7 +543,7 @@ function capitalizeWords(s) {
 async function ensureFlagsData() {
   if (flagsAllList.length) return;
   try {
-    const resp = await fetch('https://bratai.vercel.app/countries.json');
+    const resp = await fetch('https://teorainneacha.vercel.app/bratai/countries.json');
     const json = await resp.json();
     flagsDataByContinent = json;
     flagsAllList = Object.values(json).flat();
@@ -775,7 +622,7 @@ function nextFlagQuestion() {
     document.getElementById('flags-prompt').textContent = 'Which country does this flag belong to?';
     // show flag image
     const img = document.createElement('img');
-    img.src = `https://bratai.vercel.app/${key}.svg`;
+    img.src = `https://teorainneacha.vercel.app/bratai/${key}.svg`;
     img.alt = pretty + ' flag';
     img.style.width = '240px';
     img.style.height = '160px';
@@ -817,7 +664,7 @@ function renderFlagOptions(options, mode, correctKey) {
       btn.textContent = opt;
     } else {
       const img = document.createElement('img');
-      img.src = `https://bratai.vercel.app/${opt}.svg`;
+      img.src = `https://teorainneacha.vercel.app/bratai/${opt}.svg`;
       img.alt = opt;
       img.style.width = '120px';
       img.style.height = '80px';
@@ -883,7 +730,7 @@ function handleFlagSelection(btn, opt, correctKey, mode) {
       const pickedPretty = capitalizeWords(pickedKeyNorm.replace(/-/g, ' '));
       showMessage(`The answer you picked is the flag of ${pickedPretty}. Correct answer: ${correctPretty}`, 'error');
     }
-    document.getElementById('flags-next-btn').style.display = 'inline-block';
+    document.getElementById('flags-next-btn').style.display = 'flex';
     flagsWrong = (typeof flagsWrong === 'number') ? flagsWrong + 1 : 1;
   }
   flagsQuestionIndex++;
@@ -1018,7 +865,7 @@ function getFeature(rec) {
     if (foundFeature) return foundFeature;
   }
   // Try manualFeatureMap for custom codes
-//   if (manualFeatureMap[key] && featureByCCA3.has(manualFeatureMap[key])) return featureByCCA3.get(manualFeatureMap[key]);
+  if (manualFeatureMap[key] && featureByCCA3.has(manualFeatureMap[key])) return featureByCCA3.get(manualFeatureMap[key]);
   // Try direct cca3 match
   if (featureByCCA3.has(rec.cca3)) return featureByCCA3.get(rec.cca3);
   // Try name match
@@ -1026,7 +873,7 @@ function getFeature(rec) {
   // Try aliases
   for (let alias of rec.aliases) {
     const aliasKey = normalizeName(alias);
-    // if (manualFeatureMap[aliasKey] && featureByCCA3.has(manualFeatureMap[aliasKey])) return featureByCCA3.get(manualFeatureMap[aliasKey]);
+    if (manualFeatureMap[aliasKey] && featureByCCA3.has(manualFeatureMap[aliasKey])) return featureByCCA3.get(manualFeatureMap[aliasKey]);
     const f = featureByName.get(aliasKey);
     if (f) return f;
   }
@@ -1054,14 +901,14 @@ function getFeature(rec) {
 const flagCache = new Map();
 countriesData.forEach(c => {
   const img = new Image();
-  img.src = `https://bratai.vercel.app/${normalizeName(c.name)}.svg`;
+  img.src = `https://teorainneacha.vercel.app/bratai/${normalizeName(c.name)}.svg`;
   flagCache.set(c.cca2, img);
 });
 
 function revealCountry(rec) {
   if (revealedCountries.has(rec.name)) return;
   revealedCountries.add(rec.name);
-  const forceStretch = new Set(["RUS", "IRL", "TCD", "CIV"]);
+  const forceStretch = new Set(["RUS"]);
   let feature = getFeature(rec);
   if (!feature) {
     if (rec.cca3 === "BSC") {
@@ -1124,7 +971,7 @@ function revealCountry(rec) {
     if (cca3 === "NCY") return "northern-cyprus";
     return name.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
   }
-  let flagSrc = `https://bratai.vercel.app/${brataiKey(rec.name, rec.cca3)}.svg`;
+  let flagSrc = `https://teorainneacha.vercel.app/bratai/${brataiKey(rec.name, rec.cca3)}.svg`;
   if (!flagImg) {
     flagImg = new Image();
     flagImg.src = flagSrc;
@@ -1223,7 +1070,7 @@ function revealCountry(rec) {
     const clipId = `clip-${rec.cca3}`;
     mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
     renderSingleFeature(feature, rec, clipId);
-  } else if (["USA", "FRA", "NLD", "PRT", "ESP", "TWN", "MLT", "AUS", "NZL", "GNQ"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") processMultiPolygon(feature, rec);
+  } else if (["USA", "FRA", "NLD", "PRT", "ESP", "TWN", "MLT", "AUS"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") processMultiPolygon(feature, rec);
   else {
     const clipId = `clip-${rec.cca3}`;
     mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
@@ -1324,7 +1171,7 @@ answerInput.addEventListener("input", function() {
   if (this.value.trim() === "|ra") return;
   let matches = [];
   if (gameType === "countries") {
-    if (gameMode === "Hard" || gameMode === "Medium") {
+    if (gameMode === "Hard") {
       return;
     }
     matches = countriesData.map(c => c.name).filter(n => normalizeName(n).startsWith(val) && !revealedCountries.has(n));
