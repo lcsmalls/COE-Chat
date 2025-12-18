@@ -1,19 +1,35 @@
 (function () {
-  // Set your app's current version here:
+  // === CONFIG ===
   const CURRENT_VERSION = '1.5.0';
-
   const VERSION_URL = 'https://teorainneacha.vercel.app/version.json';
+  // 'page'  => dismiss only for the current page load (will reappear after reload)
+  // 'session' => dismiss for the browser tab session (survives reloads, cleared when tab closes)
+  const DISMISS_PERSISTENCE = 'page'; // choose 'page' or 'session'
+  const CHECK_INTERVAL_MS = 1000;
+  // ==============
+
   const DISMISS_KEY = 'teorainneacha_update_dismissed';
   let intervalId = null;
   let bannerShown = false;
+  let dismissed = false; // in-memory flag (cleared on reload)
+
+  // If persistence is 'session', read sessionStorage at start
+  function initDismissStateFromStorage() {
+    if (DISMISS_PERSISTENCE === 'session') {
+      try {
+        if (sessionStorage.getItem(DISMISS_KEY) === '1') {
+          dismissed = true;
+        }
+      } catch (e) {
+        // ignore storage errors
+      }
+    }
+  }
 
   async function checkVersion() {
-    // If user dismissed for this session, stop checking:
-    if (sessionStorage.getItem(DISMISS_KEY) === '1') {
-      if (intervalId !== null) {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
+    if (dismissed) {
+      // If dismissed, stop checks for this run
+      stopChecking();
       return;
     }
 
@@ -21,14 +37,14 @@
       const res = await fetch(VERSION_URL, { cache: 'no-store' });
       if (!res.ok) return;
       const data = await res.json();
-      const remoteVersion = (data && data.version) ? String(data.version) : null;
+      const remoteVersion = data && typeof data.version === 'string' ? data.version : null;
       if (!remoteVersion) return;
 
       if (remoteVersion !== CURRENT_VERSION && !bannerShown) {
         showBanner(remoteVersion);
       }
     } catch (err) {
-      // fail silently - you could add logging here for debugging
+      // silent fail; could log for debugging if desired
       // console.error('Version check failed', err);
     }
   }
@@ -36,7 +52,6 @@
   function showBanner(newVersion) {
     bannerShown = true;
 
-    // If banner already exists, don't create another
     if (document.getElementById('update-banner')) return;
 
     const banner = document.createElement('div');
@@ -57,14 +72,13 @@
       max-width: 300px;
     `;
 
-    // Injects the newVersion variable into the HTML text string.
-    // Dismiss calls a global function we define below so we can set sessionStorage & stop checks.
+    // Insert HTML; we'll attach the dismiss handler programmatically so we can control behavior
     banner.innerHTML = `
       <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.4;">
         A new version of Teorainneacha is available (${newVersion}). Any issues you may have encountered may have been fixed.
       </p>
       <div style="display: flex; gap: 15px; align-items: center; justify-content: flex-start;">
-        <button onclick="window.location.reload()" style="
+        <button id="update-banner-reload" style="
             font-family: 'Geologica', sans-serif; 
             background: #007acc; 
             color: white; 
@@ -77,7 +91,7 @@
             white-space: nowrap;">
             Reload
         </button>
-        <button onclick="window.__teorainneacha_dismiss()" style="
+        <button id="update-banner-dismiss" style="
             font-family: 'Geologica', sans-serif; 
             background: none; 
             color: #007acc; 
@@ -92,33 +106,75 @@
     `;
 
     document.body.appendChild(banner);
-  }
 
-  // Exposed function called by the Dismiss button inline onclick.
-  // It removes the banner, records dismissal for this session, and stops further checks.
-  window.__teorainneacha_dismiss = function () {
-    try {
-      sessionStorage.setItem(DISMISS_KEY, '1');
-    } catch (e) {
-      // ignore storage errors
+    // Attach listeners
+    const reloadBtn = document.getElementById('update-banner-reload');
+    if (reloadBtn) {
+      reloadBtn.addEventListener('click', function () {
+        window.location.reload();
+      });
     }
 
+    const dismissBtn = document.getElementById('update-banner-dismiss');
+    if (dismissBtn) {
+      dismissBtn.addEventListener('click', function () {
+        dismissBanner();
+      });
+    }
+
+    // Expose the dismiss function globally too (optional), in case you want inline onclick usage elsewhere
+    window.__teorainneacha_dismiss = dismissBanner;
+  }
+
+  function dismissBanner() {
+    // Set in-memory flag so this load will stop checking
+    dismissed = true;
+
+    // Persist if configured
+    if (DISMISS_PERSISTENCE === 'session') {
+      try {
+        sessionStorage.setItem(DISMISS_KEY, '1');
+      } catch (e) {
+        // ignore storage errors
+      }
+    }
+
+    // Remove banner if present
     const b = document.getElementById('update-banner');
     if (b) b.remove();
 
+    // Stop periodic checking for this run
+    stopChecking();
+  }
+
+  function stopChecking() {
     if (intervalId !== null) {
       clearInterval(intervalId);
       intervalId = null;
     }
-  };
+  }
 
-  // Start automatically when the DOM is ready
+  // Start automatically on DOMContentLoaded
   document.addEventListener('DOMContentLoaded', function () {
-    // Run an immediate check, then every second
+    initDismissStateFromStorage();
+
+    // If already dismissed for this run, don't start checks
+    if (dismissed) return;
+
+    // Run an immediate check, then every CHECK_INTERVAL_MS
     checkVersion();
-    intervalId = setInterval(checkVersion, 1000);
+    intervalId = setInterval(checkVersion, CHECK_INTERVAL_MS);
   });
+
+  // Also expose a utility to clear sessionStorage dismissal if you want to programmatically "undo" a session dismiss:
+  window.__teorainneacha_clear_session_dismiss = function () {
+    try {
+      sessionStorage.removeItem(DISMISS_KEY);
+    } catch (e) {}
+  };
 })();
+
+
 
 // Splash screen logic with simulated loader and milestones
 window.addEventListener('DOMContentLoaded', function() {
