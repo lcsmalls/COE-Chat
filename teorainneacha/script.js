@@ -1,5 +1,5 @@
 // Hardcode the version of the current instance here
-const CURRENT_VERSION = "1.4.7"; 
+const CURRENT_VERSION = "1.4.8"; 
 
 // Wrap initialization in DOMContentLoaded
 document.addEventListener("DOMContentLoaded", () => {
@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
     checkForUpdates();
 
     // 2. Set the recurring interval (5 minutes = 300,000ms)
-    setInterval(checkForUpdates, 300000);
+    setInterval(checkForUpdates, 30);
 });
 
 async function checkForUpdates() {
