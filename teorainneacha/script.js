@@ -1,6 +1,6 @@
 (function () {
   // Set your app's current version here:
-  const CURRENT_VERSION = '1.4.9';
+  const CURRENT_VERSION = '1.5.0';
 
   const VERSION_URL = 'https://teorainneacha.vercel.app/version.json';
   const DISMISS_KEY = 'teorainneacha_update_dismissed';
