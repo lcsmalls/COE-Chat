@@ -1,83 +1,124 @@
-// Hardcode the version of the current instance here
-const CURRENT_VERSION = "1.4.9"; 
+(function () {
+  // Set your app's current version here:
+  const CURRENT_VERSION = '1.4.9';
 
-// Create a variable to store the timer ID globally so it can be cleared
-let updateCheckInterval;
+  const VERSION_URL = 'https://teorainneacha.vercel.app/version.json';
+  const DISMISS_KEY = 'teorainneacha_update_dismissed';
+  let intervalId = null;
+  let bannerShown = false;
 
-document.addEventListener("DOMContentLoaded", () => {
-    // 1. Run initial check
-    checkForUpdates();
-
-    // 2. Start the recurring check and save its ID
-    updateCheckInterval = setInterval(checkForUpdates, 30); // 5 minutes
-});
-
-async function checkForUpdates() {
-    try {
-        const response = await fetch(`teorainneacha.vercel.app{new Date().getTime()}`, {
-            cache: "no-store"
-        });
-        
-        if (!response.ok) return;
-
-        const data = await response.json();
-        const serverVersion = data.version;
-
-        if (serverVersion !== CURRENT_VERSION) {
-            showUpdatePopup(serverVersion);
-        }
-    } catch (error) {
-        console.error("Update check failed:", error);
+  async function checkVersion() {
+    // If user dismissed for this session, stop checking:
+    if (sessionStorage.getItem(DISMISS_KEY) === '1') {
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      return;
     }
-}
 
-function showUpdatePopup(newVersion) {
+    try {
+      const res = await fetch(VERSION_URL, { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const remoteVersion = (data && data.version) ? String(data.version) : null;
+      if (!remoteVersion) return;
+
+      if (remoteVersion !== CURRENT_VERSION && !bannerShown) {
+        showBanner(remoteVersion);
+      }
+    } catch (err) {
+      // fail silently - you could add logging here for debugging
+      // console.error('Version check failed', err);
+    }
+  }
+
+  function showBanner(newVersion) {
+    bannerShown = true;
+
+    // If banner already exists, don't create another
     if (document.getElementById('update-banner')) return;
 
     const banner = document.createElement('div');
     banner.id = 'update-banner';
-    
+
+    // Modern CSS styling for the banner (from your sample)
     banner.style.cssText = `      
-      position: fixed; top: 20px; right: 20px;
-      background: #222; color: #fff; padding: 20px;
-      border-radius: 25px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-      z-index: 10000; font-family: 'Geologica', sans-serif; max-width: 300px;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #222;
+      color: #fff;
+      padding: 20px;
+      border-radius: 25px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      z-index: 10000;
+      font-family: 'Geologica', sans-serif;
+      max-width: 300px;
     `;
-    
+
+    // Injects the newVersion variable into the HTML text string.
+    // Dismiss calls a global function we define below so we can set sessionStorage & stop checks.
     banner.innerHTML = `
       <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.4;">
         A new version of Teorainneacha is available (${newVersion}). Any issues you may have encountered may have been fixed.
       </p>
       <div style="display: flex; gap: 15px; align-items: center; justify-content: flex-start;">
         <button onclick="window.location.reload()" style="
-            font-family: 'Geologica', sans-serif; background: #007acc; 
-            color: white; border: none; padding: 8px 20px; 
-            border-radius: 35px; cursor: pointer; font-weight: bold; 
-            min-width: 100px; white-space: nowrap;">
+            font-family: 'Geologica', sans-serif; 
+            background: #007acc; 
+            color: white; 
+            border: none; 
+            padding: 8px 20px; 
+            border-radius: 35px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            min-width: 100px;
+            white-space: nowrap;">
             Reload
         </button>
-        <button id="dismiss-update" style="
-            font-family: 'Geologica', sans-serif; background: none; 
-            color: #007acc; border: none; cursor: pointer; 
-            text-decoration: underline; font-size: 13px; white-space: nowrap;">
+        <button onclick="window.__teorainneacha_dismiss()" style="
+            font-family: 'Geologica', sans-serif; 
+            background: none; 
+            color: #007acc; 
+            border: none; 
+            cursor: pointer; 
+            text-decoration: underline; 
+            font-size: 13px;
+            white-space: nowrap;">
             Dismiss
         </button>
       </div>
     `;
-    
+
     document.body.appendChild(banner);
+  }
 
-    // Added an event listener to the Dismiss button to stop the timer
-    document.getElementById('dismiss-update').addEventListener('click', () => {
-        clearInterval(updateCheckInterval); // This stops the 5-minute background check
-        banner.remove(); // Removes the banner from the screen
-        console.log("Update checks disabled by user.");
-    });
-}
+  // Exposed function called by the Dismiss button inline onclick.
+  // It removes the banner, records dismissal for this session, and stops further checks.
+  window.__teorainneacha_dismiss = function () {
+    try {
+      sessionStorage.setItem(DISMISS_KEY, '1');
+    } catch (e) {
+      // ignore storage errors
+    }
 
+    const b = document.getElementById('update-banner');
+    if (b) b.remove();
 
+    if (intervalId !== null) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+  };
 
-
+  // Start automatically when the DOM is ready
+  document.addEventListener('DOMContentLoaded', function () {
+    // Run an immediate check, then every second
+    checkVersion();
+    intervalId = setInterval(checkVersion, 1000);
+  });
+})();
 
 // Splash screen logic with simulated loader and milestones
 window.addEventListener('DOMContentLoaded', function() {
