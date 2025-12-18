@@ -1,5 +1,5 @@
 // Hardcode the version of the current instance here
-const CURRENT_VERSION = "1.4.6"; 
+const CURRENT_VERSION = "1.4.9"; 
 
 // Create a variable to store the timer ID globally so it can be cleared
 let updateCheckInterval;
@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
     checkForUpdates();
 
     // 2. Start the recurring check and save its ID
-    updateCheckInterval = setInterval(checkForUpdates, 300000); // 5 minutes
+    updateCheckInterval = setInterval(checkForUpdates, 30); // 5 minutes
 });
 
 async function checkForUpdates() {
