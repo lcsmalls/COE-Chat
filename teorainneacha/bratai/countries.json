@@ -189,7 +189,6 @@
     "greenland",
     "grenada",
     "guadeloupe",
-    "guam",
     "guatemala",
     "haiti",
     "honduras",
@@ -198,7 +197,6 @@
     "mexico",
     "montserrat",
     "nicaragua",
-    "northern-mariana-islands",
     "panama",
     "puerto-rico",
     "saint-barthélemy",
@@ -211,7 +209,6 @@
     "trinidad-and-tobago",
     "turks-and-caicos-islands",
     "united-states",
-    "united-states-minor-outlying-islands",
     "united-states-virgin-islands"
   ],
   "south-america": [
@@ -236,6 +233,7 @@
     "cook-islands",
     "fiji",
     "french-polynesia",
+    "guam",
     "marshall-islands",
     "micronesia",
     "nauru",
@@ -243,6 +241,7 @@
     "new-zealand",
     "niue",
     "norfolk-island",
+    "northern-mariana-islands",
     "palau",
     "papua-new-guinea",
     "pitcairn-islands",
@@ -251,6 +250,7 @@
     "tokelau",
     "tonga",
     "tuvalu",
+    "united-states-minor-outlying-islands",
     "vanuatu",
     "wallis-and-futuna"
   ],
