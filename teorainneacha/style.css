@@ -16,10 +16,11 @@ html,
 body,
 * {
   font-family: "Geologica", sans-serif;
-  overflow: hidden;
+
 }
 
 body {
+  overflow: hidden;
   font-family: "Geologica", sans-serif;
   margin: 0;
   padding: 0;
@@ -416,12 +417,15 @@ button:hover {
 
 /* Make sure next/end buttons in flags game are visible */
 #flags-next-btn {
-  margin-right: 8px;
-  background: none !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  background: white !important;
+  color: #007acc !important;
+  text-align: center;
+  width: 100px !important;
 }
 
 #flags-next-btn:hover {
-  background: #007acc !important;
 }
 
 #end-game-btn:active,
