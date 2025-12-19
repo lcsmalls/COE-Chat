@@ -1,6 +1,6 @@
 (function () {
   // === CONFIG ===
-  const CURRENT_VERSION = '1.5.2';
+  const CURRENT_VERSION = '1.5.3';
   const VERSION_URL = 'version.json';
   // 'page'  => dismiss only for the current page load (will reappear after reload)
   // 'session' => dismiss for the browser tab session (survives reloads, cleared when tab closes)
