@@ -44,6 +44,7 @@
       <button onclick="showStartScreen('countries')">Countries Mode</button>
       <button onclick="showStartScreen('cities')">Cities Mode</button>
       <button onclick="showFlagsStart()">Flags Mode</button>
+      <button onclick="showTimedMode()">Timed Mode</button>
       <button onclick="showInstructions()">Instructions</button>
       <button onclick="showCredits()">Credits</button>
     </div>
@@ -66,6 +67,15 @@
     <button onclick="showFlagsContinentSelect('flag-to-country')">Assign flag to country</button>
     <button onclick="showFlagsContinentSelect('country-to-flag')">Assign country to flag</button>
     <button style="font-family: 'Geologica' !important; background:white !important; color: black; width: 100px;" onclick="backToMainFromFlags()">Back</button>
+  </div>
+  <!-- Timed mode selection -->
+  <div id="timed-mode-screen" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: linear-gradient(to right, black, #007acc); z-index:3000; color:#fff; padding-top:2.5em;">
+    <img src="https://teorainneacha.vercel.app/icon.png" alt="Game Logo" style="width:200px;height:200px;margin-bottom:0.5em;margin-left:2em;">
+    <p style="margin-left:2em; font-size:1.15em;">Choose a sub-mode:</p>
+    <button onclick="startTimedGame('countries')">Countries Mode</button>
+    <button onclick="startTimedGame('cities')">Cities Mode</button>
+    <button onclick="startTimedGame('flags')">Flags Mode</button>
+    <button style="font-family: 'Geologica' !important; background:white !important; color: black; width: 100px; margin-left:10px;" onclick="closeTimedMode()">Back</button>
   </div>
   <div id="flags-continent-screen" style="display:none;">
     <img src="https://teorainneacha.vercel.app/icon.png" alt="Game Logo">
@@ -97,7 +107,6 @@
   <div id="results-screen">
     <img style="padding-left:2em; width: 200px; height: 200px; margin-bottom: 20px;" src="https://teorainneacha.vercel.app/icon.png" alt="Game Logo">
     <div id="results-text"></div>
-    <button id="play-again-btn" onclick="location.reload()">Play Again</button>
     <button id="results-mainmenu-btn">Main Menu</button>
     <button id="close-results-btn">Close</button>
   </div>
@@ -114,7 +123,9 @@
       <h3>Autocomplete and forgiving spelling</h3>
       <p>If you type only the start of a country/capital and the autocomplete shows exactly one suggestion, pressing Enter will accept that suggestion. If your input has a small typo (up to two letters different), the game will automatically accept the best match and flash the correct spelling for two seconds.</p>
       <h3>Extreme mode</h3>
-      <p>Extreme mode disables skip, autocapitalisation, autocorrect, and autocomplete. You must type the country's name <b>perfectly</b> for it to count. No hints or forgiveness!</p>
+      <p>Extreme mode disables skip, autocapitalisation, autocorrect, and autocomplete. You must type the country's name <b>perfectly</b> for it to count.</p>
+      <h3>Timed mode</h3>
+      <p>Extreme mode gives you 1 minute to get as far as you can in Countries, Cities and Flags modes. Hints are also disabled</p>
       <button onclick="closeInstructions()">Close</button>
     </div>
   </div>
