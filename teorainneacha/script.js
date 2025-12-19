@@ -358,6 +358,7 @@ let timedTimeout = null;
 const TIMED_DURATION_MS = 3 * 60 * 1000; // 3 minutes
 let score = 0;
 let countdownEnd = null;
+let resultsShown = false;
 // TopoJSON id mapping for problematic countries
 const topoIdMap = {
   "AFG": "004",
@@ -849,6 +850,8 @@ function closeTimedMode() {
 
 function startTimedGame(submode) {
   // submode: 'countries' | 'cities' | 'flags'
+  // allow results for this new timed run
+  resultsShown = false;
   timedModeActive = true;
   // hide autocomplete suggestions for timed mode
   const ac = document.getElementById('autocomplete-list');
@@ -939,15 +942,26 @@ function startTimedGame(submode) {
 }
 
 function endTimedGame() {
+  if (resultsShown) return;
+  resultsShown = true;
   // Stop timers
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  // mark timed mode finished and clear scheduled timeouts
   timedModeActive = false;
   if (timedTimeout) { clearTimeout(timedTimeout); timedTimeout = null; }
   // bring up results screen
-    // Show only points total (50 points per revealed/answered item)
+    // Show questions-right and total points (50 points per item)
+    let correctCount = 0;
+    if (gameType === 'countries') correctCount = revealedCountries.size || 0;
+    else if (gameType === 'cities') correctCount = revealedCapitals.size || 0;
+    else correctCount = 0;
+    const points = (correctCount || 0) * 50;
+    // prefer authoritative score if present, but compute from counts for clarity
+    const displayedPoints = (typeof score === 'number' && score >= 0) ? score : points;
     document.getElementById('results-text').innerHTML = `
       <div>Timed Mode Over (${gameType === 'countries' ? 'Countries' : (gameType === 'cities' ? 'Cities' : 'Flags')})</div>
-      <div>Total Points: <strong>${score}</strong></div>`;
+      <div>Questions Right: <strong>${correctCount}</strong></div>
+      <div>Total Points: <strong>${displayedPoints}</strong></div>`;
   document.getElementById('results-screen').style.display = 'flex';
   // restore autocomplete visibility
   const ac = document.getElementById('autocomplete-list'); if (ac) ac.style.display = '';
@@ -974,6 +988,8 @@ async function ensureFlagsData() {
 }
 
 function startFlagsGame(continent) {
+  // allow results for this fresh flags run
+  resultsShown = false;
   flagsContinent = continent;
   document.getElementById('flags-continent-screen').style.display = 'none';
   document.getElementById('flags-game-screen').style.display = 'block';
@@ -1002,8 +1018,14 @@ function startFlagsGame(continent) {
 }
 
 function endFlagsGame() {
+  if (resultsShown) return;
+  resultsShown = true;
+  // detect whether this run should be treated as a timed run
+  const wasTimed = timedModeActive || (countdownEnd && (Date.now() <= (countdownEnd + 1000)));
   // clear any main countdown interval used for timed flags
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  // ensure any scheduled timed end won't reopen results
+  if (timedTimeout) { clearTimeout(timedTimeout); timedTimeout = null; }
   document.getElementById('flags-game-screen').style.display = 'none';
   document.getElementById('main-menu').style.display = 'flex';
   // restore map and controls
@@ -1015,11 +1037,15 @@ function endFlagsGame() {
     flagsTimerInterval = null;
   }
   // show results in the results screen
-  if (timedModeActive) {
+  if (wasTimed) {
     // Timed flags: show total points
+    const correct = flagsCorrect || 0;
+    const pts = correct * 50;
+    const displayed = (typeof score === 'number' && score >= 0) ? score : pts;
     document.getElementById('results-text').innerHTML = `
       <div>Flags Game Over (${flagsGameMode === 'flag-to-country' ? 'Assign flag to country' : 'Assign country to flag'})</div>
-      <div>Total Points: <strong>${score}</strong></div>`;
+      <div>Questions Right: <strong>${correct}</strong></div>
+      <div>Total Points: <strong>${displayed}</strong></div>`;
   } else {
     // Non-timed flags: show time, wrong attempts, accuracy
     const total = (flagsCorrect || 0) + (flagsWrong || 0);
@@ -1130,7 +1156,8 @@ function handleFlagSelection(btn, opt, correctKey, mode) {
     showMessage('Correct!', 'check');
     // update counters if flags mode
     flagsCorrect = (typeof flagsCorrect === 'number') ? flagsCorrect + 1 : 1;
-    // flags are not scored except in timed countries mode; do not increment score here
+    // Award points in timed mode: each answered flags question = 50 points
+    if (timedModeActive && typeof score === 'number') score += 50;
     // auto-advance after a short delay
     setTimeout(() => {
       nextFlagQuestion();
@@ -1204,6 +1231,7 @@ document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
   // clear timed mode state
   timedModeActive = false;
   if (timedTimeout) { clearTimeout(timedTimeout); timedTimeout = null; }
+  resultsShown = false;
   const ac = document.getElementById('autocomplete-list'); if (ac) ac.style.display = '';
   document.getElementById('flags-game-screen').style.display = 'none';
   document.getElementById('flags-continent-screen').style.display = 'none';
@@ -1237,6 +1265,7 @@ document.getElementById("startscreen-mainmenu-btn").addEventListener("click", ()
   // clear timed mode state
   timedModeActive = false;
   if (timedTimeout) { clearTimeout(timedTimeout); timedTimeout = null; }
+  resultsShown = false;
   const ac = document.getElementById('autocomplete-list'); if (ac) ac.style.display = '';
   document.getElementById('flags-game-screen').style.display = 'none';
   document.getElementById('flags-continent-screen').style.display = 'none';
@@ -1266,6 +1295,7 @@ document.getElementById("results-mainmenu-btn").addEventListener("click", () => 
   // clear timed mode state
   timedModeActive = false;
   if (timedTimeout) { clearTimeout(timedTimeout); timedTimeout = null; }
+  resultsShown = false;
   const ac = document.getElementById('autocomplete-list'); if (ac) ac.style.display = '';
 });
 
@@ -1273,6 +1303,8 @@ function startGame(mode) {
   gameMode = mode;
   // Ensure any timed mode is cancelled when starting a regular game
   timedModeActive = false;
+  // fresh run: ensure results overlay can appear later
+  resultsShown = false;
   if (timedTimeout) { clearTimeout(timedTimeout); timedTimeout = null; }
   const ac = document.getElementById('autocomplete-list'); if (ac) ac.style.display = '';
   // reset score for a fresh game
@@ -1611,6 +1643,9 @@ function nextCitiesRound() {
     if (!pool || pool.length === 0) { endGame(); return; }
     currentCountry = pool[Math.floor(Math.random() * pool.length)];
     currentContinent = currentCountry.region;
+    // show prompt for timed cities as well
+    let promptText = `Round ${round}: What is the capital of ${currentCountry.country}?`;
+    document.getElementById("prompt").innerText = promptText;
     return;
   }
   while (noregdip < continentOrder.length) {
@@ -1943,6 +1978,8 @@ function revealCapital(rec) {
       dot.classed("capital-dot-grey", false).classed("capital-dot-red", true);
     }
   });
+  // award points during timed mode (50 points per revealed/answered capital)
+  if (timedModeActive && typeof score === 'number') score += 50;
 }
 
 function startTimer() {
@@ -2108,6 +2145,7 @@ function endGame() {
                <div>Wrong Attempts: ${wrongGuesses}</div>
                <div>Accuracy: ${percent}%</div>`;
       }
+      resultsShown = true;
       document.getElementById("results-screen").style.display = "flex";
       submitAnswer = oldSubmit;
     }
@@ -2132,6 +2170,7 @@ function endGame() {
          <div>Accuracy: ${percent}%</div>`;
   }
   document.getElementById("results-screen").style.display = "flex";
+  resultsShown = true;
 }
 // Toggle pause/resume when clicking the pause button so it responds immediately
 document.getElementById("pause-btn").addEventListener("click", () => {
@@ -2157,7 +2196,13 @@ document.getElementById("resume-btn").addEventListener("click", () => {
   }
 });
 document.getElementById("close-results-btn").addEventListener("click", () => {
+  // Hide results and clear any scheduled timers so it doesn't reopen
   document.getElementById("results-screen").style.display = "none";
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  if (flagsTimerInterval) { clearInterval(flagsTimerInterval); flagsTimerInterval = null; }
+  if (timedTimeout) { clearTimeout(timedTimeout); timedTimeout = null; }
+  timedModeActive = false;
+  // Keep resultsShown true to prevent duplicate re-opens until user explicitly returns to menu
 });
 document.addEventListener("keydown", function(e) {
   const answerInput = document.getElementById("answer");
