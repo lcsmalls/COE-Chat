@@ -1,7 +1,7 @@
 (function () {
   // === CONFIG ===
   const CURRENT_VERSION = '1.5.2';
-  const VERSION_URL = 'https://teorainneacha.vercel.app/version.json';
+  const VERSION_URL = 'version.json';
   // 'page'  => dismiss only for the current page load (will reappear after reload)
   // 'session' => dismiss for the browser tab session (survives reloads, cleared when tab closes)
   const DISMISS_PERSISTENCE = 'page'; // choose 'page' or 'session'
@@ -57,7 +57,7 @@
     const banner = document.createElement('div');
     banner.id = 'update-banner';
 
-    // Modern CSS styling for the banner (from your sample)
+    // Modern CSS styling for the banner 
     banner.style.cssText = `      
       position: fixed;
       top: 20px;
@@ -122,7 +122,7 @@
       });
     }
 
-    // Expose the dismiss function globally too (optional), in case you want inline onclick usage elsewhere
+    // Expose the dismiss function globally too
     window.__teorainneacha_dismiss = dismissBanner;
   }
 
@@ -166,7 +166,7 @@
     intervalId = setInterval(checkVersion, CHECK_INTERVAL_MS);
   });
 
-  // Also expose a utility to clear sessionStorage dismissal if you want to programmatically "undo" a session dismiss:
+
   window.__teorainneacha_clear_session_dismiss = function () {
     try {
       sessionStorage.removeItem(DISMISS_KEY);
@@ -352,6 +352,12 @@ let flagsContinent = 'all';
 let flagsQuestionIndex = 0;
 let flagsQuestionList = [];
 let flagsCurrentQuestion = null;
+// Timed mode state
+let timedModeActive = false;
+let timedTimeout = null;
+const TIMED_DURATION_MS = 3 * 60 * 1000; // 3 minutes
+let score = 0;
+let countdownEnd = null;
 // TopoJSON id mapping for problematic countries
 const topoIdMap = {
   "AFG": "004",
@@ -610,6 +616,11 @@ function normalizeName(s) {
   return (s || "").toLowerCase().replace(/[^a-z]+/g, '');
 }
 
+function normalizedTokens(s) {
+  if (!s) return [];
+  return (s || '').split(/[^A-Za-z]+/).map(t => normalizeName(t)).filter(Boolean);
+}
+
 function showMessage(text, icon = 'info') {
   const modal = document.getElementById("message-modal");
   modal.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${text}</span>`;
@@ -824,6 +835,123 @@ function showFlagsContinentSelect(mode) {
     container.appendChild(btn);
   });
 }
+
+// Timed mode UI handlers
+function showTimedMode() {
+  document.getElementById('main-menu').style.display = 'none';
+  document.getElementById('timed-mode-screen').style.display = 'flex';
+}
+
+function closeTimedMode() {
+  document.getElementById('timed-mode-screen').style.display = 'none';
+  document.getElementById('main-menu').style.display = 'flex';
+}
+
+function startTimedGame(submode) {
+  // submode: 'countries' | 'cities' | 'flags'
+  timedModeActive = true;
+  // hide autocomplete suggestions for timed mode
+  const ac = document.getElementById('autocomplete-list');
+  if (ac) ac.style.display = 'none';
+  // Close menus/screens then start respective flow
+  document.getElementById('timed-mode-screen').style.display = 'none';
+  document.getElementById('main-menu').style.display = 'none';
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('flags-start-screen').style.display = 'none';
+  // Reset game state
+  round = 1; wrongGuesses = 0; revealedCountries.clear(); revealedCapitals.clear(); skippedCountries = [];
+  mapGroup.selectAll('image').remove();
+  mapGroup.selectAll('path.country').classed('revealed', false).attr('fill', null);
+  if (submode === 'flags') {
+    // start flags game for whole world and enforce 60s end
+    ensureFlagsData().then(() => {
+      score = 0;
+      // start a countdown timer shown in the main timer element
+      countdownEnd = Date.now() + TIMED_DURATION_MS;
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        const remaining = Math.max(0, countdownEnd - Date.now());
+        const totalSec = Math.ceil(remaining / 1000);
+        const min = Math.floor(totalSec / 60);
+        const sec = totalSec % 60;
+        const timerEl = document.getElementById('timer');
+        if (timerEl) timerEl.textContent = `${min}:${sec.toString().padStart(2,'0')}`;
+        const flagsTimerEl = document.getElementById('flags-timer');
+        if (flagsTimerEl) flagsTimerEl.textContent = `${min}:${sec.toString().padStart(2,'0')}`;
+        if (remaining <= 0) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          // finish timed flags game
+          endFlagsGame();
+          timedModeActive = false;
+        }
+      }, 250);
+      // also ensure a fallback timeout
+      if (timedTimeout) clearTimeout(timedTimeout);
+      timedTimeout = setTimeout(() => { endFlagsGame(); timedModeActive = false; }, TIMED_DURATION_MS + 250);
+      startFlagsGame('all');
+    });
+    return;
+  }
+  // For countries and cities, set game type then start
+  gameType = submode === 'cities' ? 'cities' : 'countries';
+  // start countdown timer and rounds
+  score = 0;
+  countdownEnd = Date.now() + TIMED_DURATION_MS;
+  // clear any previous interval
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const remaining = Math.max(0, countdownEnd - Date.now());
+    const totalSec = Math.ceil(remaining / 1000);
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    document.getElementById('timer').textContent = `${min}:${sec.toString().padStart(2,'0')}`;
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      // finish timed game
+      endTimedGame();
+    }
+  }, 250);
+  // enforce 60s stop
+  if (timedTimeout) clearTimeout(timedTimeout);
+  timedTimeout = setTimeout(() => { endTimedGame(); }, TIMED_DURATION_MS);
+  // initialize first prompt
+  if (gameType === 'countries') {
+    nextRound();
+  } else {
+    // Timed cities: show capital dots like regular Cities mode
+    mapGroup.selectAll('path.country').classed('revealed', true);
+    capitalDots.forEach(dot => dot.remove());
+    capitalDots = [];
+    capitalsOrder.forEach((rec, i) => {
+      const coords = projection([rec.latlng[1], rec.latlng[0]]);
+      const dot = mapGroup.append('circle')
+        .attr('cx', coords[0]).attr('cy', coords[1])
+        .attr('r', 2)
+        .attr('class', 'capital-dot capital-dot-grey')
+        .attr('data-capital', rec.capital)
+        .attr('data-country', rec.country);
+      capitalDots.push(dot);
+    });
+    nextCitiesRound();
+  }
+}
+
+function endTimedGame() {
+  // Stop timers
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  timedModeActive = false;
+  if (timedTimeout) { clearTimeout(timedTimeout); timedTimeout = null; }
+  // bring up results screen
+    // Show only points total (50 points per revealed/answered item)
+    document.getElementById('results-text').innerHTML = `
+      <div>Timed Mode Over (${gameType === 'countries' ? 'Countries' : (gameType === 'cities' ? 'Cities' : 'Flags')})</div>
+      <div>Total Points: <strong>${score}</strong></div>`;
+  document.getElementById('results-screen').style.display = 'flex';
+  // restore autocomplete visibility
+  const ac = document.getElementById('autocomplete-list'); if (ac) ac.style.display = '';
+}
 // Unicode-aware capitalize: handles characters like Å correctly
 function capitalizeWords(s) {
   if (!s) return '';
@@ -874,6 +1002,8 @@ function startFlagsGame(continent) {
 }
 
 function endFlagsGame() {
+  // clear any main countdown interval used for timed flags
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   document.getElementById('flags-game-screen').style.display = 'none';
   document.getElementById('main-menu').style.display = 'flex';
   // restore map and controls
@@ -885,15 +1015,23 @@ function endFlagsGame() {
     flagsTimerInterval = null;
   }
   // show results in the results screen
-  const total = (flagsCorrect || 0) + (flagsWrong || 0);
-  const percent = total > 0 ? (((flagsCorrect || 0) / total) * 100).toFixed(1) : 100;
-  const minutes = Math.floor((flagsElapsed || 0) / 60000);
-  const seconds = Math.floor(((flagsElapsed || 0) / 1000) % 60).toString().padStart(2, '0');
-  document.getElementById('results-text').innerHTML = `
+  if (timedModeActive) {
+    // Timed flags: show total points
+    document.getElementById('results-text').innerHTML = `
+      <div>Flags Game Over (${flagsGameMode === 'flag-to-country' ? 'Assign flag to country' : 'Assign country to flag'})</div>
+      <div>Total Points: <strong>${score}</strong></div>`;
+  } else {
+    // Non-timed flags: show time, wrong attempts, accuracy
+    const total = (flagsCorrect || 0) + (flagsWrong || 0);
+    const percent = total > 0 ? (((flagsCorrect || 0) / total) * 100).toFixed(1) : 100;
+    const minutes = Math.floor((flagsElapsed || 0) / 60000);
+    const seconds = Math.floor(((flagsElapsed || 0) / 1000) % 60).toString().padStart(2, '0');
+    document.getElementById('results-text').innerHTML = `
       <div>Flags Game Over (${flagsGameMode === 'flag-to-country' ? 'Assign flag to country' : 'Assign country to flag'})</div>
       <div>Time: ${minutes}:${seconds}</div>
       <div>Wrong Attempts: ${flagsWrong||0}</div>
       <div>Accuracy: ${percent}%</div>`;
+  }
   document.getElementById('results-screen').style.display = 'flex';
 }
 
@@ -992,6 +1130,7 @@ function handleFlagSelection(btn, opt, correctKey, mode) {
     showMessage('Correct!', 'check');
     // update counters if flags mode
     flagsCorrect = (typeof flagsCorrect === 'number') ? flagsCorrect + 1 : 1;
+    // flags are not scored except in timed countries mode; do not increment score here
     // auto-advance after a short delay
     setTimeout(() => {
       nextFlagQuestion();
@@ -1062,6 +1201,10 @@ document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
   flagsPaused = false;
   flagsQuestionIndex = 0;
   flagsQuestionList = [];
+  // clear timed mode state
+  timedModeActive = false;
+  if (timedTimeout) { clearTimeout(timedTimeout); timedTimeout = null; }
+  const ac = document.getElementById('autocomplete-list'); if (ac) ac.style.display = '';
   document.getElementById('flags-game-screen').style.display = 'none';
   document.getElementById('flags-continent-screen').style.display = 'none';
   document.getElementById('flags-start-screen').style.display = 'none';
@@ -1091,6 +1234,10 @@ document.getElementById("startscreen-mainmenu-btn").addEventListener("click", ()
   flagsPaused = false;
   flagsQuestionIndex = 0;
   flagsQuestionList = [];
+  // clear timed mode state
+  timedModeActive = false;
+  if (timedTimeout) { clearTimeout(timedTimeout); timedTimeout = null; }
+  const ac = document.getElementById('autocomplete-list'); if (ac) ac.style.display = '';
   document.getElementById('flags-game-screen').style.display = 'none';
   document.getElementById('flags-continent-screen').style.display = 'none';
   document.getElementById('flags-start-screen').style.display = 'none';
@@ -1116,10 +1263,20 @@ document.getElementById("results-mainmenu-btn").addEventListener("click", () => 
   document.getElementById("results-screen").style.display = "none";
   document.getElementById("start-screen").style.display = "none";
   document.getElementById("main-menu").style.display = "flex";
+  // clear timed mode state
+  timedModeActive = false;
+  if (timedTimeout) { clearTimeout(timedTimeout); timedTimeout = null; }
+  const ac = document.getElementById('autocomplete-list'); if (ac) ac.style.display = '';
 });
 
 function startGame(mode) {
   gameMode = mode;
+  // Ensure any timed mode is cancelled when starting a regular game
+  timedModeActive = false;
+  if (timedTimeout) { clearTimeout(timedTimeout); timedTimeout = null; }
+  const ac = document.getElementById('autocomplete-list'); if (ac) ac.style.display = '';
+  // reset score for a fresh game
+  score = 0;
   document.getElementById("start-screen").style.display = "none";
   round = 1;
   noregdip = 0;
@@ -1149,6 +1306,17 @@ function startGame(mode) {
 }
 
 function getFeature(rec) {
+  // Special-case: British Indian Ocean Territory should not resolve to India
+  if (rec && rec.cca3 === 'IOT') {
+    const key = normalizeName('British Indian Ocean Territory');
+    if (featureByName.has(key)) return featureByName.get(key);
+    for (let f of features) {
+      const props = f.properties || {};
+      const fname = normalizeName(props.name || props.NAME || props.ADMIN || '');
+      if (fname && fname.includes('britishindianocean')) return f;
+    }
+    // if not found continue with normal resolution (but prefer not to match India)
+  }
   const key = normalizeName(rec.name);
   const topoId = topoIdMap[rec.cca3];
   // Try TopoJSON id match
@@ -1175,18 +1343,15 @@ function getFeature(rec) {
       return f;
     }
   }
-  // Try matching by normalized name in feature properties (for regions like Northern Cyprus, Somaliland)
+  // Try matching by normalized name tokens in feature properties (avoid substring collisions like 'oman' in 'romania')
   for (let f of features) {
     const props = f.properties || {};
-    const fname = normalizeName(props.name || props.NAME || props.ADMIN || "");
-    if (fname && (fname === key || fname.includes(key) || key.includes(fname))) {
-      return f;
-    }
+    const raw = props.name || props.NAME || props.ADMIN || "";
+    const tokens = normalizedTokens(raw);
+    if (tokens.includes(key)) return f;
   }
-  // Try partial match in featureByName
-  for (let [name, f] of featureByName) {
-    if (name.includes(key) || key.includes(name)) return f;
-  }
+  // Try exact key match in featureByName as a last resort
+  if (featureByName.has(key)) return featureByName.get(key);
   return null;
 }
 const flagCache = new Map();
@@ -1199,7 +1364,9 @@ countriesData.forEach(c => {
 function revealCountry(rec) {
   if (revealedCountries.has(rec.name)) return;
   revealedCountries.add(rec.name);
-  const forceStretch = new Set(["RUS"]);
+  // award points only during timed mode (50 points per revealed country)
+  if (timedModeActive && typeof score === 'number') score += 50;
+  const forceStretch = new Set(["RUS", "IRL", "TCD", "CIV"]);
   let feature = getFeature(rec);
   if (!feature) {
     if (rec.cca3 === "BSC") {
@@ -1262,7 +1429,7 @@ function revealCountry(rec) {
     if (cca3 === "NCY") return "northern-cyprus";
     return name.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
   }
-  let flagSrc = `https://teorainneacha.vercel.app/bratai/${brataiKey(rec.name, rec.cca3)}.svg`;
+  let flagSrc = `https://bratai.vercel.app/${brataiKey(rec.name, rec.cca3)}.svg`;
   if (!flagImg) {
     flagImg = new Image();
     flagImg.src = flagSrc;
@@ -1361,7 +1528,7 @@ function revealCountry(rec) {
     const clipId = `clip-${rec.cca3}`;
     mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
     renderSingleFeature(feature, rec, clipId);
-  } else if (["USA", "FRA", "NLD", "PRT", "ESP", "TWN", "MLT", "AUS"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") processMultiPolygon(feature, rec);
+  } else if (["USA", "FRA", "NLD", "PRT", "ESP", "TWN", "MLT", "AUS", "NZL", "GNQ"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") processMultiPolygon(feature, rec);
   else {
     const clipId = `clip-${rec.cca3}`;
     mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
@@ -1382,7 +1549,16 @@ function nextRound() {
   submitSpan.textContent = "arrow_forward_ios";
   submitSpan.style.fontSize = "24px";
   let remaining;
-  if (gameMode === "Normal" || gameMode === "Hard") {
+  if (timedModeActive && gameType === 'countries') {
+    // In timed countries mode: pick a random continent per question
+    const contChoices = continentOrder.filter(c => c !== 'Antarctic');
+    const cont = contChoices[Math.floor(Math.random() * contChoices.length)];
+    remaining = countriesData.filter(c => !revealedCountries.has(c.name) && c.region === cont);
+    if (!remaining || remaining.length === 0) {
+      // fallback to any non-Antarctic
+      remaining = countriesData.filter(c => !revealedCountries.has(c.name) && c.region !== 'Antarctic');
+    }
+  } else if (gameMode === "Normal" || gameMode === "Hard") {
     while (noregdip < continentOrder.length) {
       const cont = continentOrder[noregdip];
       remaining = countriesData.filter(c => !revealedCountries.has(c.name) && c.region === cont);
@@ -1429,6 +1605,14 @@ function nextRound() {
 }
 
 function nextCitiesRound() {
+  if (timedModeActive && gameType === 'cities') {
+    // Timed cities: pick a random country (any continent) each round
+    const pool = capitalsData.filter(c => !revealedCapitals.has(c.capital));
+    if (!pool || pool.length === 0) { endGame(); return; }
+    currentCountry = pool[Math.floor(Math.random() * pool.length)];
+    currentContinent = currentCountry.region;
+    return;
+  }
   while (noregdip < continentOrder.length) {
     const cont = continentOrder[noregdip];
     const remaining = capitalsOrder.filter(c => !revealedCapitals.has(c.capital) && c.region === cont);
@@ -1457,6 +1641,7 @@ let autocompleteHighlightIndex = 0;
 answerInput.addEventListener("input", function() {
   autocompleteList.innerHTML = "";
   if (gameMode === "Extreme") return; // No autocomplete in Extreme mode
+  if (timedModeActive) return; // Timed modes have no suggestion box
   const val = normalizeName(this.value);
   if (!val) return;
   if (this.value.trim() === "|ra") return;
@@ -1766,6 +1951,8 @@ function startTimer() {
 }
 
 function updateTimer() {
+  // When in timed mode we use a countdown updater; prevent the regular elapsed timer from overwriting it
+  if (timedModeActive) return;
   elapsed = Date.now() - startTime;
   const totalSec = Math.floor(elapsed / 1000);
   const min = Math.floor(totalSec / 60),
@@ -1791,6 +1978,9 @@ let flagsStartTime = null,
   flagsPaused = false;
 
 function startFlagsTimer() {
+  // If we're in a timed mode countdown, the main countdown updates `#flags-timer`.
+  // Avoid starting a separate flags timer which would conflict and cause flicker.
+  if (timedModeActive) return;
   flagsStartTime = Date.now() - flagsElapsed;
   if (flagsTimerInterval) clearInterval(flagsTimerInterval);
   flagsTimerInterval = setInterval(() => {
@@ -1900,17 +2090,24 @@ function endGame() {
 
     function finishGame() {
       clearInterval(timerInterval);
-      const totalSec = Math.floor(elapsed / 1000);
-      const min = Math.floor(totalSec / 60),
-        sec = totalSec % 60;
-      const correct = round - 1;
-      const total = correct + wrongGuesses;
-      const percent = total > 0 ? ((correct / total) * 100).toFixed(1) : 100;
-      document.getElementById("results-text").innerHTML = `
+      if (timedModeActive) {
+        // Timed mode: show points total
+        document.getElementById("results-text").innerHTML = `
+              <div>Game Over! (${gameType==="countries"?gameMode+" Countries":"Cities "+gameMode} Mode)</div>
+              <div>Total Points: <strong>${score}</strong></div>`;
+      } else {
+        // Non-timed: show time, wrong attempts, accuracy
+        const totalSec = Math.floor(elapsed / 1000);
+        const min = Math.floor(totalSec / 60), sec = totalSec % 60;
+        const correct = round - 1;
+        const total = correct + wrongGuesses;
+        const percent = total > 0 ? ((correct / total) * 100).toFixed(1) : 100;
+        document.getElementById("results-text").innerHTML = `
             <div>Game Over! (${gameType==="countries"?gameMode+" Countries":"Cities "+gameMode} Mode)</div>
             <div>Time: ${min}:${sec.toString().padStart(2,"0")}</div>
                <div>Wrong Attempts: ${wrongGuesses}</div>
                <div>Accuracy: ${percent}%</div>`;
+      }
       document.getElementById("results-screen").style.display = "flex";
       submitAnswer = oldSubmit;
     }
@@ -1918,17 +2115,22 @@ function endGame() {
   }
   // No skipped countries, show results
   clearInterval(timerInterval);
-  const totalSec = Math.floor(elapsed / 1000);
-  const min = Math.floor(totalSec / 60),
-    sec = totalSec % 60;
-  const correct = round - 1;
-  const total = correct + wrongGuesses;
-  const percent = total > 0 ? ((correct / total) * 100).toFixed(1) : 100;
-  document.getElementById("results-text").innerHTML = `
+  if (timedModeActive) {
+    document.getElementById("results-text").innerHTML = `
+      <div>Game Over! (${gameType==="countries"?gameMode+" Countries":"Cities "+gameMode} Mode)</div>
+      <div>Total Points: <strong>${score}</strong></div>`;
+  } else {
+    const totalSec = Math.floor(elapsed / 1000);
+    const min = Math.floor(totalSec / 60), sec = totalSec % 60;
+    const correct = round - 1;
+    const total = correct + wrongGuesses;
+    const percent = total > 0 ? ((correct / total) * 100).toFixed(1) : 100;
+    document.getElementById("results-text").innerHTML = `
       <div>Game Over! (${gameType==="countries"?gameMode+" Countries":"Cities "+gameMode} Mode)</div>
       <div>Time: ${min}:${sec.toString().padStart(2,"0")}</div>
          <div>Wrong Attempts: ${wrongGuesses}</div>
          <div>Accuracy: ${percent}%</div>`;
+  }
   document.getElementById("results-screen").style.display = "flex";
 }
 // Toggle pause/resume when clicking the pause button so it responds immediately
