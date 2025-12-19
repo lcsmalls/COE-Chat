@@ -13,10 +13,8 @@
 }
 
 html,
-body,
-* {
+body {
   font-family: "Geologica", sans-serif;
-
 }
 
 body {
@@ -63,6 +61,10 @@ h1 {
   fill: #13385e;
   stroke: #95abc2;
   stroke-width: 0.075px;
+}
+/* smooth country fill/opacity transitions */
+.country {
+  transition: fill 0.45s ease, opacity 0.35s ease, transform 0.35s ease;
 }
 
 #map {
@@ -119,6 +121,11 @@ button {
   padding: 0;
 }
 
+/* smooth button transitions */
+button {
+  transition: background 0.18s ease, transform 0.12s ease, color 0.12s ease;
+}
+
 button:hover {
   background: #005f99;
 }
@@ -136,6 +143,9 @@ button:hover {
   z-index: 1000;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
+
+/* smoother autocomplete appearance */
+#autocomplete-list { transition: opacity 0.15s ease; }
 
 .autocomplete-item {
   padding: 0.3em 0.5em;
@@ -287,6 +297,7 @@ button:hover {
   background: #007acc;
   margin-top: 0px !important;
   margin-bottom: 0px !important;
+  text-align: center;
 }
 
 #pause-overlay button {
@@ -425,9 +436,6 @@ button:hover {
   width: 100px !important;
 }
 
-#flags-next-btn:hover {
-}
-
 #end-game-btn:active,
 #flags-next-btn:active {
   background: white !important;
@@ -454,18 +462,26 @@ button:hover {
   margin-left: 2em;
 }
 
-/* Force readable font inside Flags screens so buttons show text (not Material Symbols) */
+/* Flags screens: use Geologica for text, but keep icons as Material Symbols where appropriate */
 #flags-start-screen,
 #flags-continent-screen,
 #flags-game-screen {
-  font-family: "Geologica", sans-serif !important;
+  font-family: "Geologica", sans-serif;
 }
 
-#flags-start-screen *,
-#flags-continent-screen *,
-#flags-game-screen * {
-  font-family: sans-serif !important;
-  font-variation-settings: normal !important;
+/* Buttons and controls in flags screens should use Geologica (no !important to avoid breaking icons) */
+#flags-start-screen button,
+#flags-continent-screen button,
+#flags-game-screen button {
+  font-family: "Geologica", sans-serif;
+  font-variation-settings: normal;
+}
+
+/* Icon spans keep the Material Symbols font explicitly where used */
+#flags-start-screen .material-symbols-rounded,
+#flags-continent-screen .material-symbols-rounded,
+#flags-game-screen .material-symbols-rounded {
+  font-family: 'Material Symbols Rounded';
 }
 
 /* Center continent buttons and reduce vertical spacing */
@@ -548,6 +564,11 @@ button:hover {
   pointer-events: none;
 }
 
+/* animate flags and images placed on the map */
+svg image {
+  transition: opacity 0.42s ease, transform 0.4s ease;
+}
+
 #message-modal .material-symbols-rounded {
   font-variation-settings: 'FILL'1;
   font-size: 24px;
@@ -577,6 +598,10 @@ button:hover {
   #credits-content {
     max-height: 70vh;
   }
+}
+
+#flags-prompt {
+  text-align: center;
 }
 
 /* Make the flags pause button match the main pause button style */
@@ -661,3 +686,41 @@ button:hover {
   font-family: "Geologica", sans-serif;
   margin-bottom:1.8em;
 }
+
+/* Timed mode screen should match other full-screen overlays and have proper layout */
+#timed-mode-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, black, #007acc);
+  display: flex;
+  flex-direction: column;
+  z-index: 3000;
+  color: #fff;
+  text-align: left;
+  padding-top: 2.5em;
+}
+
+/* Make timed mode buttons use the same large rectangular style as start-screen */
+#timed-mode-screen button {
+  margin: 10px;
+  padding: 1em;
+  font-size: 1.5em;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  background: none;
+  color: #fff;
+  font-family: "Geologica", sans-serif;
+  text-align: left !important;
+  justify-content: left;
+  width: 250px
+}
+
+#timed-mode-screen button:hover { background: #007acc; font-style: italic; }
+
+#timed-mode-screen img { margin-left: 2em; margin-bottom: 0.5em; }
+
+#timed-mode-screen p { margin-left: 2em; max-width: 70%; }
