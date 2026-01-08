@@ -1,0 +1,3 @@
+2.5.5:
+Created Changelog
+Split script.js into 12 parts for better organisation
