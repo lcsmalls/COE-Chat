@@ -313,7 +313,7 @@ async function init() {
   svg.attr("width", width).attr("height", height);
   // Use Van der Grinten projection
   projection = d3
-    .geoWinkel3()
+    .geoVanDerGrinten()
     .scale(Math.min(width / 6, height / 3.2))
     .translate([width / 2, height / 2])
     .precision(0.1);
