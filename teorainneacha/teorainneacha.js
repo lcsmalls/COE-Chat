@@ -1,3 +1,4 @@
+// v.1.5.6
 function revealCountry(rec) {
   if (revealedCountries.has(rec.name)) return;
   revealedCountries.add(rec.name);
@@ -53,17 +54,19 @@ function revealCountry(rec) {
     if (cca3 === "FRO" || name.toLowerCase().includes('faroe')) return "faroe-islands";
     if (cca3 === "ALA" || /\b(aland|åland)\b/i.test(name)) return "åland-islands";
     if (cca3 === "SJM" || name.toLowerCase().includes('svalbard') || name.toLowerCase().includes('jan mayen')) return "svalbard-and-jan-mayen";
-    if (cca3 === "KIR" || name.toLowerCase().includes('kiribati')) return "kiribati";
-    if (cca3 === "TKL" || name.toLowerCase().includes('tokelau')) return "tokelau";
-    if (cca3 === "WSM" || name.toLowerCase().includes('samoa')) return "samoa";
-    if (cca3 === "TON" || name.toLowerCase().includes('tonga')) return "tonga";
-    if (cca3 === "NIU" || name.toLowerCase().includes('niue')) return "niue";
-    if (cca3 === "COK" || name.toLowerCase().includes('cook islands')) return "cook-islands";
-    if (cca3 === "PLW" || name.toLowerCase().includes('palau')) return "palau";
-    if (cca3 === "NRU" || name.toLowerCase().includes('nauru')) return "nauru";
-    if (cca3 === "TUV" || name.toLowerCase().includes('tuvalu')) return "tuvalu";
-    if (cca3 === "BSC") return "british-somaliland";
-    if (cca3 === "NCY") return "northern-cyprus";
+    // French overseas territories and collectivities
+    if (cca3 === "GLP" || name.toLowerCase().includes('guadeloupe')) return "guadeloupe";
+    if (cca3 === "MTQ" || name.toLowerCase().includes('martinique')) return "martinique";
+    if (cca3 === "GUF" || name.toLowerCase().includes('french guiana')) return "french-guiana";
+    if (cca3 === "REU" || name.toLowerCase().includes('réunion') || name.toLowerCase().includes('reunion')) return "réunion";
+    if (cca3 === "MYT" || name.toLowerCase().includes('mayotte')) return "mayotte";
+    if (cca3 === "BLM" || name.toLowerCase().includes('saint barthélemy')) return "saint-barthélemy";
+    if (cca3 === "MAF" || name.toLowerCase().includes('saint martin')) return "saint-martin";
+    if (cca3 === "SPM" || name.toLowerCase().includes('saint pierre') || name.toLowerCase().includes('miquelon')) return "saint-pierre-and-miquelon";
+    if (cca3 === "WLF" || name.toLowerCase().includes('wallis') || name.toLowerCase().includes('futuna')) return "wallis-and-futuna";
+    if (cca3 === "NCL" || name.toLowerCase().includes('new caledonia')) return "new-caledonia";
+    if (cca3 === "PYF" || name.toLowerCase().includes('french polynesia')) return "french-polynesia";
+    // French Southern and Antarctic Lands (ATF) - keep as france for now
     return name.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
   }
   let flagSrc = `https://bratai.vercel.app/${brataiKey(rec.name, rec.cca3)}.svg`;
@@ -111,7 +114,9 @@ function revealCountry(rec) {
 
   function renderSingleFeature(feature, rec, clipId, stretchOverride = false) {
     const bounds = path.bounds(feature);
-    const img = mapGroup.append("image").attr("href", flagSrc).attr("clip-path", `url(#${clipId})`).attr("style", "pointer-events:none;").attr("opacity", 0);
+    // Calculate the correct flag source for this specific rec
+    const recFlagSrc = `https://bratai.vercel.app/${brataiKey(rec.name, rec.cca3)}.svg`;
+    const img = mapGroup.append("image").attr("href", recFlagSrc).attr("clip-path", `url(#${clipId})`).attr("style", "pointer-events:none;").attr("opacity", 0);
     const useStretch = forceStretch.has(rec.cca3) || stretchOverride;
 
     function applyStretch(imgSel, b) {
@@ -131,21 +136,87 @@ function revealCountry(rec) {
       tmp.onerror = function() {
         d3.select(img.node()).remove();
       };
-      tmp.src = flagSrc;
+      tmp.src = recFlagSrc;
     }
+  }
+  
+  // Circle definition for Svalbard (center: 80°N, 20°E, radius: ~9 degrees)
+  const svalbardCircle = {
+    center: [20, 80],
+    radiusDegrees: 9
+  };
+  
+  function isPointInSvalbardCircle(lon, lat) {
+    const dx = lon - svalbardCircle.center[0];
+    const dy = lat - svalbardCircle.center[1];
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    return distance <= svalbardCircle.radiusDegrees;
   }
 
   function processMultiPolygon(feature, rec) {
     let corsicaIndex = null;
     if (rec.cca3 === "FRA") {
+      // Identify indices for Corsica and French overseas territories
+      let territoryIndices = {};
       feature.geometry.coordinates.forEach((poly, idx) => {
         const lons = poly[0].map(p => p[0]);
         const lats = poly[0].map(p => p[1]);
-        const cx = d3.mean(lons),
-          cy = d3.mean(lats);
-        if (cx > 8 && cx < 10 && cy > 41 && cy < 43) corsicaIndex = idx;
+        const cx = d3.mean(lons), cy = d3.mean(lats);
+        // Corsica
+        if (cx > 8 && cx < 10 && cy > 41 && cy < 43) territoryIndices.corsica = idx;
+        // Guadeloupe
+        if (cx > -62 && cx < -60 && cy > 15 && cy < 17) territoryIndices.guadeloupe = idx;
+        // Martinique
+        if (cx > -62 && cx < -60 && cy > 14 && cy < 15.5) territoryIndices.martinique = idx;
+        // French Guiana
+        if (cx > -54.5 && cx < -51 && cy > 2 && cy < 6) territoryIndices.frenchguiana = idx;
+        // Réunion
+        if (cx > 55 && cx < 57 && cy > -22 && cy < -20) territoryIndices.reunion = idx;
+        // Mayotte
+        if (cx > 44 && cx < 46 && cy > -13.5 && cy < -12) territoryIndices.mayotte = idx;
+        // Saint Pierre and Miquelon
+        if (cx > -57.5 && cx < -55 && cy > 46.5 && cy < 48) territoryIndices.spm = idx;
+        // Saint Barthélemy
+        if (cx > -63.2 && cx < -62.5 && cy > 17.8 && cy < 18.2) territoryIndices.blm = idx;
+        // Saint Martin
+        if (cx > -63.2 && cx < -62.5 && cy > 18 && cy < 18.2) territoryIndices.maf = idx;
+        // Wallis and Futuna
+        if (cx > -177.5 && cx < -176 && cy > -14.5 && cy < -13) territoryIndices.wlf = idx;
+        // New Caledonia
+        if (cx > 163 && cx < 168 && cy > -23 && cy < -19) territoryIndices.ncl = idx;
+        // French Polynesia
+        if (cx > -155 && cx < -148 && cy > -18 && cy < -15) territoryIndices.pyf = idx;
       });
+      feature.geometry.coordinates.forEach((poly, idx) => {
+        const singleFeature = {
+          type: "Feature",
+          geometry: {
+            type: "Polygon",
+            coordinates: poly
+          },
+          properties: feature.properties
+        };
+        const clipId = `clip-${rec.cca3}-part${idx}`;
+        mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(singleFeature));
+        let customRec = rec;
+        let stretchOverride = false;
+        if (idx === territoryIndices.corsica) stretchOverride = true;
+        if (idx === territoryIndices.guadeloupe) customRec = { ...rec, cca3: "GLP", name: "Guadeloupe" };
+        if (idx === territoryIndices.martinique) customRec = { ...rec, cca3: "MTQ", name: "Martinique" };
+        if (idx === territoryIndices.frenchguiana) customRec = { ...rec, cca3: "GUF", name: "French Guiana" };
+        if (idx === territoryIndices.reunion) customRec = { ...rec, cca3: "REU", name: "Réunion" };
+        if (idx === territoryIndices.mayotte) customRec = { ...rec, cca3: "MYT", name: "Mayotte" };
+        if (idx === territoryIndices.spm) customRec = { ...rec, cca3: "SPM", name: "Saint Pierre and Miquelon" };
+        if (idx === territoryIndices.blm) customRec = { ...rec, cca3: "BLM", name: "Saint Barthélemy" };
+        if (idx === territoryIndices.maf) customRec = { ...rec, cca3: "MAF", name: "Saint Martin" };
+        if (idx === territoryIndices.wlf) customRec = { ...rec, cca3: "WLF", name: "Wallis and Futuna" };
+        if (idx === territoryIndices.ncl) customRec = { ...rec, cca3: "NCL", name: "New Caledonia" };
+        if (idx === territoryIndices.pyf) customRec = { ...rec, cca3: "PYF", name: "French Polynesia" };
+        renderSingleFeature(singleFeature, customRec, clipId, stretchOverride);
+      });
+      return;
     }
+    
     feature.geometry.coordinates.forEach((poly, idx) => {
       const singleFeature = {
         type: "Feature",
@@ -157,15 +228,58 @@ function revealCountry(rec) {
       };
       const clipId = `clip-${rec.cca3}-part${idx}`;
       mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(singleFeature));
-      const stretchOverride = (rec.cca3 === "FRA" && idx === corsicaIndex);
-      renderSingleFeature(singleFeature, rec, clipId, stretchOverride);
+      renderSingleFeature(singleFeature, rec, clipId);
     });
   }
-  if (rec.cca3 === "RUS") {
-    const clipId = `clip-${rec.cca3}`;
-    mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
-    renderSingleFeature(feature, rec, clipId);
-  } else if (["USA", "FRA", "NLD", "PRT", "ESP", "TWN", "MLT", "AUS", "NZL", "GNQ"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") processMultiPolygon(feature, rec);
+  if (rec.cca3 === "NOR" && feature.geometry.type === "MultiPolygon") {
+    // Separate Svalbard from Norway based on circle geometry
+    // Combine all Svalbard polygons into one feature and all Norway polygons into one feature
+    const svalbardPolygons = [];
+    const norwayPolygons = [];
+    
+    feature.geometry.coordinates.forEach((poly, idx) => {
+      const lons = poly[0].map(p => p[0]);
+      const lats = poly[0].map(p => p[1]);
+      const cx = d3.mean(lons), cy = d3.mean(lats);
+      
+      if (isPointInSvalbardCircle(cx, cy)) {
+        svalbardPolygons.push(poly);
+      } else {
+        norwayPolygons.push(poly);
+      }
+    });
+    
+    // Render Svalbard as a single feature
+    if (svalbardPolygons.length > 0) {
+      const svalbardFeature = {
+        type: "Feature",
+        geometry: {
+          type: svalbardPolygons.length === 1 ? "Polygon" : "MultiPolygon",
+          coordinates: svalbardPolygons.length === 1 ? svalbardPolygons[0] : svalbardPolygons
+        },
+        properties: feature.properties
+      };
+      const clipId = `clip-SJM`;
+      mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(svalbardFeature));
+      const customRec = { ...rec, cca3: "SJM", name: "Svalbard and Jan Mayen" };
+      renderSingleFeature(svalbardFeature, customRec, clipId);
+    }
+    
+    // Render Norway as a single feature
+    if (norwayPolygons.length > 0) {
+      const norwayFeature = {
+        type: "Feature",
+        geometry: {
+          type: norwayPolygons.length === 1 ? "Polygon" : "MultiPolygon",
+          coordinates: norwayPolygons.length === 1 ? norwayPolygons[0] : norwayPolygons
+        },
+        properties: feature.properties
+      };
+      const clipId = `clip-NOR`;
+      mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(norwayFeature));
+      renderSingleFeature(norwayFeature, rec, clipId);
+    }
+  } else if (["USA", "FRA", "NLD", "PRT", "ESP", "TWN", "MLT", "AUS", "NZL", "GNQ", "ZAF"].includes(rec.cca3) && feature.geometry.type === "MultiPolygon") processMultiPolygon(feature, rec);
   else {
     const clipId = `clip-${rec.cca3}`;
     mapGroup.append("clipPath").attr("id", clipId).append("path").attr("d", path(feature));
