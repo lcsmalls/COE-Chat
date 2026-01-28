@@ -1,21 +1,152 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <title>Critical Error</title>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Geologica:wght,CRSV@100..900,0&display=swap');
-      html {
-        background: linear-gradient(to right, #007acc, black);
-        color: white;
-        font-family: 'Geologica';
-        text-align: center;
-      }
-    </style>
-  </head>
-  <body>
-    <img style="width: 200px;" src="https://teorainneacha.vercel.app/icon.png">
-    <h2 style="color: red;">WARNING!</h2>
-<p>There has been a critical error with Teorainneacha and it has been temporarily taken down for maintenance.</p>
-    <p><a style="color:white;" href="https://github.com/lcsmalls/COE-Chat/issues/1" target="_blank">More Details</a></p>
-  </body>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Teorainneacha</title>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geologica&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="https://teorainneacha.vercel.app/icon.png">
+  <link href="style.css" rel="stylesheet">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+  <script src="https://unpkg.com/topojson-client@3"></script>
+</head>
+
+<body>
+  <h1>Teorainneacha</h1>
+  <div id="controls">
+    <div id="prompt">Loading game...</div>
+    <input id="answer" type="text" placeholder="Type country name" autocomplete="off">
+    <div id="autocomplete-list"></div>
+    <button id="submit-btn"><span class="material-symbols-rounded" style="font-variation-settings:'FILL' 1;font-size:24px;">arrow_forward_ios</span></button>
+    <button id="pause-btn" title="Pause"><span class="material-symbols-rounded" style="font-variation-settings:'FILL' 1;font-size:24px;">pause</span></button>
+    <div id="timer">0:00</div>
+  </div>
+  <svg id="map"></svg>
+  <div id="popup-country"></div>
+  <div id="main-menu" style="display:flex;">
+    <img src="https://teorainneacha.vercel.app/icon.png" alt="Game Logo" style="width:100px;height:100px;margin-bottom:1em; padding-left: 2em;">
+    <p style="padding-left: 2.5em;">Choose a game mode:</p>
+    <div style="text-align: left !important;">
+      <button onclick="showStartScreen('countries')">Countries Mode</button>
+      <button onclick="showStartScreen('cities')">Cities Mode</button>
+      <button onclick="showFlagsStart()">Flags Mode</button>
+      <button onclick="showTimedMode()">Timed Mode</button>
+      <button onclick="showInstructions()">Instructions</button>
+      <button onclick="showCredits()">Credits</button>
+    </div>
+    <div id="main-menu-version">v1.5.4</div>
+    <!--Correct version-->
+  </div>
+  <div id="start-screen" style="display:none;">
+    <img style="padding-left:2em;" src="https://teorainneacha.vercel.app/icon.png" alt="Game Logo">
+    <p style="padding-left: 2em;" id="start-desc">Select a mode to start:</p>
+    <button id="easy-btn" onclick="startGame('Easy')">Easy</button>
+    <button id="normal-btn" onclick="startGame('Normal')">Normal</button>
+    <button id="hard-btn" onclick="startGame('Hard')">Hard</button>
+    <button id="extreme-btn" onclick="startGame('Extreme')">Extreme</button>
+    <button style="font-family: 'Geologica' !important; background:white !important; color: black; width: 100px;" id="startscreen-mainmenu-btn" onclick="backToMainFromFlags()">Back</button>
+  </div>
+  <!-- Flags start and selection screens -->
+  <div id="flags-start-screen" style="display:none;">
+    <img src="https://teorainneacha.vercel.app/icon.png" alt="Game Logo">
+    <p style="font-family: 'Geologica' !important; font-size: 1.25em; margin-left: 2em;">Choose a flags sub-mode:</p>
+    <button onclick="showFlagsContinentSelect('flag-to-country')">Assign flag to country</button>
+    <button onclick="showFlagsContinentSelect('country-to-flag')">Assign country to flag</button>
+    <button style="font-family: 'Geologica' !important; background:white !important; color: black; width: 100px;" onclick="backToMainFromFlags()">Back</button>
+  </div>
+  <!-- Timed mode selection -->
+  <div id="timed-mode-screen" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: linear-gradient(to right, black, #007acc); z-index:3000; color:#fff; padding-top:2.5em;">
+    <img src="https://teorainneacha.vercel.app/icon.png" alt="Game Logo" style="width:200px;height:200px;margin-bottom:0.5em;margin-left:2em;">
+    <p style="margin-left:2em; font-size:1.15em;">Choose a sub-mode:</p>
+    <button onclick="startTimedGame('countries')">Countries Mode</button>
+    <button onclick="startTimedGame('cities')">Cities Mode</button>
+    <button onclick="startTimedGame('flags')">Flags Mode</button>
+    <button style="font-family: 'Geologica' !important; background:white !important; color: black; width: 100px; margin-left:10px;" onclick="closeTimedMode()">Back</button>
+  </div>
+  <div id="flags-continent-screen" style="display:none;">
+    <img src="https://teorainneacha.vercel.app/icon.png" alt="Game Logo">
+    <h1 style="font-family: 'Geologica' !important;" id="flags-subtitle"></h1>
+    <p style="font-family: 'Geologica'!important; margin-left: 2em; margin-top: 0px !important;">Select a continent (or All):</p>
+    <div id="flags-continent-buttons"></div>
+    <button style="font-family: 'Geologica' !important; background:white !important; color: black; width: 100px;" onclick="backToFlagsStart()">Back</button>
+  </div>
+  <div id="flags-game-screen" style="display:none; padding:1em; text-align: left;">
+    <div id="flags-header" style="display:flex;gap:12px;align-items:left ;justify-content: left;margin-bottom:12px;">
+      <button id="flags-pause-btn" style="background:#ff9800 !important; width: 67px; margin-left: 0px !important;" title="Pause"><span class="material-symbols-rounded" style="font-variation-settings:'FILL' 1;font-size:20px;">pause</span></button>
+      <div id="flags-timer">0:00</div>
+      <div id="flags-round">Round 0/0</div>
+    </div>
+    <h2 id="flags-prompt"></h2>
+    <div id="flags-visual" style="margin:1em auto; justify-content: center !important;"></div>
+    <div id="flags-options" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:800px;margin:0 auto;"></div>
+    <div style="margin-top:1em;">
+      <button id="flags-next-btn" style="display:none; margin-bottom: 5px; " onclick="nextFlagQuestion()">Next</button>
+      <button class="end-game-btn" onclick="endFlagsGame()">End Flags Mode</button>
+    </div>
+  </div>
+  <div id="pause-overlay">
+    <img style="padding-left:2em; width: 200px; height: 200px; margin-bottom: 20px;" src="https://teorainneacha.vercel.app/icon.png" alt="Game Logo">
+    <div style="margin-left: 6em;">Game Paused</div>
+    <button id="resume-btn">Resume</button>
+    <button id="pause-mainmenu-btn">Main Menu</button>
+  </div>
+  <div id="results-screen">
+    <img style="padding-left:2em; width: 200px; height: 200px; margin-bottom: 20px;" src="https://teorainneacha.vercel.app/icon.png" alt="Game Logo">
+    <div id="results-text"></div>
+    <button id="results-mainmenu-btn">Main Menu</button>
+    <button id="close-results-btn">Close</button>
+  </div>
+  <div id="instructions-overlay">
+    <div id="instructions-content">
+      <h2>How to play</h2>
+      <h3>Countries mode</h3>
+      <p>Each round you will be prompted for a country. Type the country's name and press <b>Enter</b> or the blue arrow to submit.</p>
+      <p>You can type <b>skip</b> to skip a country if you don't know the answer. Skipped countries will be revisited at the end of the game.</p>
+      <h3>Capitals mode</h3>
+      <p>Each round you will be asked for the capital of a country. Type the capital and submit. Capitals already revealed show as red dots. Skipping and submitting works the same as in countries mode.</p>
+      <h3>Flags mode</h3>
+      <p>In <b>Assign Flag to Country</b>, you will be prompted with a country and four flag options. Click on the flag that belongs to that country. In <b>Assign Country to Flag</b> you will be shown a flag and four country option. Click on the Country that has that flag.</p>
+      <h3>Extreme mode</h3>
+      <p>Extreme mode disables skip, autocapitalisation, autocorrect, and autocomplete. You must type the country's name <b>perfectly</b> for it to count.</p>
+      <h3>Timed mode</h3>
+      <p>Extreme mode gives you 1 minute to get as far as you can in Countries, Cities and Flags modes. Hints are also disabled</p>
+      <button onclick="closeInstructions()">Close</button>
+    </div>
+  </div>
+  <div id="credits-overlay">
+    <div id="credits-content">
+      <h2>Credits</h2>
+      <h3>Authors</h3>
+      <p><strong>Developed by:</strong> Liam Smalley</p>
+      <p><strong>Game concept by:</strong> Raymond Carson and Liam Smalley</p>
+      <h3>Data and assets</h3>
+      <ul>
+        <li><strong>Country shapes:</strong> Natural Earth / World Atlas TopoJSON</li>
+        <li><strong>Country and city names:</strong> RestCountries API</li>
+        <li><strong>Flag images:</strong> Brataí Flag SVG CDN</li>
+        <li><strong>Libraries:</strong> D3.js (map rendering and projections), TopoJSON client</li>
+      </ul>
+      <p>If you have encountered an error, please submit an issue to <a style="color: white;" href="https://github.com/lcsmalls/COE-Chat/issues/new" target="_blank">Github</a></p>
+      <button onclick="closeCredits()">Close</button>
+    </div>
+  </div>
+  <div id="message-modal" aria-hidden="true"></div>
+  <script src="script.js"></script>
+  <script src="answering.js"></script>
+  <script src="modals.js"></script>
+  <script src="screens.js"></script>
+  <script src="timedMode.js"></script>
+  <script src="flagsMode.js"></script>
+  <script src="citiesMode.js"></script>
+  <script src="timer.js"></script>
+  <script src="teorainneacha.js"></script>
+  <script src="listeners.js"></script>
+  <script src="objects.js"></script>
+  <script defer src="versionChecker.js"></script>
+</body>
+
 </html>
