@@ -1,3 +1,4 @@
+// v.1.5.7
 function showMessage(text, icon = 'info') {
   const modal = document.getElementById("message-modal");
   modal.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${text}</span>`;
