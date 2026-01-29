@@ -1,3 +1,4 @@
+// v.1.5.7
 document.getElementById("pause-mainmenu-btn").addEventListener("click", () => {
   clearInterval(timerInterval);
   paused = false;
