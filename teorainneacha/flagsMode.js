@@ -1,3 +1,4 @@
+// v.1.5.7
 async function ensureFlagsData() {
   if (flagsAllList.length) return;
   try {
