@@ -1,3 +1,4 @@
+// v.1.5.7
 document.addEventListener('click', function(e) {
   if (e.target && e.target.id === 'flags-pause-btn') {
     const pauseBtn = document.getElementById('flags-pause-btn');
