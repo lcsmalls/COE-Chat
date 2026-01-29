@@ -1,4 +1,4 @@
-// v.1.5.6
+// v.1.5.7
 function revealCountry(rec) {
   if (revealedCountries.has(rec.name)) return;
   revealedCountries.add(rec.name);
@@ -84,17 +84,30 @@ function revealCountry(rec) {
     flagCanvas.style.pointerEvents = 'none';
     document.body.appendChild(flagCanvas);
 
+    let resizeTimeout;
     function resizeFlagCanvas() {
-      const svgNode = d3.select('svg').node();
-      const width = svgNode ? svgNode.getBoundingClientRect().width : window.innerWidth;
-      const height = svgNode ? svgNode.getBoundingClientRect().height : window.innerHeight;
-      flagCanvas.width = width;
-      flagCanvas.height = height;
-      flagCanvas.style.width = width + 'px';
-      flagCanvas.style.height = height + 'px';
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        const svgNode = d3.select('svg').node();
+        const width = svgNode ? svgNode.getBoundingClientRect().width : window.innerWidth;
+        const height = svgNode ? svgNode.getBoundingClientRect().height : window.innerHeight;
+        flagCanvas.width = width;
+        flagCanvas.height = height;
+        flagCanvas.style.width = width + 'px';
+        flagCanvas.style.height = height + 'px';
+      }, 100);
     }
     window.addEventListener('resize', resizeFlagCanvas);
     resizeFlagCanvas();
+    
+    window.cleanupFlagCanvas = () => {
+      if (window.flagCanvas && window.flagCanvas.parentNode) {
+        window.flagCanvas.parentNode.removeChild(window.flagCanvas);
+        window.flagCanvas = null;
+        window.flagCtx = null;
+      }
+      window.removeEventListener('resize', resizeFlagCanvas);
+    };
   }
 
   function placeImageCover(imgSel, naturalImg, bounds) {
