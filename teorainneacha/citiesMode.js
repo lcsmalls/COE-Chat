@@ -1,3 +1,4 @@
+// v.1.5.7
 function nextCitiesRound() {
   if (timedModeActive && gameType === 'cities') {
     // Timed cities: pick a random country (any continent) each round
