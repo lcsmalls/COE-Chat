@@ -1,4 +1,4 @@
-// v.1.5.6
+// v.1.5.7
 let countriesData = [];
 let features = [];
 let projection;
@@ -57,14 +57,19 @@ let resultsShown = false;
 let topoIdMap = {};
 
 async function init() {
-  // Fetch TopoJSON ID map from external JSON file
-  try {
-    const topoMapResponse = await fetch('https://teorainneacha.vercel.app/TopoJsonIdMap.json');
-    topoIdMap = await topoMapResponse.json();
-  } catch (err) {
-    console.error('Failed to load TopoJSON ID map', err);
-    topoIdMap = {};
-  }
+  // Fetch all data in parallel
+  const [topoMapRes, rcRes, topoRes, capitalsRes] = await Promise.all([
+    fetch('https://teorainneacha.vercel.app/TopoJsonIdMap.json').catch(() => ({ ok: false })),
+    fetch("https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,altSpellings"),
+    fetch("https://unpkg.com/world-atlas@2/countries-50m.json"),
+    fetch("https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,capital,capitalInfo")
+  ]);
+  
+  // Parse responses
+  topoIdMap = topoMapRes.ok ? await topoMapRes.json() : {};
+  const rc = await rcRes.json();
+  const topo = await topoRes.json();
+  const capitalsRaw = await capitalsRes.json();
   
   svg = d3.select("#map");
   const width = window.innerWidth;
@@ -86,9 +91,7 @@ async function init() {
         mapGroup.attr("transform", event.transform);
       })
   );
-  const rc = await fetch(
-    "https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,altSpellings"
-  ).then((r) => r.json());
+  
   rc.forEach((c) => {
     const cca3 = c.cca3 || "",
       cca2 = c.cca2 || "",
@@ -103,8 +106,7 @@ async function init() {
     countriesData.push(rec);
     nameIndex.set(normalizeName(common), rec);
   });
-  let topoJSONLink = "https://unpkg.com/world-atlas@2/countries-50m.json";
-  const topo = await fetch(topoJSONLink).then((r) => r.json());
+  
   const objKey = Object.keys(topo.objects)[0];
   features = topojson.feature(topo, topo.objects[objKey]).features;
   features.forEach((f) => {
@@ -126,9 +128,7 @@ async function init() {
     .attr("class", "country");
   document.getElementById("main-menu").style.display = "flex";
   document.getElementById("start-screen").style.display = "none";
-  const capitalsRaw = await fetch(
-    "https://restcountries.com/v3.1/all?fields=cca2,cca3,name,region,capital,capitalInfo"
-  ).then((r) => r.json());
+  
   capitalsData = [];
   capitalsByCountry.clear();
   capitalsIndex.clear();
