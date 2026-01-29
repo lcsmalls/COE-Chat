@@ -1,4 +1,4 @@
-
+// v.1.5.7
 function startTimedGame(submode) {
   // submode: 'countries' | 'cities' | 'flags'
   // allow results for this new timed run
