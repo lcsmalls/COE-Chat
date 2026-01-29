@@ -1,12 +1,9 @@
+// v.1.5.7
 (function() {
-  // === CONFIG ===
-  const CURRENT_VERSION = '1.5.5';
+  const CURRENT_VERSION = '1.5.7';
   const VERSION_URL = 'version.json';
-  // 'page'  => dismiss only for the current page load (will reappear after reload)
-  // 'session' => dismiss for the browser tab session (survives reloads, cleared when tab closes)
-  const DISMISS_PERSISTENCE = 'page'; // choose 'page' or 'session'
+  const DISMISS_PERSISTENCE = 'page';
   const CHECK_INTERVAL_MS = 1000;
-  // ==============
 
   const DISMISS_KEY = 'teorainneacha_update_dismissed';
   let intervalId = null;
@@ -74,7 +71,7 @@
       max-width: 300px;
     `;
 
-    // Insert HTML; we'll attach the dismiss handler programmatically so we can control behavior
+    // Insert HTML; attach the dismiss handler programmatically to control behavior
     banner.innerHTML = `
       <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.4;">
         A new version of Teorainneacha is available (${newVersion}). Any issues you may have encountered may have been fixed.
