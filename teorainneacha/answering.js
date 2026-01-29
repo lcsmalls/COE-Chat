@@ -1,3 +1,4 @@
+// v.1.5.7
 function levenshtein(a, b) {
   a = a || '';
   b = b || '';
@@ -62,13 +63,6 @@ function getFeature(rec) {
   if (featureByCCA3.has(rec.cca3)) return featureByCCA3.get(rec.cca3);
   // Try name match
   if (featureByName.has(key)) return featureByName.get(key);
-  // Try aliases
-  for (let alias of rec.aliases) {
-    const aliasKey = normalizeName(alias);
-
-    const f = featureByName.get(aliasKey);
-    if (f) return f;
-  }
   // Try feature properties for ISO code
   for (let f of features) {
     const props = f.properties || {};
