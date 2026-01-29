@@ -1,4 +1,4 @@
-
+// v.1.5.7
 function showStartScreen(type) {
   gameType = type;
   document.getElementById("main-menu").style.display = "none";
