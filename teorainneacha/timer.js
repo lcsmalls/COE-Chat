@@ -1,3 +1,4 @@
+// v.1.5.7
 function startTimer() {
   startTime = Date.now() - elapsed;
   timerInterval = setInterval(updateTimer, 1000);
