@@ -69,7 +69,7 @@ function revealCountry(rec) {
     // French Southern and Antarctic Lands (ATF) - keep as france for now
     return name.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
   }
-  let flagSrc = `https://bratai.vercel.app/${brataiKey(rec.name, rec.cca3)}.svg`;
+  let flagSrc = `https://teorainneacha.vercel.app/bratai/${brataiKey(rec.name, rec.cca3)}.svg`;
   if (!flagImg) {
     flagImg = new Image();
     flagImg.src = flagSrc;
@@ -128,7 +128,7 @@ function revealCountry(rec) {
   function renderSingleFeature(feature, rec, clipId, stretchOverride = false) {
     const bounds = path.bounds(feature);
     // Calculate the correct flag source for this specific rec
-    const recFlagSrc = `https://bratai.vercel.app/${brataiKey(rec.name, rec.cca3)}.svg`;
+    const recFlagSrc = `https://teorainneacha.vercel.app/bratai/${brataiKey(rec.name, rec.cca3)}.svg`;
     const img = mapGroup.append("image").attr("href", recFlagSrc).attr("clip-path", `url(#${clipId})`).attr("style", "pointer-events:none;").attr("opacity", 0);
     const useStretch = forceStretch.has(rec.cca3) || stretchOverride;
 
