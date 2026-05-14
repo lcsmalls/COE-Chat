@@ -1,6 +1,6 @@
 {
-  "name": "My Web App",
-  "short_name": "App",
+  "name": "Chat (working title)",
+  "short_name": "Chat",
   "start_url": "/",
   "display": "standalone",
   "icons": [
