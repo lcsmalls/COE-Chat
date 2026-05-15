@@ -1098,7 +1098,6 @@
     let currentUser = null;
     let userData = null;
     let currentChatId = null;
-    let notificationPermission = Notification.permission;
     let currentChatType = null;
     let currentGroupData = null; // Store current group data
     let messagesUnsubscribe = null;
@@ -1276,8 +1275,7 @@
         document.getElementById('modal-bubble-color-picker').value = userData.bubbleColor;
       }
       document.getElementById('modal-username').textContent = `${userData.username}#${userData.tag}`;
-      updateUnreadTitle();
-      requestNotificationPermission();
+      updateUnreadTitle(); // Set initial title
     }
     // CORRECTED KEYBOARD LISTENER
     document.addEventListener('keydown', (e) => {
@@ -1907,16 +1905,9 @@
       });
       // --- Messages Listener ---
       const chatCollection = db.collection('chats').doc(chatId).collection('messages');
-      let lastMessageCount = 0;
       messagesUnsubscribe = chatCollection.orderBy('timestamp').onSnapshot(snapshot => {
-        const newMessageCount = snapshot.docs.length;
-        const isNewMessage = newMessageCount > lastMessageCount;
-        lastMessageCount = newMessageCount;
         chatMessages.innerHTML = '';
-        snapshot.docs.forEach((doc, index) => {
-          const isLatest = index === snapshot.docs.length - 1;
-          displayMessage(doc.data(), doc.id, isLatest && isNewMessage);
-        });
+        snapshot.docs.forEach(doc => displayMessage(doc.data(), doc.id));
         // --- Auto-scroll after DOM update ---
         setTimeout(() => {
           chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -2041,7 +2032,7 @@
       }
     });
 
-    function displayMessage(data, messageId, isNewMessage = false) {
+    function displayMessage(data, messageId) {
       const isSent = data.senderId === currentUser.uid;
       const messageContainer = document.createElement('div');
       messageContainer.classList.add('message-container');
@@ -2111,12 +2102,6 @@
       messageElement.appendChild(bubble);
       messageContainer.appendChild(messageElement);
       chatMessages.appendChild(messageContainer);
-
-      if (isNewMessage && !isSent) {
-        const messageText = data.content.replace(/!\[\]\(data:image\/[^)]+\)/g, '[Image]').substring(0, 80);
-        showMessageNotification(data.senderName, messageText, currentChatId);
-      }
-
       // --- Always scroll to the bottom after adding a message ---
       setTimeout(() => {
         chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -2179,16 +2164,9 @@
       });
       // --- Messages Listener ---
       const chatCollection = db.collection('chats').doc(chatId).collection('messages');
-      let lastMessageCount = 0;
       messagesUnsubscribe = chatCollection.orderBy('timestamp').onSnapshot(snapshot => {
-        const newMessageCount = snapshot.docs.length;
-        const isNewMessage = newMessageCount > lastMessageCount;
-        lastMessageCount = newMessageCount;
         chatMessages.innerHTML = '';
-        snapshot.docs.forEach((doc, index) => {
-          const isLatest = index === snapshot.docs.length - 1;
-          displayMessage(doc.data(), doc.id, isLatest && isNewMessage);
-        });
+        snapshot.docs.forEach(doc => displayMessage(doc.data(), doc.id));
         // --- Auto-scroll after DOM update ---
         setTimeout(() => {
           chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -2474,16 +2452,9 @@
       });
       // --- Messages Listener ---
       const chatCollection = db.collection('chats').doc(chatId).collection('messages');
-      let lastMessageCount = 0;
       messagesUnsubscribe = chatCollection.orderBy('timestamp').onSnapshot(snapshot => {
-        const newMessageCount = snapshot.docs.length;
-        const isNewMessage = newMessageCount > lastMessageCount;
-        lastMessageCount = newMessageCount;
         chatMessages.innerHTML = '';
-        snapshot.docs.forEach((doc, index) => {
-          const isLatest = index === snapshot.docs.length - 1;
-          displayMessage(doc.data(), doc.id, isLatest && isNewMessage);
-        });
+        snapshot.docs.forEach(doc => displayMessage(doc.data(), doc.id));
         // --- Auto-scroll after DOM update ---
         setTimeout(() => {
           chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -2528,39 +2499,6 @@
           console.log('setupOnlinePresence: set online for', uid);
         }
       });
-    }
-
-    async function requestNotificationPermission() {
-      if (!('Notification' in window)) {
-        console.log('Notifications not supported');
-        return;
-      }
-      if (Notification.permission === 'granted') {
-        notificationPermission = 'granted';
-        console.log('Notifications already granted');
-        return;
-      }
-      if (Notification.permission !== 'denied') {
-        const permission = await Notification.requestPermission();
-        notificationPermission = permission;
-        console.log('Notification permission:', permission);
-      }
-    }
-
-    function showMessageNotification(senderName, messagePreview, chatId) {
-      if (notificationPermission !== 'granted') return;
-      if (currentChatId === chatId && document.hasFocus()) return;
-      const notification = new Notification(`New message from ${senderName}`, {
-        body: messagePreview.length > 100 ? messagePreview.substring(0, 100) + '...' : messagePreview,
-        icon: 'https://coe-chat.vercel.app/favicon.png',
-        tag: chatId,
-        requireInteraction: false
-      });
-      notification.onclick = () => {
-        window.focus();
-        openChat(chatId, null, null, null);
-        notification.close();
-      };
     }
   </script>
 </body>
