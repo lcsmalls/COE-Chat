@@ -1869,6 +1869,116 @@ body {
   font-size: 0.9rem;
 }
 
+/* ========== Audio / Video in messages ========== */
+.msg-audio-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--surface0);
+  border-radius: 8px;
+  max-width: 100%;
+}
+
+.msg-audio {
+  flex-shrink: 0;
+  height: 2rem;
+  max-width: 240px;
+}
+
+.msg-audio-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--subtext0);
+}
+
+.msg-video-wrapper {
+  margin-top: 0.3rem;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.msg-video {
+  display: block;
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 8px;
+  background: var(--crust);
+}
+
+/* ========== Media viewer modal ========== */
+.media-viewer-overlay {
+  z-index: 200;
+}
+
+.media-viewer-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.media-viewer-close {
+  position: absolute;
+  top: -2.5rem;
+  right: 0;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.3rem;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.media-viewer-close:hover {
+  opacity: 1;
+}
+
+.media-viewer-name {
+  font-size: 0.85rem;
+  color: var(--subtext0);
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-viewer-image {
+  max-width: 100%;
+  max-height: 80vh;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.media-viewer-video {
+  max-width: 100%;
+  max-height: 80vh;
+  border-radius: 8px;
+}
+
+.media-viewer-download {
+  color: var(--overlay0);
+  font-size: 1.2rem;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.media-viewer-download:hover {
+  color: var(--text);
+}
+
 /* ========== Markdown in messages ========== */
 .msg-text {
   word-wrap: break-word;

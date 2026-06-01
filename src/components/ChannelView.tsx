@@ -16,6 +16,7 @@ import { Icon } from './Icon'
 import { EmojiPicker } from './EmojiPicker'
 import { AdminBadge } from './AdminBadge'
 import { InvitePreview } from './InvitePreview'
+import { FilePreview } from './FilePreview'
 
 interface Props {
   channel: Channel
@@ -59,43 +60,6 @@ function MessageAvatar({ profile }: { profile?: Profile }) {
       {name[0].toUpperCase()}
     </div>
   )
-}
-
-function FilePreview({ msg }: { msg: Message }) {
-  if (!msg.file_url) return null
-  const isImage = msg.file_type?.startsWith('image/')
-  if (isImage) {
-    return (
-      <a href={msg.file_url} target="_blank" rel="noopener noreferrer" className="msg-image-link">
-        <img src={msg.file_url} alt={msg.file_name || ''} className="msg-image" />
-      </a>
-    )
-  }
-  const sizeStr = msg.file_size ? formatSize(msg.file_size) : ''
-  return (
-    <a href={msg.file_url} target="_blank" rel="noopener noreferrer" className="msg-file-link" download={msg.file_name || undefined}>
-      <span className="file-icon"><Icon name={getFileIcon(msg.file_type || '')} /></span>
-      <span className="file-info">
-        <span className="file-name">{msg.file_name}</span>
-        {sizeStr && <span className="file-size">{sizeStr}</span>}
-      </span>
-      <span className="file-download"><Icon name="download" /></span>
-    </a>
-  )
-}
-
-function getFileIcon(type: string): string {
-  if (type.startsWith('image/')) return 'file_image'
-  if (type.startsWith('audio/')) return 'file_audio'
-  if (type.startsWith('video/')) return 'file_video'
-  if (type.includes('zip') || type.includes('rar') || type.includes('tar') || type.includes('7z') || type.includes('gzip')) return 'file_zip'
-  return 'file'
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes}B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
 }
 
 export function ChannelView({ channel, onClose, canManageMessages, userDisplayNames, onMarkRead }: Props) {
