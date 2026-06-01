@@ -318,7 +318,7 @@ export function SettingsView({ profile, onClose, onProfileUpdate }: Props) {
           </div>
         </div>
 
-        <div className="settings-section">
+        {/* <div className="settings-section">
           <h3>Tag</h3>
           <div className="settings-field">
             <label>Your tag – auto-generated as 4 digits, but you can set it to anything</label>
@@ -337,7 +337,7 @@ export function SettingsView({ profile, onClose, onProfileUpdate }: Props) {
               </button>
             </div>
           </div>
-        </div>
+        </div> */}
       </>
     )
   }

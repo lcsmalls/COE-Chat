@@ -559,8 +559,10 @@ export function Home() {
                     <div className="member-item-name" style={{
                       fontFamily: p?.name_font ? getFontFamily(p.name_font) : undefined,
                       color: p?.name_color || undefined,
+                      ...((p?.role === 'admin' || p?.role === 'owner') ? { textShadow: `1px 0 0.3px ${p.admin_outline_color || '#cba6f7'}, -1px 0 0.3px ${p.admin_outline_color || '#cba6f7'}, 0 1px 0.3px ${p.admin_outline_color || '#cba6f7'}, 0 -1px 0.3px ${p.admin_outline_color || '#cba6f7'}, 1px 1px 0.3px ${p.admin_outline_color || '#cba6f7'}, -1px 1px 0.3px ${p.admin_outline_color || '#cba6f7'}, -1px -1px 0.3px ${p.admin_outline_color || '#cba6f7'}, 1px -1px 0.3px ${p.admin_outline_color || '#cba6f7'}` } : {}),
                     }}>
                       {p?.display_name || p?.username || 'Unknown'}
+                      <AdminBadge role={p?.role} />
                     </div>
                     <div className="member-item-status">{status}</div>
                   </div>

@@ -37,6 +37,9 @@ const permLabels: Record<string, string> = {
 export function ServerSettings({ server, onClose, onUpdate, onLeave }: Props) {
   const [tab, setTab] = useState<Tab>('overview')
   const [name, setName] = useState(server.name)
+  const [iconUrl, setIconUrl] = useState(server.icon_url ?? '')
+  const [bannerColor, setBannerColor] = useState(server.banner_color ?? '#313244')
+  const [uploading, setUploading] = useState(false)
   const [members, setMembers] = useState<ServerMember[]>([])
   const [roles, setRoles] = useState<ServerRole[]>([])
   const [channels, setChannels] = useState<{ id: number; name: string; type: string }[]>([])
@@ -68,6 +71,37 @@ export function ServerSettings({ server, onClose, onUpdate, onLeave }: Props) {
     const { error } = await supabase.from('servers').update({ name: name.trim() }).eq('id', server.id)
     if (error) setMsg({ type: 'error', text: error.message })
     else { setMsg({ type: 'success', text: 'Server name updated' }); onUpdate() }
+    setSavingName(false)
+  }
+
+  async function uploadIcon(file: File) {
+    setUploading(true)
+    setMsg(null)
+    const ext = file.name.split('.').pop()
+    const filePath = `server-icons/${server.id}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file)
+    if (error) {
+      setMsg({ type: 'error', text: error.message })
+      setUploading(false)
+      return
+    }
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath)
+    setIconUrl(publicUrl)
+    setUploading(false)
+  }
+
+  async function saveServerAppearance() {
+    setSavingName(true)
+    const { error } = await supabase
+      .from('servers')
+      .update({ icon_url: iconUrl || null, banner_color: bannerColor })
+      .eq('id', server.id)
+    if (error) setMsg({ type: 'error', text: error.message })
+    else { setMsg({ type: 'success', text: 'Server appearance updated' }); onUpdate() }
     setSavingName(false)
   }
 
@@ -164,6 +198,38 @@ export function ServerSettings({ server, onClose, onUpdate, onLeave }: Props) {
                   {savingName ? 'Saving...' : 'Save'}
                 </button>
               </div>
+
+              <h3 style={{ marginTop: '1.5rem' }}>Server Icon</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                {iconUrl ? (
+                  <img src={iconUrl} alt="" style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                ) : (
+                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--surface0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 700, color: 'var(--text)' }}>
+                    {name[0]?.toUpperCase() || '?'}
+                  </div>
+                )}
+                <input type="file" accept="image/*" id="server-icon-upload" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadIcon(f); e.target.value = '' }} />
+                <button className="settings-btn" onClick={() => document.getElementById('server-icon-upload')?.click()} disabled={uploading}>
+                  {uploading ? 'Uploading...' : 'Upload'}
+                </button>
+                {iconUrl && (
+                  <button className="settings-btn" style={{ background: 'var(--surface1)', color: 'var(--text)' }} onClick={() => setIconUrl('')}>
+                    Clear
+                  </button>
+                )}
+                <button className="settings-btn" onClick={saveServerAppearance} disabled={savingName}>
+                  {savingName ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+
+              <h3 style={{ marginTop: '1.5rem' }}>Banner Color</h3>
+              <div className="field-row">
+                <input type="color" value={bannerColor} onChange={e => setBannerColor(e.target.value)} style={{ width: 36, height: 28, padding: 0, border: 'none' }} />
+                <button className="settings-btn" onClick={saveServerAppearance} disabled={savingName}>
+                  {savingName ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+
               <h3 style={{ marginTop: '1.5rem' }}>Invite Link</h3>
               <div className="field-row">
                 <input type="text" value={inviteLink} readOnly onClick={e => (e.target as HTMLInputElement).select()} />
@@ -188,7 +254,7 @@ export function ServerSettings({ server, onClose, onUpdate, onLeave }: Props) {
                 const profile = m.profile as Profile | undefined
                 const role = m.role as ServerRole | undefined
                 return (
-                  <div key={m.id} className="admin-field" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0', borderBottom: '1px solid var(--surface0)' }}>
+                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0', borderBottom: '1px solid var(--surface0)' }}>
                     {profile?.avatar_url ? (
                       <img src={profile.avatar_url} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
                     ) : (

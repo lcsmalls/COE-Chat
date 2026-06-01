@@ -10,6 +10,7 @@ import { NotFound } from './pages/NotFound'
 import { useAuth } from './hooks/useAuth'
 // import { DebugConsole } from './components/DebugConsole'
 import { onAppReady } from './appReady'
+import { Analytics } from '@vercel/analytics/react'
 
 function GuestRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -70,6 +71,7 @@ export default function App() {
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <Analytics />
       {/* <DebugConsole /> */}
     </BrowserRouter>
   )
