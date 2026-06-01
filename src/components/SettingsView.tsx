@@ -538,7 +538,8 @@ export function SettingsView({ profile, onClose, onProfileUpdate }: Props) {
           Peer-to-peer messaging built with React and Supabase.
         </p>
 
-        <br></br>
+        <br></br>        
+        <p><a href="https://coe-chat.vercel.app/invite/25">Official COE Chat Server</a></p>
 
         <div className="settings-section">
           <h3>Created by</h3>
