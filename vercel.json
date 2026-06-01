@@ -1,13 +1,10 @@
 {
-  "headers": [
-    {
-      "source": "/teorainneacha/bratai/(.*)",
-      "headers": [
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
+    "rewrites": [
         {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
+            "source": "/(.*)",
+            "destination": "/"
         }
-      ]
-    }
-  ]
+    ]
 }
