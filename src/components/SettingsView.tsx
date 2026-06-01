@@ -26,7 +26,7 @@ export function SettingsView({ profile, onClose, onProfileUpdate }: Props) {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [username, setUsername] = useState(profile.username)
-  const [uid, setUid] = useState(profile.uid)
+  // const [uid, setUid] = useState(profile.uid)
 
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? '')
   const [displayName, setDisplayName] = useState(profile.display_name ?? '')
@@ -103,21 +103,21 @@ export function SettingsView({ profile, onClose, onProfileUpdate }: Props) {
     setSaving(null)
   }
 
-  async function updateUid() {
-    if (!uid.trim()) return
-    setSaving('uid')
-    setMsg(null)
-    const { error } = await supabase
-      .from('profiles')
-      .update({ uid: uid.trim() })
-      .eq('id', user!.id)
-    if (error) setMsg({ type: 'error', text: error.message })
-    else {
-      setMsg({ type: 'success', text: 'Tag updated' })
-      onProfileUpdate({ ...profile, uid: uid.trim() })
-    }
-    setSaving(null)
-  }
+  // async function updateUid() {
+  //   if (!uid.trim()) return
+  //   setSaving('uid')
+  //   setMsg(null)
+  //   const { error } = await supabase
+  //     .from('profiles')
+  //     .update({ uid: uid.trim() })
+  //     .eq('id', user!.id)
+  //   if (error) setMsg({ type: 'error', text: error.message })
+  //   else {
+  //     setMsg({ type: 'success', text: 'Tag updated' })
+  //     onProfileUpdate({ ...profile, uid: uid.trim() })
+  //   }
+  //   setSaving(null)
+  // }
 
   async function uploadAvatar(file: File) {
     if (!user) return
