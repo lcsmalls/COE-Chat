@@ -11,12 +11,18 @@ import { useAuth } from './hooks/useAuth'
 // import { DebugConsole } from './components/DebugConsole'
 import { onAppReady } from './appReady'
 import { Analytics } from '@vercel/analytics/react'
+import { useTheme } from './hooks/useTheme'
 
 function GuestRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="loading-screen">Loading...</div>
   if (user) return <Navigate to="/" replace />
   return <>{children}</>
+}
+
+function AccentLoader() {
+  useTheme()
+  return null
 }
 
 function LoaderManager() {
@@ -57,6 +63,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <LoaderManager />
+      <AccentLoader />
       <Routes>
         <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
         <Route path="/signup" element={<GuestRoute><Signup /></GuestRoute>} />
