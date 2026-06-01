@@ -199,7 +199,7 @@ interface Props {
 
 export function AdminConsole({ onClose }: Props) {
   const { user } = useAuth()
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [, setProfile] = useState<Profile | null>(null)
   const [userStatuses, setUserStatuses] = useState<Record<string, string>>({})
 
   const [tab, setTab] = useState<Tab>('servers')
@@ -214,7 +214,7 @@ export function AdminConsole({ onClose }: Props) {
   const [channelMessages, setChannelMessages] = useState<Message[]>([])
   const [channelLoading, setChannelLoading] = useState(false)
   const [serverMembers, setServerMembers] = useState<ServerMember[]>([])
-  const [membersLoading, setMembersLoading] = useState(false)
+  const [, setMembersLoading] = useState(false)
 
   const [userSearch, setUserSearch] = useState('')
   const [allUsers, setAllUsers] = useState<Profile[]>([])

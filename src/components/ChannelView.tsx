@@ -16,7 +16,7 @@ import { Icon } from './Icon'
 import { EmojiPicker } from './EmojiPicker'
 import { AdminBadge } from './AdminBadge'
 import { InvitePreview } from './InvitePreview'
-import { FilePreview } from './FilePreview'
+import { FilePreview, formatSize } from './FilePreview'
 
 interface Props {
   channel: Channel

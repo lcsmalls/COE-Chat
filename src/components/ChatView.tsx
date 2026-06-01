@@ -17,7 +17,7 @@ import { EmojiPicker } from './EmojiPicker'
 import { CallOverlay } from './CallOverlay'
 import { AdminBadge } from './AdminBadge'
 import { InvitePreview } from './InvitePreview'
-import { FilePreview } from './FilePreview'
+import { FilePreview, formatSize } from './FilePreview'
 
 interface Props {
   chatId: number
