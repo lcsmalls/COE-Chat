@@ -17,7 +17,7 @@ import { ChatView } from '../components/ChatView'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Icon } from '../components/Icon'
 import { AdminBadge } from '../components/AdminBadge'
-import { AdminPanel } from '../components/AdminPanel'
+import { AdminConsole } from '../components/AdminConsole'
 import { ServerBar } from '../components/ServerBar'
 import { ChannelList } from '../components/ChannelList'
 import { ChannelView } from '../components/ChannelView'
@@ -49,7 +49,7 @@ export function Home() {
   const [voiceParticipants, setVoiceParticipants] = useState<Record<number, number>>({})
 
   // UI state
-  const [showAdmin, setShowAdmin] = useState(false)
+  const [showAdminConsole, setShowAdminConsole] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState<Profile | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -682,7 +682,7 @@ export function Home() {
                   <Icon name="logout" />
                 </button>
                 {isAdmin && (
-                  <button className="sidebar-icon-btn admin-icon-btn" onClick={() => setShowAdmin(true)} title="Admin Panel">
+                  <button className="sidebar-icon-btn admin-icon-btn" onClick={() => setShowAdminConsole(true)} title="Admin Console">
                     <Icon name="shield" />
                   </button>
                 )}
@@ -738,9 +738,11 @@ export function Home() {
                   <Icon name="logout" />
                 </button>
                 {isAdmin && (
-                  <button className="sidebar-icon-btn admin-icon-btn" onClick={() => setShowAdmin(true)} title="Admin Panel">
-                    <Icon name="shield" />
-                  </button>
+                  <>
+                    <button className="sidebar-icon-btn admin-icon-btn" onClick={() => setShowAdminConsole(true)} title="Admin Console">
+                      <Icon name="shield" />
+                    </button>
+                  </>
                 )}
               </span>
               <button className="sidebar-icon-btn" onClick={() => setShowSettings(true)}>
@@ -806,7 +808,7 @@ export function Home() {
         onLeave={voice.leaveChannel}
       />
 
-      {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} />}
+      {showAdminConsole && <AdminConsole onClose={() => setShowAdminConsole(false)} />}
 
       {showSettings && profile && (
         <SettingsView
