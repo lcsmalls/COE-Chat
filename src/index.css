@@ -173,7 +173,7 @@
   font-style: italic;
 }
 
-/* ========== Catppuccin Mocha ========== */
+/* ========== Catppuccin Mocha ==========
 :root {
   --rosewater: #f5e0dc;
   --flamingo: #f2cdcd;
@@ -291,7 +291,7 @@
   --base: #24273a;
   --mantle: #1e2030;
   --crust: #181926;
-}
+} */
 
 /* ========== Custom Light ========== */
 [data-theme="light"] {

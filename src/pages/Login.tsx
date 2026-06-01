@@ -30,7 +30,7 @@ export function Login() {
         <div className="auth-header">
           <img
             className="auth-logo"
-            src="https://raw.githubusercontent.com/lcsmalls/COE-Chat/main/favicon.png"
+            src="https://raw.githubusercontent.com/lcsmalls/COE-Chat/main/public/favicon.png"
             alt="COE Chat"
           />
           <h1>COE Chat</h1>
