@@ -56,7 +56,10 @@
     </style>
     <script>
       (function() {
-        var theme = localStorage.getItem('coe-chat-theme') || 'latte';
+        var theme = localStorage.getItem('coe-chat-theme');
+        if (!theme || ['latte','frappe','macchiato','mocha'].includes(theme)) {
+          theme = 'dark';
+        }
         document.documentElement.setAttribute('data-theme', theme);
       })();
     </script>
