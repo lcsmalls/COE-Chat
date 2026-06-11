@@ -29,6 +29,14 @@
   var origLog = console.log.bind(console)
   var origWarn = console.warn.bind(console)
   var origError = console.error.bind(console)
+  var origDebug = console.debug.bind(console)
+  var origInfo = console.info.bind(console)
+  var origTrace = console.trace.bind(console)
+  var origTable = console.table.bind(console)
+  var origGroup = console.group.bind(console)
+  var origGroupEnd = console.groupEnd.bind(console)
+  var origTime = console.time.bind(console)
+  var origTimeEnd = console.timeEnd.bind(console)
 
   function cleanArgs(args) {
     if (typeof args[0] !== 'string') return args
@@ -50,7 +58,7 @@
     return [str].concat(remaining)
   }
 
-  function addEntry(level, args) {
+  function addEntry(level, args, extra) {
     args = cleanArgs(args)
     var now = new Date()
     var time = now.toLocaleTimeString()
@@ -62,6 +70,8 @@
       return String(a)
     }).join(' ')
 
+    if (extra) text += '\n' + extra
+
     entries.push({ id: ++idCounter, time: time, level: level, text: text })
     if (entries.length > MAX) entries.splice(0, TRIM)
 
@@ -71,13 +81,71 @@
   console.log = function () { origLog.apply(console, arguments); addEntry('LOG', Array.prototype.slice.call(arguments)) }
   console.warn = function () { origWarn.apply(console, arguments); addEntry('WARN', Array.prototype.slice.call(arguments)) }
   console.error = function () { origError.apply(console, arguments); addEntry('ERROR', Array.prototype.slice.call(arguments)) }
+  console.debug = function () { origDebug.apply(console, arguments); addEntry('DEBUG', Array.prototype.slice.call(arguments)) }
+  console.info = function () { origInfo.apply(console, arguments); addEntry('INFO', Array.prototype.slice.call(arguments)) }
+  console.trace = function () { 
+    origTrace.apply(console, arguments)
+    var stack = new Error().stack || ''
+    addEntry('TRACE', Array.prototype.slice.call(arguments), stack)
+  }
+  console.table = function () {
+    origTable.apply(console, arguments)
+    var args = Array.prototype.slice.call(arguments)
+    var text = args.map(function (a) {
+      if (typeof a === 'object') {
+        try { return JSON.stringify(a, null, 2) } catch (_) { return String(a) }
+      }
+      return String(a)
+    }).join('\n')
+    addEntry('TABLE', [text])
+  }
+  
+  var groupLevel = 0
+  console.group = function () {
+    origGroup.apply(console, arguments)
+    groupLevel++
+    var indent = '  '.repeat(groupLevel)
+    addEntry('GROUP', [indent + Array.prototype.slice.call(arguments).join(' ')])
+  }
+  console.groupEnd = function () {
+    origGroupEnd.apply(console, arguments)
+    groupLevel = Math.max(0, groupLevel - 1)
+    addEntry('GROUPEND', [''])
+  }
 
-  window.onerror = function (msg, _url, _line, _col, err) {
-    addEntry('ERROR', [err ? (err.stack || err.message) : msg])
+  var timers = {}
+  console.time = function (label) {
+    origTime.apply(console, arguments)
+    timers[label] = Date.now()
+  }
+  console.timeEnd = function (label) {
+    origTimeEnd.apply(console, arguments)
+    if (timers[label]) {
+      var duration = Date.now() - timers[label]
+      addEntry('TIMER', [label + ': ' + duration + 'ms'])
+      delete timers[label]
+    }
+  }
+
+  window.onerror = function (msg, url, line, col, err) {
+    var text = (err && (err.stack || err.message)) || msg
+    if (url) text += ' at ' + url + ':' + line + ':' + col
+    addEntry('ERROR', [text])
   }
 
   window.onunhandledrejection = function (e) {
-    addEntry('ERROR', [e.reason ? (e.reason.stack || e.reason.message) : String(e)])
+    var reason = e.reason
+    var text = reason ? (reason.stack || reason.message || String(reason)) : String(e)
+    addEntry('REJECTION', [text])
+  }
+
+  // Capture assert failures
+  var origAssert = console.assert
+  console.assert = function (assertion, message) {
+    origAssert.apply(console, arguments)
+    if (!assertion) {
+      addEntry('ASSERT', [message || 'Assertion failed'])
+    }
   }
 
   addEntry('LOG', ['Debug console loaded — Ctrl+Shift+P to toggle'])
@@ -129,7 +197,28 @@
   }
 
   function levelColor(level) {
-    return level === 'ERROR' ? C.red : level === 'WARN' ? C.yellow : C.text
+    switch(level) {
+      case 'ERROR':
+      case 'REJECTION':
+        return C.red
+      case 'WARN':
+        return C.yellow
+      case 'DEBUG':
+      case 'TRACE':
+      case 'TABLE':
+        return C.mauve
+      case 'INFO':
+        return C.blue
+      case 'TIMER':
+        return C.peach
+      case 'ASSERT':
+        return C.red
+      case 'GROUP':
+      case 'GROUPEND':
+        return C.overlay0
+      default:
+        return C.text
+    }
   }
 
   function entryText(e) {
@@ -145,10 +234,14 @@
     for (var i = 0; i < entries.length; i++) {
       var e = entries[i]
       var lc = levelColor(e.level)
-      html += '<div class="dc-entry" data-id="' + e.id + '">' +
+      var isGroup = e.level === 'GROUP'
+      var isGroupEnd = e.level === 'GROUPEND'
+      var indent = isGroupEnd ? '  ' : ''
+      
+      html += '<div class="dc-entry" data-id="' + e.id + '" style="' + (isGroupEnd ? 'opacity:0.5;font-size:10px' : '') + '">' +
         '<span class="dc-time" style="color:' + C.overlay0 + '">[' + e.time + ']</span> ' +
         '<span class="dc-level" style="color:' + lc + ';font-weight:700">' + e.level + ':</span> ' +
-        '<span class="dc-msg">' + highlight(e.text) + '</span>' +
+        '<span class="dc-msg">' + indent + highlight(e.text) + '</span>' +
         '</div>'
     }
     body.innerHTML = html
